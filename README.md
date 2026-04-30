@@ -168,26 +168,31 @@ Easily migrate existing configurations from other tools.
 
 ### Install Requestly
 
-#### Browser Extension
+Pick the install that matches how you work — a lightweight browser extension for in-browser interception, or the desktop app for system-wide traffic capture.
 
-Available for:
+#### 🌐 Browser Extension
 
-- Chrome
-- Edge
-- Firefox
+Install Requestly directly into your browser to start intercepting and modifying HTTP(S) traffic in seconds.
 
-👉 https://chrome.google.com/webstore/detail/redirect-url-modify-heade/mdnleldcmiljblolnjhpnblkcekpdkpa/
+| Browser | Download |
+| --- | --- |
+| Chrome | [Install for Chrome](https://get.requestly.com/chrome-store) |
+| Chrome (Beta) | [Install Beta](https://rqst.ly/chrome-store-beta) |
+| Edge | [Install for Edge](https://get.requestly.com/microsoft-edge) |
+| Firefox | [Install for Firefox](https://get.requestly.com/firefox) |
+| Safari | [Install for Safari](https://get.requestly.com/safari) |
+| Brave / Opera / Vivaldi | [Install via Chrome Web Store](https://get.requestly.com/chrome-store) |
 
-#### Desktop App
+#### 🖥️ Desktop App
 
-Use the desktop app to:
+Use the desktop app to capture traffic across browsers, mobile devices, and any desktop application — ideal for debugging, mocking APIs, and recording sessions.
 
-- Capture traffic from browsers
-- Debug and mock APIs
-- Record sessions
-- Modify desktop app traffic
-
-👉 https://requestly.com/downloads/
+| Platform | Download |
+| --- | --- |
+| macOS (Apple Silicon) | [Download for macOS (Apple Silicon)](https://get.requestly.com/macOS) |
+| macOS (Intel) | [Download for macOS (Intel)](https://get.requestly.com/macOS-Intel) |
+| Windows | [Download for Windows](https://get.requestly.com/windows) |
+| Linux | [Download for Linux](https://get.requestly.com/linux) |
 
 ---
 
