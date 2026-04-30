@@ -3,15 +3,15 @@
     <picture>
       <source
         media="(prefers-color-scheme: dark)"
-        srcset="https://github.com/requestly/requestly-http-interceptor/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
+        srcset="https://github.com/requestly/requestly/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
       />
       <source
         media="(prefers-color-scheme: light)"
-        srcset="https://github.com/requestly/requestly-http-interceptor/blob/master/app/src/assets/img/brand/rq_logo_full_light_mode.svg?raw=true"
+        srcset="https://github.com/requestly/requestly/blob/master/app/src/assets/img/brand/rq_logo_full_light_mode.svg?raw=true"
       />
       <img
         alt="Requestly Logo"
-        src="https://github.com/requestly/requestly-http-interceptor/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
+        src="https://github.com/requestly/requestly/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
         width="42%"
       />
     </picture>
@@ -29,7 +29,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/requestly/requestly-http-interceptor/stargazers">
+  <a href="https://github.com/requestly/requestly/stargazers">
     <img alt="GitHub stars" src="https://img.shields.io/github/stars/requestly/requestly-http-interceptor?style=flat-square" />
   </a>
 
@@ -57,9 +57,9 @@
   ·
   <a href="https://docs.requestly.com/general/http-interceptor/overview">Documentation</a>
   ·
-  <a href="https://github.com/requestly/requestly-http-interceptor/issues">Report Bug</a>
+  <a href="https://github.com/requestly/requestly/issues">Report Bug</a>
   ·
-  <a href="https://github.com/requestly/requestly-http-interceptor/discussions">Discussions</a>
+  <a href="https://github.com/requestly/requestly/discussions">Discussions</a>
   ·
   <a href="https://get.requestly.com/join-community">Community</a>
 </p>
@@ -229,7 +229,7 @@ Whether you're fixing bugs, improving docs, or building new features, your contr
 
 ### Useful links
 
-- [Issues](https://github.com/requestly/requestly-http-interceptor/issues)
+- [Issues](https://github.com/requestly/requestly/issues)
 - [Contributing Guide](./CONTRIBUTING.md)
 - [Discord Community](https://get.requestly.com/join-community)
 
