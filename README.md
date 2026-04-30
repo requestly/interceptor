@@ -30,10 +30,10 @@
 
 <p align="center">
   <a href="https://github.com/requestly/requestly/stargazers">
-    <img alt="GitHub stars" src="https://img.shields.io/github/stars/requestly/requestly-http-interceptor?style=flat-square" />
+    <img alt="GitHub stars" src="https://img.shields.io/github/stars/requestly/requestly?style=flat-square" />
   </a>
 
-  <img alt="GitHub closed issues" src="https://img.shields.io/github/issues-closed/requestly/requestly-http-interceptor?style=flat-square"/>
+  <img alt="GitHub closed issues" src="https://img.shields.io/github/issues-closed/requestly/requestly?style=flat-square"/>
 
   <a target="_blank" rel="noopener noreferrer" href="https://chrome.google.com/webstore/detail/redirect-url-modify-heade/mdnleldcmiljblolnjhpnblkcekpdkpa/">
     <img alt="Chrome Web Store Rating" src="https://img.shields.io/chrome-web-store/rating/mdnleldcmiljblolnjhpnblkcekpdkpa?style=flat-square" />
