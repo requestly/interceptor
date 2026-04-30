@@ -3,15 +3,15 @@
     <picture>
       <source
         media="(prefers-color-scheme: dark)"
-        srcset="https://github.com/requestly/requestly/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
+        srcset="https://github.com/requestly/requestly-http-interceptor/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
       />
       <source
         media="(prefers-color-scheme: light)"
-        srcset="https://github.com/requestly/requestly/blob/master/app/src/assets/img/brand/rq_logo_full_light_mode.svg?raw=true"
+        srcset="https://github.com/requestly/requestly-http-interceptor/blob/master/app/src/assets/img/brand/rq_logo_full_light_mode.svg?raw=true"
       />
       <img
         alt="Requestly Logo"
-        src="https://github.com/requestly/requestly/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
+        src="https://github.com/requestly/requestly-http-interceptor/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
         width="42%"
       />
     </picture>
@@ -21,45 +21,45 @@
 <h1 align="center">Requestly HTTP Interceptor</h1>
 
 <p align="center">
-  Open-source HTTP interception, API mocking, traffic debugging, and session recording platform.
+  Open-Source HTTP Interceptor & Mocking Tool
 </p>
 
 <p align="center">
-  Requestly API Client helps developers build, test, organize, and debug APIs locally alongside powerful HTTP interception tools.
+  <strong>Loved by 300k+ developers</strong> — intercept, modify, mock, and debug HTTP(S) traffic from your browser and desktop apps.
 </p>
 
 <p align="center">
-  <a href="https://github.com/requestly/requestly/stargazers">
-    <img alt="GitHub stars" src="https://img.shields.io/github/stars/requestly/requestly?style=flat-square" />
+  <a href="https://github.com/requestly/requestly-http-interceptor/stargazers">
+    <img alt="GitHub stars" src="https://img.shields.io/github/stars/requestly/requestly-http-interceptor?style=flat-square" />
   </a>
 
-  <img alt="GitHub closed issues" src="https://img.shields.io/github/issues-closed/requestly/requestly?style=flat-square"/>
+  <img alt="GitHub closed issues" src="https://img.shields.io/github/issues-closed/requestly/requestly-http-interceptor?style=flat-square"/>
 
-  <a target="_blank" href="https://chrome.google.com/webstore/detail/redirect-url-modify-heade/mdnleldcmiljblolnjhpnblkcekpdkpa/">
+  <a target="_blank" rel="noopener noreferrer" href="https://chrome.google.com/webstore/detail/redirect-url-modify-heade/mdnleldcmiljblolnjhpnblkcekpdkpa/">
     <img alt="Chrome Web Store Rating" src="https://img.shields.io/chrome-web-store/rating/mdnleldcmiljblolnjhpnblkcekpdkpa?style=flat-square" />
   </a>
 
-  <a target="_blank" href="https://chrome.google.com/webstore/detail/redirect-url-modify-heade/mdnleldcmiljblolnjhpnblkcekpdkpa/">
+  <a target="_blank" rel="noopener noreferrer" href="https://chrome.google.com/webstore/detail/redirect-url-modify-heade/mdnleldcmiljblolnjhpnblkcekpdkpa/">
     <img alt="Chrome Web Store Reviews" src="https://img.shields.io/chrome-web-store/rating-count/mdnleldcmiljblolnjhpnblkcekpdkpa?label=reviews&style=flat-square" />
   </a>
 
-  <a target="_blank" href="https://chrome.google.com/webstore/detail/redirect-url-modify-heade/mdnleldcmiljblolnjhpnblkcekpdkpa/">
+  <a target="_blank" rel="noopener noreferrer" href="https://chrome.google.com/webstore/detail/redirect-url-modify-heade/mdnleldcmiljblolnjhpnblkcekpdkpa/">
     <img alt="Chrome Web Store Users" src="https://img.shields.io/chrome-web-store/users/mdnleldcmiljblolnjhpnblkcekpdkpa?label=downloads&style=flat-square" />
   </a>
 
-  <a target="_blank" href="https://status.requestly.io">
+  <a target="_blank" rel="noopener noreferrer" href="https://status.requestly.io">
     <img alt="Status Badge" src="https://uptime.betterstack.com/status-badges/v2/monitor/13j20.svg" />
   </a>
 </p>
 
 <p align="center">
-  <a href="https://requestly.com/downloads/">Download</a>
+  <a href="https://chrome.google.com/webstore/detail/redirect-url-modify-heade/mdnleldcmiljblolnjhpnblkcekpdkpa/">Download</a>
   ·
-  <a href="https://docs.requestly.com/">Documentation</a>
+  <a href="https://docs.requestly.com/general/http-interceptor/overview">Documentation</a>
   ·
-  <a href="https://github.com/requestly/requestly/issues">Report Bug</a>
+  <a href="https://github.com/requestly/requestly-http-interceptor/issues">Report Bug</a>
   ·
-  <a href="https://github.com/requestly/requestly/discussions">Discussions</a>
+  <a href="https://github.com/requestly/requestly-http-interceptor/discussions">Discussions</a>
   ·
   <a href="https://get.requestly.com/join-community">Community</a>
 </p>
@@ -71,8 +71,6 @@
 Requestly HTTP Interceptor is an open-source HTTP interception and traffic debugging tool that helps developers intercept, inspect, monitor, and modify HTTP(S) traffic directly from browsers and desktop apps.
 
 It supports powerful debugging workflows including request/response modification, API mocking, session recording, traffic inspection, and environment overrides without requiring complex proxy or VPN setup.
-
-Requestly API Client complements the HTTP Interceptor by helping developers build, test, organize, and debug APIs locally in a modern local-first workflow.
 
 Trusted by **300,000+ developers** and **11,000+ companies worldwide**.
 
@@ -178,7 +176,7 @@ Available for:
 - Edge
 - Firefox
 
-👉 https://requestly.com/downloads/#http-interceptor
+👉 https://chrome.google.com/webstore/detail/redirect-url-modify-heade/mdnleldcmiljblolnjhpnblkcekpdkpa/
 
 #### Desktop App
 
@@ -189,7 +187,7 @@ Use the desktop app to:
 - Record sessions
 - Modify desktop app traffic
 
-👉 https://requestly.com/downloads/#http-interceptor
+👉 https://requestly.com/downloads/
 
 ---
 
@@ -212,7 +210,6 @@ Follow the setup guide:
 - [Browser Extension](./browser-extension)
 - [UI Application](./app)
 - [Mock Server](https://github.com/requestly/requestly-mock-server)
-- [Web SDK](https://github.com/requestly/requestly-web-sdk)
 - [Backend](https://github.com/requestly/requestly-backend)
 
 ---
@@ -232,7 +229,7 @@ Whether you're fixing bugs, improving docs, or building new features, your contr
 
 ### Useful links
 
-- [Issues](https://github.com/requestly/requestly/issues)
+- [Issues](https://github.com/requestly/requestly-http-interceptor/issues)
 - [Contributing Guide](./CONTRIBUTING.md)
 - [Discord Community](https://get.requestly.com/join-community)
 
@@ -240,7 +237,7 @@ Whether you're fixing bugs, improving docs, or building new features, your contr
 
 ## 🛟 Support & Resources
 
-- 📚 Documentation: https://docs.requestly.com/http-interception/getting-started/overview
+- 📚 Documentation: https://docs.requestly.com/general/http-interceptor/overview
 - 🔐 Security & Privacy: https://docs.requestly.com/security-privacy/
 - 💬 Community: https://get.requestly.com/join-community
 - 📧 Email: contact@requestly.com
@@ -250,6 +247,6 @@ Whether you're fixing bugs, improving docs, or building new features, your contr
 
 ## ❤️ Built for Developers
 
-Requestly is built to make debugging, testing, and API development faster and simpler.
+Requestly is built to make debugging and testing faster and simpler.
 
-From HTTP interception and API mocking to session replay and API testing, Requestly gives developers everything needed to debug and ship confidently.
+From HTTP interception and API mocking to session replay, Requestly gives developers everything needed to debug and ship confidently.
