@@ -177,7 +177,6 @@ Install Requestly directly into your browser to start intercepting and modifying
 | Browser | Download |
 | --- | --- |
 | Chrome | [Install for Chrome](https://get.requestly.com/chrome-store) |
-| Chrome (Beta) | [Install Beta](https://rqst.ly/chrome-store-beta) |
 | Edge | [Install for Edge](https://get.requestly.com/microsoft-edge) |
 | Firefox | [Install for Firefox](https://get.requestly.com/firefox) |
 | Safari | [Install for Safari](https://get.requestly.com/safari) |
