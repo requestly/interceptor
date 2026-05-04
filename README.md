@@ -70,7 +70,7 @@
 
 Requestly HTTP Interceptor is an open-source HTTP interception and traffic debugging tool that helps developers intercept, inspect, monitor, and modify HTTP(S) traffic directly from browsers and desktop apps.
 
-It supports powerful debugging workflows including request/response modification, API mocking, session recording, traffic inspection, and environment overrides without requiring complex proxy or VPN setup.
+It supports powerful debugging workflows including request/response modification, API mocking, traffic inspection, and environment overrides without requiring complex proxy or VPN setup.
 
 Trusted by **300,000+ developers** and **11,000+ companies worldwide**.
 
@@ -121,7 +121,7 @@ Build and test frontend applications without waiting for backend APIs.
 - Cloud-hosted mocks
 - Static & dynamic response overrides
 - GraphQL request targeting
-- Bulk mock generation from recorded sessions
+- Bulk mock generation from sessions
 - Mock APIs in Cypress, Playwright, Selenium, and CI pipelines
 
 #### Supported workflows
@@ -185,7 +185,7 @@ Install Requestly directly into your browser to start intercepting and modifying
 
 #### 🖥️ Desktop App
 
-Use the desktop app to capture traffic across browsers, mobile devices, and any desktop application — ideal for debugging, mocking APIs, and recording sessions.
+Use the desktop app to capture traffic across browsers, mobile devices, and any desktop application — ideal for debugging, mocking APIs, and sessions.
 
 | Platform | Download |
 | --- | --- |
@@ -254,4 +254,4 @@ Whether you're fixing bugs, improving docs, or building new features, your contr
 
 Requestly is built to make debugging and testing faster and simpler.
 
-From HTTP interception and API mocking to session replay, Requestly gives developers everything needed to debug and ship confidently.
+From HTTP interception and API mocking, Requestly gives developers everything needed to debug and ship confidently.
