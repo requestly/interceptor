@@ -1,48 +1,28 @@
-import { Row } from "antd";
 import React from "react";
+import { Row } from "antd";
 import { PrimaryActionButton } from "../common/PrimaryActionButton";
-import config from "src/config";
-import ExternalLinkIcon from "../../../../resources/icons/externalLink.svg";
-import ApiRequest from "../../../../resources/icons/api-request.svg";
-import ImportCurl from "../../../../resources/icons/curl-import.svg";
+import { EVENT, sendEvent } from "../../events";
 import "./apiClientContainer.scss";
-import { EXTENSION_MESSAGES } from "src/constants";
+
+const API_CLIENT_DOWNLOAD_URL = "https://requestly.com/downloads/";
 
 export const ApiClientContainer: React.FC = () => {
+  const handleInstallClick = () => {
+    sendEvent(EVENT.API_CLIENT_DOWNLOAD_CLICKED);
+    window.open(API_CLIENT_DOWNLOAD_URL, "_blank");
+  };
+
   return (
     <div className="apiclient-view-container popup-body-card">
-      <Row align="middle" justify="space-between">
-        <div className="title">🚀{"  "}Try a simple and powerful API client</div>
-      </Row>
-      <Row wrap={false} align="middle" className="action-btns">
-        <PrimaryActionButton
-          block
-          className={"api-client-action-btn"}
-          icon={<ApiRequest />}
-          onClick={() => window.open(`${config.WEB_URL}/api-client/request/new?source=popup`, "_blank")}
-        >
-          Send API request
-        </PrimaryActionButton>
-
-        <PrimaryActionButton
-          block
-          className={"api-client-action-btn"}
-          icon={<ImportCurl />}
-          onClick={() =>
-            chrome.runtime.sendMessage({ action: EXTENSION_MESSAGES.TRIGGER_OPEN_CURL_MODAL, source: "popup" })
-          }
-        >
-          Import a cURL request
+      <Row align="middle" justify="space-between" wrap={false}>
+        <div className="api-client-text">
+          <div className="heading">Requestly API Client</div>
+          <div className="subtitle">Manage, Create, Test &amp; Design APIs in a dedicated desktop app.</div>
+        </div>
+        <PrimaryActionButton size="small" onClick={handleInstallClick}>
+          Download
         </PrimaryActionButton>
       </Row>
-      <div
-        className="view-more-options-link"
-        onClick={() => {
-          window.open(`${config.WEB_URL}/api-client?source=popup`, "_blank");
-        }}
-      >
-        Open API Client <ExternalLinkIcon />
-      </div>
     </div>
   );
 };
