@@ -15,6 +15,7 @@ export enum EVENT {
   EXTENSION_RULE_CLICKED = "extension_rule_clicked",
   EXTENSION_VIEW_ALL_MODIFICATIONS_CLICKED = "extension_view_all_modifications_clicked",
   SESSION_RECORDINGS_CONFIG_OPENED = "session_recordings_config_opened",
+  API_CLIENT_DOWNLOAD_CLICKED = "api_client_download_clicked",
 }
 
 export const sendEvent = (eventName: EVENT, eventParams: Record<string, any> = {}) => {

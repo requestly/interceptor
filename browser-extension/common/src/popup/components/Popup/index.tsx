@@ -110,13 +110,13 @@ const Popup: React.FC = () => {
                     ) : (
                       <PopupTabs isSessionReplayEnabled={isSessionReplayEnabled} />
                     )}
-                    <ApiClientContainer />
                     {isSessionReplayEnabled && <SessionRecordingView />}
                     <DesktopAppProxy
                       isProxyApplied={isProxyApplied}
                       onProxyStatusChange={setIsProxyApplied}
                       isDesktopAppOpen={isDesktopAppOpen}
                     />
+                    <ApiClientContainer />
                   </div>
                 </>
               )}
