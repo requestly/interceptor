@@ -6,11 +6,11 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/requestly/interceptor.git",
+    "url": "git+https://github.com/requestly/requestly.git",
     "directory": "browser-extension/config"
   },
   "bugs": {
-    "url": "https://github.com/requestly/interceptor/issues"
+    "url": "https://github.com/requestly/requestly/issues"
   },
   "author": {
     "name": "Requestly",

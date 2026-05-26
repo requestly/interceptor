@@ -60,7 +60,7 @@ const MenuHeader = () => {
                   <GitHubButton
                     style={{ display: "flex" }}
                     className="github-star-button"
-                    href="https://github.com/requestly/interceptor"
+                    href="https://github.com/requestly/requestly"
                     data-color-scheme="dark_dimmed"
                     data-text="Star"
                     data-show-count="true"

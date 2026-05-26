@@ -264,7 +264,7 @@
     "socials": {
       "x": "https://x.com/requestlyio",
       "linkedin": "https://linkedin.com/company/requestly",
-      "github": "https://github.com/requestly/interceptor",
+      "github": "https://github.com/requestly/requestly",
       "youtube": "https://youtube.com/@requestly"
     },
     "links": [
@@ -306,7 +306,7 @@
           },
           {
             "label": "GitHub",
-            "href": "https://github.com/requestly/interceptor"
+            "href": "https://github.com/requestly/requestly"
           }
         ]
       },

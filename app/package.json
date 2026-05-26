@@ -6,11 +6,11 @@
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/requestly/interceptor.git",
+    "url": "git+https://github.com/requestly/requestly.git",
     "directory": "app"
   },
   "bugs": {
-    "url": "https://github.com/requestly/interceptor/issues"
+    "url": "https://github.com/requestly/requestly/issues"
   },
   "author": {
     "name": "Requestly",
