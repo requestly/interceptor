@@ -11,13 +11,13 @@ We adhere to the [Requestly code of conduct](./CODE_OF_CONDUCT.md) and by partic
 
 ## Reporting issues
 
-We use [Github issues](https://github.com/requestly/requestly/issues) to track feature requests and bugs. Please check existing issues before filing anything new. We do our best to respond to the issues as earliest as possible. 
+We use [Github issues](https://github.com/requestly/interceptor/issues) to track feature requests and bugs. Please check existing issues before filing anything new. We do our best to respond to the issues as earliest as possible. 
 
 If you would like to contribute a fix, please let us know by leaving a comment on the issue.
 
 ## Pull Requests
 
-Before submitting any pull request (PR), it is recommended that you first log an issue [here](https://github.com/requestly/requestly/issues) and explain your solution in comments if it is more than a typo fix. It is always a good idea to gather feedback from the team to reduce the number of iterations in code review. 
+Before submitting any pull request (PR), it is recommended that you first log an issue [here](https://github.com/requestly/interceptor/issues) and explain your solution in comments if it is more than a typo fix. It is always a good idea to gather feedback from the team to reduce the number of iterations in code review. 
 
 Please note that we have multiple Git repositories. The [Development](#development) section below will help you find the right repo to make changes in. But the issues are still managed centrally in this repository.
 
@@ -33,7 +33,7 @@ All submissions require code review from team. So, please be patient. In case yo
 Requestly is composed of multiple modules:
 - [Browser extension](./browser-extension)
 - [UI application](./app)
-- [Desktop application](https://github.com/requestly/requestly-desktop-app) (Electron-based application for MacOS, Windows)
+- [Desktop application](https://github.com/requestly/http-interceptor-desktop-app) (Electron-based application for MacOS, Windows)
 - [Mobile SDK](https://github.com/requestly/requestly-android-sdk) (to debug mobile apps)
 - [Web SDK](https://github.com/requestly/requestly-web-sdk) (facilitates SessionBook)
 - [Mock Server](https://github.com/requestly/requestly-mock-server)

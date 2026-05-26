@@ -125,7 +125,7 @@ git push origin your-branch-name
 ## Questions?
 
 - **Documentation**: [docs.requestly.com](https://docs.requestly.com)
-- **GitHub Discussions**: [github.com/requestly/requestly/discussions](https://github.com/requestly/requestly/discussions)
+- **GitHub Discussions**: [github.com/requestly/interceptor/discussions](https://github.com/requestly/interceptor/discussions)
 - **Discord**: [Join our Discord community](https://rqst.ly/join-community)
 - **Email**: contact@requestly.io
 
