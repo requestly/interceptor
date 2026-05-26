@@ -73,3 +73,5 @@ To keep things fair during contribution events we follow a few extra rules. Thes
 - This keeps issues from becoming stale and available to others.
 
 These rules follow the spirit of events like Hacktoberfest: encourage quality and fair participation. Please keep PRs meaningful and useful; low-quality or trivial PRs (that don’t help maintainers) are discouraged.
+
+<!-- test: OSS contributor flow verification, no-op comment, will be reverted -->
