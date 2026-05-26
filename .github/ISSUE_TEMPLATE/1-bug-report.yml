@@ -1,0 +1,125 @@
+name: 🐛 Bug Report — Requestly HTTP Interceptor
+description: Something in the HTTP Interceptor extension, web app, or desktop is broken.
+title: "[Bug] "
+labels: ["type:bug", "status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing! Quick check before you start.
+
+  - type: checkboxes
+    id: product-confirmation
+    attributes:
+      label: Is this about Requestly HTTP Interceptor?
+      description: This repo is for the open-source HTTP Interceptor (browser extension + web app). Bugs about the Requestly API Client (closed-source desktop) go [here](https://github.com/requestly/requestly/issues/new/choose).
+      options:
+        - label: Yes, this is about the HTTP Interceptor
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly. What did you expect to happen, and what actually happened?
+      placeholder: e.g., Redirect rule with regex doesn't fire on subdomain URLs.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps a stranger could follow to see the bug.
+      placeholder: |
+        1. Install the Chrome extension
+        2. Create a redirect rule: pattern `api.example.com/*` → `localhost:3000/$1`
+        3. Visit `api.example.com/users`
+        4. Expected redirect to localhost:3000; actual is no redirect
+    validations:
+      required: false
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where does the bug happen?
+      multiple: true
+      options:
+        - Browser extension (Chrome / Firefox / Edge / Safari)
+        - Web app (app.requestly.com)
+        - Desktop app (Mac / Windows / Linux)
+        - Other / unsure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser (if extension)
+      multiple: true
+      options:
+        - Chrome
+        - Firefox
+        - Edge
+        - Safari
+        - Brave / Opera / other Chromium
+        - N/A
+    validations:
+      required: false
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system (if desktop or relevant)
+      multiple: true
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Linux
+        - N/A
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Extension version (chrome://extensions) or desktop app version (Help → About).
+      placeholder: e.g., extension 24.5.1, desktop 1.8.3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area?
+      multiple: false
+      options:
+        - rules (redirect, modify headers, replace, etc.)
+        - mocks / mock server
+        - session-replay
+        - network-inspector
+        - proxy / desktop interception
+        - extension-ui
+        - webapp (dashboard)
+        - legacy API client (pre-ARC)
+        - other / unsure
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots / HAR
+      description: Drag-and-drop screenshots. For network bugs, a HAR file helps enormously.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Anything else?
+      description: Workarounds, related issues, recent changes, anything else relevant.
+    validations:
+      required: false
