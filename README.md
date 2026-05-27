@@ -18,7 +18,7 @@
   </a>
 </p>
 
-<h1 align="center">Requestly HTTP Interceptor</h1>
+<h1 align="center">Requestly HTTP Interceptor.</h1>
 
 <p align="center">
   Open-Source HTTP Interceptor & Mocking Tool
