@@ -50,6 +50,10 @@ const processManifest = (content) => {
         },
       },
     };
+
+    if (manifestJson.externally_connectable?.matches) {
+      manifestJson.externally_connectable.matches.push("http://localhost:3099/*");
+    }
   }
 
   return JSON.stringify(manifestJson, null, 2);
@@ -99,6 +103,7 @@ export default [
           },
           { src: "../common/dist/devtools", dest: OUTPUT_DIR },
           { src: "../common/dist/popup", dest: OUTPUT_DIR },
+          { src: "../common/dist/sidepanel", dest: OUTPUT_DIR },
           { src: "../common/dist/lib/customElements.js", dest: `${OUTPUT_DIR}/libs` },
         ],
       }),

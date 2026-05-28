@@ -33,6 +33,12 @@ import {
 import { sendMessageToApp } from "./sender";
 import { triggerOpenCurlModalMessage, updateExtensionStatus } from "../utils";
 import extensionIconManager from "../extensionIconManager";
+import {
+  startNetworkRecording,
+  stopNetworkRecording,
+  getNetworkRecordingState,
+  handleNetworkRecordingOnClientPageLoad,
+} from "../networkRecording";
 
 export const initExternalMessageListener = () => {
   chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
@@ -42,6 +48,14 @@ export const initExternalMessageListener = () => {
           name: chrome.runtime.getManifest().name,
           version: chrome.runtime.getManifest().version,
         });
+        break;
+
+      case EXTENSION_EXTERNAL_MESSAGES.START_NETWORK_RECORDING:
+        startNetworkRecording(sender.tab?.id, message.url, message.config || {}).then(sendResponse);
+        return true;
+
+      case EXTENSION_EXTERNAL_MESSAGES.STOP_NETWORK_RECORDING:
+        sendResponse(stopNetworkRecording(message.targetTabId));
         break;
     }
   });
@@ -63,6 +77,7 @@ export const initMessageHandler = () => {
         ruleExecutionHandler.processTabCachedRulesExecutions(sender.tab.id);
         handleTestRuleOnClientPageLoad(sender.tab);
         handleSessionRecordingOnClientPageLoad(sender.tab, sender.frameId);
+        handleNetworkRecordingOnClientPageLoad(sender.tab);
         break;
 
       case EXTENSION_MESSAGES.INIT_SESSION_RECORDER:
@@ -227,6 +242,14 @@ export const initMessageHandler = () => {
       case EXTENSION_MESSAGES.TRIGGER_OPEN_CURL_MODAL:
         triggerOpenCurlModalMessage({}, message.source);
         break;
+
+      case EXTENSION_MESSAGES.STOP_NETWORK_RECORDING:
+        stopNetworkRecording(message.targetTabId || sender.tab?.id);
+        break;
+
+      case EXTENSION_MESSAGES.GET_NETWORK_RECORDING_STATE:
+        sendResponse(getNetworkRecordingState(message.tabId || sender.tab?.id));
+        return true;
     }
 
     return false;

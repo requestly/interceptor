@@ -43,10 +43,14 @@ export const EXTENSION_MESSAGES = {
   DESKTOP_APP_CONNECTION_STATUS_UPDATED: "desktopAppConnectionStatusUpdated",
   IS_SESSION_REPLAY_ENABLED: "isSessionReplayEnabled",
   TRIGGER_OPEN_CURL_MODAL: "triggerOpenCurlModal",
+  STOP_NETWORK_RECORDING: "stopNetworkRecording",
+  GET_NETWORK_RECORDING_STATE: "getNetworkRecordingState",
 };
 
 export const EXTENSION_EXTERNAL_MESSAGES = {
   GET_EXTENSION_METADATA: "getExtensionMetadata",
+  START_NETWORK_RECORDING: "startNetworkRecording",
+  STOP_NETWORK_RECORDING: "stopNetworkRecording",
 };
 
 export const CLIENT_MESSAGES = {
@@ -72,6 +76,7 @@ export const CLIENT_MESSAGES = {
   NOTIFY_RECORD_UPDATED: "notifyRecordUpdated",
   NOTIFY_EXTENSION_STATUS_UPDATED: "notifyExtensionStatusUpdated",
   OPEN_CURL_IMPORT_MODAL: "openCurlImportModal",
+  NETWORK_EVENT_CAPTURED: "networkEventCaptured",
 };
 
 export const STORAGE_TYPE = "local";

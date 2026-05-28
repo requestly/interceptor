@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Network Recording Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui; background: #1a1a1a; color: #fff; padding: 32px; }
+    h1 { font-size: 20px; margin-bottom: 8px; }
+    .subtitle { color: #9e9e9e; font-size: 13px; margin-bottom: 24px; }
+    .section { background: #212121; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+    .section h2 { font-size: 14px; margin-bottom: 12px; color: #4CAF50; }
+    label { display: block; font-size: 13px; color: #9e9e9e; margin-bottom: 4px; }
+    input { width: 100%; background: #2a2a2a; border: 1px solid #333; border-radius: 4px; color: #fff; padding: 8px 12px; font-size: 13px; margin-bottom: 12px; }
+    input:focus { outline: none; border-color: #4CAF50; }
+    button { padding: 8px 20px; border: none; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; margin-right: 8px; }
+    .btn-start { background: #4CAF50; color: #fff; }
+    .btn-stop { background: #e43434; color: #fff; }
+    .btn-start:hover { background: #43A047; }
+    .btn-stop:hover { background: #c62828; }
+    .btn-start:disabled, .btn-stop:disabled { opacity: 0.5; cursor: not-allowed; }
+    #log { background: #111; border-radius: 4px; padding: 12px; font-family: monospace; font-size: 12px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+    .log-entry { padding: 4px 0; border-bottom: 1px solid #222; }
+    .log-info { color: #4CAF50; }
+    .log-error { color: #e43434; }
+    .log-data { color: #9e9e9e; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+    .status-idle { background: #333; color: #9e9e9e; }
+    .status-recording { background: rgba(76, 175, 80, 0.2); color: #4CAF50; }
+    .row { display: flex; gap: 12px; align-items: end; }
+    .row > * { flex: 1; }
+    .row > button { flex: none; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Network Recording Test Harness</h1>
+  <p class="subtitle">Simulates BrowserStack LTS calling the Requestly extension's external messaging API</p>
+
+  <div class="section">
+    <h2>1. Extension Setup</h2>
+    <label>Extension ID (from chrome://extensions after loading unpacked)</label>
+    <input type="text" id="extId" placeholder="e.g. abcdefghijklmnopqrstuvwxyz" />
+  </div>
+
+  <div class="section">
+    <h2>2. Start Recording</h2>
+    <div class="row">
+      <div>
+        <label>Target URL</label>
+        <input type="text" id="targetUrl" value="https://bstackdemo.com" />
+      </div>
+      <button class="btn-start" id="btnStart" onclick="startRecording()">Start Recording</button>
+    </div>
+    <p>Status: <span class="status status-idle" id="status">Idle</span></p>
+    <p style="margin-top: 8px; color: #9e9e9e; font-size: 12px;">Target Tab ID: <span id="targetTabId">—</span></p>
+  </div>
+
+  <div class="section">
+    <h2>3. Stop Recording</h2>
+    <button class="btn-stop" id="btnStop" onclick="stopRecording()" disabled>Stop Recording</button>
+  </div>
+
+  <div class="section">
+    <h2>Log</h2>
+    <div id="log"></div>
+  </div>
+
+  <script>
+    let currentTargetTabId = null;
+
+    function log(message, type = 'info') {
+      const el = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = `log-entry log-${type}`;
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      el.appendChild(entry);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function getExtId() {
+      const id = document.getElementById('extId').value.trim();
+      if (!id) {
+        log('Please enter the extension ID first', 'error');
+        return null;
+      }
+      return id;
+    }
+
+    function startRecording() {
+      const extId = getExtId();
+      if (!extId) return;
+
+      const url = document.getElementById('targetUrl').value.trim();
+      if (!url) {
+        log('Please enter a target URL', 'error');
+        return;
+      }
+
+      log(`Sending startNetworkRecording for: ${url}`);
+
+      chrome.runtime.sendMessage(
+        extId,
+        {
+          action: "startNetworkRecording",
+          url: url,
+          config: {
+            showWidget: true,
+            maxDuration: 15 * 60 * 1000,
+          }
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            log(`Error: ${chrome.runtime.lastError.message}`, 'error');
+            return;
+          }
+
+          log(`Response: ${JSON.stringify(response)}`, 'data');
+
+          if (response?.success) {
+            currentTargetTabId = response.targetTabId;
+            document.getElementById('targetTabId').textContent = currentTargetTabId;
+            document.getElementById('status').textContent = 'Recording';
+            document.getElementById('status').className = 'status status-recording';
+            document.getElementById('btnStart').disabled = true;
+            document.getElementById('btnStop').disabled = false;
+            log(`Recording started on tab ${currentTargetTabId}`, 'info');
+          } else {
+            log('Failed to start recording', 'error');
+          }
+        }
+      );
+    }
+
+    function stopRecording() {
+      const extId = getExtId();
+      if (!extId) return;
+
+      if (!currentTargetTabId) {
+        log('No active recording to stop', 'error');
+        return;
+      }
+
+      log(`Sending stopNetworkRecording for tab: ${currentTargetTabId}`);
+
+      chrome.runtime.sendMessage(
+        extId,
+        {
+          action: "stopNetworkRecording",
+          targetTabId: currentTargetTabId,
+        },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            log(`Error: ${chrome.runtime.lastError.message}`, 'error');
+            return;
+          }
+
+          const events = response?.events || [];
+          log(`Recording stopped. Captured ${events.length} events.`, 'info');
+
+          // Summary
+          const types = {};
+          events.forEach(e => {
+            types[e.type] = (types[e.type] || 0) + 1;
+          });
+          log(`Event breakdown: ${JSON.stringify(types)}`, 'data');
+
+          // Show first 5 events
+          events.slice(0, 5).forEach((e, i) => {
+            log(`  [${i}] ${e.method} ${e.url} → ${e.statusCode} (${e.type})`, 'data');
+          });
+          if (events.length > 5) {
+            log(`  ... and ${events.length - 5} more`, 'data');
+          }
+
+          currentTargetTabId = null;
+          document.getElementById('targetTabId').textContent = '—';
+          document.getElementById('status').textContent = 'Idle';
+          document.getElementById('status').className = 'status status-idle';
+          document.getElementById('btnStart').disabled = false;
+          document.getElementById('btnStop').disabled = true;
+        }
+      );
+    }
+
+    log('Test harness loaded. Enter the extension ID and start recording.', 'info');
+    log('Load the extension from: browser-extension/mv3/dist/', 'data');
+  </script>
+</body>
+</html>

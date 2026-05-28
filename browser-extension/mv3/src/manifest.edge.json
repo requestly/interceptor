@@ -57,11 +57,15 @@
       }
     ]
   },
+  "side_panel": {
+    "default_path": "sidepanel/network-recording/index.html"
+  },
   "permissions": [
     "contextMenus",
     "declarativeNetRequest",
     "proxy",
     "scripting",
+    "sidePanel",
     "storage",
     "tabs",
     "unlimitedStorage",
