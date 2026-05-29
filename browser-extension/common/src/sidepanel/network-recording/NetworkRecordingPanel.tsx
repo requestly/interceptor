@@ -1,20 +1,20 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { NetworkRecordingEvent } from "./types";
+import { NetworkEntry } from "./types";
 import NetworkEventRow from "./components/NetworkEventRow";
 import FilterBar from "./components/FilterBar";
 
+// Maps the HAR _resourceType (DevTools enum) to the short label shown in the list.
 const RESOURCE_TYPE_DISPLAY: Record<string, string> = {
-  xmlhttprequest: "xhr",
-  main_frame: "document",
-  sub_frame: "document",
+  document: "document",
   stylesheet: "css",
   script: "js",
   image: "img",
   font: "font",
   media: "media",
   websocket: "ws",
-  other: "other",
+  xhr: "xhr",
   fetch: "fetch",
+  other: "other",
 };
 
 const formatTime = (ms: number): string => {
@@ -32,7 +32,7 @@ const formatSize = (bytes: number | undefined): string => {
 };
 
 const NetworkRecordingPanel: React.FC = () => {
-  const [events, setEvents] = useState<NetworkRecordingEvent[]>([]);
+  const [entries, setEntries] = useState<NetworkEntry[]>([]);
   const [filter, setFilter] = useState({ text: "", method: "ALL" });
   const [recordingStartTime, setRecordingStartTime] = useState<number>(Date.now());
   const [isRecording, setIsRecording] = useState(true);
@@ -54,7 +54,7 @@ const NetworkRecordingPanel: React.FC = () => {
 
       chrome.runtime.sendMessage({ action: "getNetworkRecordingState", tabId: tab.id }, (response) => {
         if (response?.active) {
-          setEvents(response.events || []);
+          setEntries(response.entries || []);
           setRecordingStartTime(response.startTime);
           setIsRecording(true);
         }
@@ -65,7 +65,7 @@ const NetworkRecordingPanel: React.FC = () => {
 
     const listener = (message: any) => {
       if (message.action === "networkEventCaptured" && message.tabId === currentTabIdRef.current) {
-        setEvents((prev) => [...prev, message.event]);
+        setEntries((prev) => [...prev, message.entry]);
       }
     };
 
@@ -87,7 +87,7 @@ const NetworkRecordingPanel: React.FC = () => {
     if (listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
-  }, [events.length]);
+  }, [entries.length]);
 
   const handleStop = useCallback(() => {
     chrome.runtime.sendMessage({
@@ -97,21 +97,23 @@ const NetworkRecordingPanel: React.FC = () => {
     setIsRecording(false);
   }, []);
 
-  const filteredEvents = useMemo(() => {
-    return events.filter((event) => {
-      if (filter.method !== "ALL" && event.method !== filter.method) return false;
-      if (filter.text && !event.url.toLowerCase().includes(filter.text.toLowerCase())) return false;
+  const filteredEntries = useMemo(() => {
+    return entries.filter((entry) => {
+      if (filter.method !== "ALL" && entry.request.method !== filter.method) return false;
+      if (filter.text && !entry.request.url.toLowerCase().includes(filter.text.toLowerCase())) return false;
       return true;
     });
-  }, [events, filter]);
+  }, [entries, filter]);
 
   const counts = useMemo(() => {
-    const total = filteredEvents.length;
-    const xhr = filteredEvents.filter((e) => e.type === "xmlhttprequest" || e.type === "fetch").length;
-    const docs = filteredEvents.filter((e) => e.type === "main_frame" || e.type === "sub_frame").length;
-    const staticCount = filteredEvents.filter((e) => ["script", "stylesheet", "image", "font"].includes(e.type)).length;
+    const total = filteredEntries.length;
+    const xhr = filteredEntries.filter((e) => e._resourceType === "xhr" || e._resourceType === "fetch").length;
+    const docs = filteredEntries.filter((e) => e._resourceType === "document").length;
+    const staticCount = filteredEntries.filter((e) =>
+      ["script", "stylesheet", "image", "font"].includes(e._resourceType as string)
+    ).length;
     return { total, xhr, docs, static: staticCount };
-  }, [filteredEvents]);
+  }, [filteredEntries]);
 
   return (
     <div className="network-panel">
@@ -154,17 +156,19 @@ const NetworkRecordingPanel: React.FC = () => {
       <FilterBar filter={filter} onFilterChange={setFilter} />
 
       <div className="request-list" ref={listRef}>
-        {filteredEvents.map((event) => (
+        {filteredEntries.map((entry) => (
           <NetworkEventRow
-            key={event.requestId}
-            event={event}
-            typeDisplay={RESOURCE_TYPE_DISPLAY[event.type] || event.type}
+            key={entry._request_id as string}
+            entry={entry}
+            typeDisplay={
+              RESOURCE_TYPE_DISPLAY[entry._resourceType as string] || (entry._resourceType as string) || "other"
+            }
             formatSize={formatSize}
           />
         ))}
-        {filteredEvents.length === 0 && (
+        {filteredEntries.length === 0 && (
           <div className="empty-state">
-            {events.length === 0 ? "Waiting for network requests..." : "No requests match the current filter"}
+            {entries.length === 0 ? "Waiting for network requests..." : "No requests match the current filter"}
           </div>
         )}
       </div>

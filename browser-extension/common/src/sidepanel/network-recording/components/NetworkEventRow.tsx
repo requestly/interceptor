@@ -1,5 +1,5 @@
 import React from "react";
-import { NetworkRecordingEvent } from "../types";
+import { NetworkEntry } from "../types";
 
 const METHOD_COLORS: Record<string, string> = {
   GET: "#4CAF50",
@@ -29,30 +29,35 @@ const getUrlPath = (url: string): string => {
 };
 
 interface NetworkEventRowProps {
-  event: NetworkRecordingEvent;
+  entry: NetworkEntry;
   typeDisplay: string;
   formatSize: (bytes: number | undefined) => string;
 }
 
-const NetworkEventRow: React.FC<NetworkEventRowProps> = ({ event, typeDisplay, formatSize }) => {
+const NetworkEventRow: React.FC<NetworkEventRowProps> = ({ entry, typeDisplay, formatSize }) => {
+  const { method, url } = entry.request;
+  const { status } = entry.response;
+  const error = (entry as { _error?: string })._error;
+  const isError = !!error;
+
   return (
-    <div className={`network-row ${event.state === "error" ? "network-row--error" : ""}`}>
+    <div className={`network-row ${isError ? "network-row--error" : ""}`}>
       <div className="row-main">
-        <span className="method-badge" style={{ backgroundColor: METHOD_COLORS[event.method] || "#9E9E9E" }}>
-          {event.method}
+        <span className="method-badge" style={{ backgroundColor: METHOD_COLORS[method] || "#9E9E9E" }}>
+          {method}
         </span>
-        <span className="row-url" title={event.url}>
-          {getUrlPath(event.url)}
+        <span className="row-url" title={url}>
+          {getUrlPath(url)}
         </span>
       </div>
       <div className="row-details">
-        <span className="row-status" style={{ color: getStatusColor(event.statusCode) }}>
-          {event.state === "error" ? event.error || "Error" : event.statusCode}
+        <span className="row-status" style={{ color: getStatusColor(status) }}>
+          {isError ? error : status}
         </span>
         <span className="row-separator">·</span>
         <span className="row-type">{typeDisplay}</span>
         <span className="row-separator">·</span>
-        <span className="row-size">{formatSize(event.contentLength)}</span>
+        <span className="row-size">{formatSize(entry.response.content.size)}</span>
       </div>
     </div>
   );
