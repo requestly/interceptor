@@ -24,10 +24,17 @@ const NETWORK_RECORDING_PORT = "network-recording";
 let entryCounter = 0;
 const nextRequestId = (tabId: number): string => `${tabId}-${++entryCounter}`;
 
-const hasSidePanelAPI = typeof chrome.sidePanel !== "undefined";
+// Accessed dynamically so the Firefox build (which has no sidePanel) lints clean —
+// the chrome.sidePanel API surface is Chrome/Edge only.
+const sidePanelApi = (chrome as any).sidePanel as
+  | {
+      setOptions: (opts: { tabId?: number; path?: string; enabled: boolean }) => Promise<void>;
+      open: (opts: { tabId: number }) => Promise<void>;
+    }
+  | undefined;
 
-if (hasSidePanelAPI) {
-  chrome.sidePanel.setOptions({ enabled: false }).catch(() => {});
+if (sidePanelApi) {
+  sidePanelApi.setOptions({ enabled: false }).catch(() => {});
 }
 
 const DEFAULT_MAX_DURATION = 15 * 60 * 1000;
@@ -188,14 +195,30 @@ export const initNetworkRecordingPort = () => {
   });
 };
 
+// Firefox exposes sidebarAction only on the `browser.*` namespace, not the `chrome` alias.
+const firefoxSidebar = (globalThis as any).browser?.sidebarAction as { open?: () => Promise<void> } | undefined;
+
 const openPanel = (tabId: number) => {
-  if (!hasSidePanelAPI) return;
-  chrome.sidePanel.setOptions({
-    tabId,
-    path: "sidepanel/network-recording/index.html",
-    enabled: true,
-  });
-  chrome.sidePanel.open({ tabId }).catch(() => {});
+  if (sidePanelApi) {
+    // Chrome / Edge: per-tab side panel.
+    sidePanelApi.setOptions({
+      tabId,
+      path: "sidepanel/network-recording/index.html",
+      enabled: true,
+    });
+    sidePanelApi.open({ tabId }).catch(() => {});
+  } else if (firefoxSidebar?.open) {
+    // Firefox: global sidebar (auto-open validated on FF 151, no user gesture needed).
+    firefoxSidebar.open().catch(() => {});
+  }
+  // Safari / other: no panel API → no-op (capture + streaming still work).
+};
+
+const closePanel = (tabId: number) => {
+  if (sidePanelApi) {
+    sidePanelApi.setOptions({ tabId, enabled: false }).catch(() => {});
+  }
+  // Firefox sidebar is global; leave it for the user to close.
 };
 
 export const startNetworkRecording = (
@@ -273,9 +296,7 @@ export const stopNetworkRecording = (
     removeWebRequestListeners();
   }
 
-  if (hasSidePanelAPI) {
-    chrome.sidePanel.setOptions({ tabId: targetTabId, enabled: false }).catch(() => {});
-  }
+  closePanel(targetTabId);
 
   return { success: true, summary };
 };
