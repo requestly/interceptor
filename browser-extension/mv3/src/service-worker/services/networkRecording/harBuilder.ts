@@ -45,11 +45,13 @@ const parseHeaderValue = (headers: chrome.webRequest.HttpHeader[] | undefined, n
   return header?.value;
 };
 
+// Returns -1 (HAR's "size unknown" sentinel) when content-length is absent/unparseable,
+// so the UI can distinguish "unknown" from a real 0-byte body.
 const parseContentLength = (headers: chrome.webRequest.HttpHeader[] | undefined): number => {
   const value = parseHeaderValue(headers, "content-length");
-  if (!value) return 0;
+  if (!value) return -1;
   const parsed = parseInt(value, 10);
-  return Number.isNaN(parsed) ? 0 : parsed;
+  return Number.isNaN(parsed) ? -1 : parsed;
 };
 
 const parseQueryString = (url: string): QueryString[] => {
@@ -159,7 +161,7 @@ export const buildErrorEntry = (
       httpVersion: "",
       cookies: [],
       headers: [],
-      content: { size: 0, mimeType: "" },
+      content: { size: -1, mimeType: "" },
       redirectURL: "",
       headersSize: -1,
       bodySize: -1,

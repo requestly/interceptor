@@ -25,7 +25,7 @@ const formatTime = (ms: number): string => {
 };
 
 const formatSize = (bytes: number | undefined): string => {
-  if (bytes === undefined) return "—";
+  if (bytes === undefined || bytes < 0) return "—"; // -1 = size unknown (HAR sentinel)
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;

@@ -3,7 +3,6 @@ import { CLIENT_MESSAGES } from "common/constants";
 import { buildCompletedEntry, buildErrorEntry, CorrelationData, NetworkHarEntry } from "./harBuilder";
 
 interface NetworkRecordingState {
-  senderTabId: number | undefined;
   targetTabId: number;
   url: string;
   startTime: number;
@@ -21,8 +20,10 @@ const correlationMap = new Map<string, CorrelationData>();
 
 const NETWORK_RECORDING_PORT = "network-recording";
 
-let entryCounter = 0;
-const nextRequestId = (tabId: number): string => `${tabId}-${++entryCounter}`;
+// Opaque, globally-unique id per entry. crypto.randomUUID() (not a counter) so ids never
+// collide across a service-worker restart mid-recording — LTS dedups on _request_id across
+// reconnects, and a counter would reset to 0 on restart and re-issue ids LTS already saw.
+const nextRequestId = (): string => crypto.randomUUID();
 
 // Accessed dynamically so the Firefox build (which has no sidePanel) lints clean —
 // the chrome.sidePanel API surface is Chrome/Edge only.
@@ -74,14 +75,13 @@ const stopKeepaliveIfIdle = () => {
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== KEEPALIVE_ALARM) return;
 
-  const now = Date.now();
   activeRecordings.forEach((recording, tabId) => {
-    const maxDuration = recording.config.maxDuration || DEFAULT_MAX_DURATION;
-    if (now - recording.startTime > maxDuration) {
+    if (isOverMaxDuration(recording)) {
       stopNetworkRecording(tabId);
     }
   });
 
+  const now = Date.now();
   correlationMap.forEach((data, requestId) => {
     if (now - data.startTime > CORRELATION_TTL_MS) {
       correlationMap.delete(requestId);
@@ -98,14 +98,23 @@ const onBeforeSendHeaders = (details: chrome.webRequest.WebRequestHeadersDetails
   });
 };
 
+const isOverMaxDuration = (recording: NetworkRecordingState): boolean =>
+  Date.now() - recording.startTime > (recording.config.maxDuration || DEFAULT_MAX_DURATION);
+
 const onRequestCompleted = (details: chrome.webRequest.WebResponseCacheDetails) => {
   const recording = activeRecordings.get(details.tabId);
   if (!recording) return;
 
+  // Prompt auto-stop on a busy page; the alarm tick is the backstop for a quiet page.
+  if (isOverMaxDuration(recording)) {
+    stopNetworkRecording(details.tabId);
+    return;
+  }
+
   const correlation = correlationMap.get(details.requestId);
   correlationMap.delete(details.requestId);
 
-  const entry = buildCompletedEntry(details, correlation, nextRequestId(details.tabId));
+  const entry = buildCompletedEntry(details, correlation, nextRequestId());
   recordingEntries.get(details.tabId)?.push(entry);
   deliverEntry(details.tabId, entry);
 };
@@ -121,7 +130,7 @@ const onRequestError = (details: chrome.webRequest.WebResponseErrorDetails) => {
 
   if (IGNORED_ERRORS.has(details.error)) return;
 
-  const entry = buildErrorEntry(details, correlation, nextRequestId(details.tabId), details.error);
+  const entry = buildErrorEntry(details, correlation, nextRequestId(), details.error);
   recordingEntries.get(details.tabId)?.push(entry);
   deliverEntry(details.tabId, entry);
 };
@@ -213,6 +222,13 @@ export const initNetworkRecordingPort = () => {
       if (typeof tabId !== "number") return;
 
       if (msg.action === "subscribe") {
+        // Reject subscriptions to tabs that were never recorded, so LTS can tell a bad
+        // targetTabId from a genuinely-empty recording.
+        if (!activeRecordings.has(tabId) && !recordingEntries.has(tabId)) {
+          port.postMessage({ type: "error", error: `No recording for tab ${tabId}` });
+          return;
+        }
+
         port.postMessage({ type: "subscribed", targetTabId: tabId });
 
         // Synchronous backfill, then register — no await in between.
@@ -265,7 +281,6 @@ const closePanel = (tabId: number) => {
 };
 
 export const startNetworkRecording = (
-  senderTabId: number | undefined,
   url: string,
   config: { maxDuration?: number } = {}
 ): Promise<{ success: boolean; targetTabId?: number; error?: string }> => {
@@ -281,7 +296,6 @@ export const startNetworkRecording = (
       }
 
       const state: NetworkRecordingState = {
-        senderTabId,
         targetTabId: tab.id,
         url,
         startTime: Date.now(),
@@ -290,7 +304,7 @@ export const startNetworkRecording = (
 
       activeRecordings.set(tab.id, state);
       recordingEntries.set(tab.id, []);
-      tabService.setData(tab.id, TAB_SERVICE_DATA.NETWORK_RECORDING, { active: true, senderTabId });
+      tabService.setData(tab.id, TAB_SERVICE_DATA.NETWORK_RECORDING, { active: true });
 
       addWebRequestListeners();
       startKeepalive();
