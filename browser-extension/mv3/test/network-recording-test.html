@@ -67,6 +67,9 @@
 
   <script>
     let currentTargetTabId = null;
+    let streamPort = null;
+    let streamedEntries = [];   // local accumulator, keyed/deduped by _request_id
+    const seenRequestIds = new Set();
 
     function log(message, type = 'info') {
       const el = document.getElementById('log');
@@ -102,11 +105,10 @@
         extId,
         {
           action: "startNetworkRecording",
-          url: url,
-          config: {
-            showWidget: true,
-            maxDuration: 15 * 60 * 1000,
-          }
+          payload: {
+            url: url,
+            config: { maxDuration: 15 * 60 * 1000 },
+          },
         },
         (response) => {
           if (chrome.runtime.lastError) {
@@ -124,11 +126,49 @@
             document.getElementById('btnStart').disabled = true;
             document.getElementById('btnStop').disabled = false;
             log(`Recording started on tab ${currentTargetTabId}`, 'info');
+            openStream(extId, currentTargetTabId);
           } else {
             log('Failed to start recording', 'error');
           }
         }
       );
+    }
+
+    // Open the streaming port AFTER start (needs the targetTabId) and accumulate entries.
+    function openStream(extId, targetTabId) {
+      streamedEntries = [];
+      seenRequestIds.clear();
+
+      streamPort = chrome.runtime.connect(extId, { name: "network-recording" });
+      streamPort.postMessage({ action: "subscribe", targetTabId });
+
+      streamPort.onMessage.addListener((msg) => {
+        switch (msg.type) {
+          case "subscribed":
+            log(`Stream subscribed for tab ${msg.targetTabId} (backfill begins)`, 'info');
+            break;
+          case "entry": {
+            const id = msg.entry?._request_id;
+            if (id && seenRequestIds.has(id)) break;  // dedup across reconnects
+            if (id) seenRequestIds.add(id);
+            streamedEntries.push(msg.entry);
+            document.getElementById('targetTabId').textContent =
+              `${targetTabId} (${streamedEntries.length} entries)`;
+            break;
+          }
+          case "complete":
+            log(`Stream complete: extension captured ${msg.totalCount}, we streamed ${streamedEntries.length}`, 'info');
+            break;
+          case "error":
+            log(`Stream error: ${msg.error}`, 'error');
+            break;
+        }
+      });
+
+      streamPort.onDisconnect.addListener(() => {
+        log('Stream port disconnected', 'data');
+        streamPort = null;
+      });
     }
 
     function stopRecording() {
@@ -146,7 +186,7 @@
         extId,
         {
           action: "stopNetworkRecording",
-          targetTabId: currentTargetTabId,
+          payload: { targetTabId: currentTargetTabId },
         },
         (response) => {
           if (chrome.runtime.lastError) {
@@ -154,24 +194,31 @@
             return;
           }
 
-          const events = response?.events || [];
-          log(`Recording stopped. Captured ${events.length} events.`, 'info');
+          if (response?.success) {
+            const s = response.summary;
+            log(`Recording stopped. Summary: ${JSON.stringify(s)}`, 'info');
+            log(`Reconcile: summary.totalCount=${s.totalCount}, streamed=${streamedEntries.length}` +
+                (s.totalCount === streamedEntries.length ? ' ✓' : ' ✗ MISMATCH'),
+                s.totalCount === streamedEntries.length ? 'info' : 'error');
 
-          // Summary
-          const types = {};
-          events.forEach(e => {
-            types[e.type] = (types[e.type] || 0) + 1;
-          });
-          log(`Event breakdown: ${JSON.stringify(types)}`, 'data');
-
-          // Show first 5 events
-          events.slice(0, 5).forEach((e, i) => {
-            log(`  [${i}] ${e.method} ${e.url} → ${e.statusCode} (${e.type})`, 'data');
-          });
-          if (events.length > 5) {
-            log(`  ... and ${events.length - 5} more`, 'data');
+            // The HAR entries are the locally-streamed ones (NOT in the stop response).
+            const types = {};
+            streamedEntries.forEach(e => {
+              const t = e._resourceType || 'other';
+              types[t] = (types[t] || 0) + 1;
+            });
+            log(`Entry breakdown by _resourceType: ${JSON.stringify(types)}`, 'data');
+            streamedEntries.slice(0, 5).forEach((e, i) => {
+              log(`  [${i}] ${e.request.method} ${e.request.url} → ${e.response.status} (${e._resourceType})`, 'data');
+            });
+            if (streamedEntries.length > 5) {
+              log(`  ... and ${streamedEntries.length - 5} more`, 'data');
+            }
+          } else {
+            log(`Stop failed: ${response?.error}`, 'error');
           }
 
+          if (streamPort) { streamPort.disconnect(); streamPort = null; }
           currentTargetTabId = null;
           document.getElementById('targetTabId').textContent = '—';
           document.getElementById('status').textContent = 'Idle';

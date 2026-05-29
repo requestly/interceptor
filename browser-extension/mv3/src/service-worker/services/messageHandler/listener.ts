@@ -51,11 +51,11 @@ export const initExternalMessageListener = () => {
         break;
 
       case EXTENSION_EXTERNAL_MESSAGES.START_NETWORK_RECORDING:
-        startNetworkRecording(sender.tab?.id, message.url, message.config || {}).then(sendResponse);
+        startNetworkRecording(sender.tab?.id, message.payload?.url, message.payload?.config || {}).then(sendResponse);
         return true;
 
       case EXTENSION_EXTERNAL_MESSAGES.STOP_NETWORK_RECORDING:
-        sendResponse(stopNetworkRecording(message.targetTabId));
+        sendResponse(stopNetworkRecording(message.payload?.targetTabId));
         break;
     }
   });

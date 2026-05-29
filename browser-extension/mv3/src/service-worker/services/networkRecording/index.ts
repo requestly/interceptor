@@ -5,6 +5,7 @@ import { buildCompletedEntry, buildErrorEntry, CorrelationData, NetworkHarEntry 
 interface NetworkRecordingState {
   senderTabId: number | undefined;
   targetTabId: number;
+  url: string;
   startTime: number;
   config: { maxDuration?: number };
 }
@@ -216,6 +217,7 @@ export const startNetworkRecording = (
       const state: NetworkRecordingState = {
         senderTabId,
         targetTabId: tab.id,
+        url,
         startTime: Date.now(),
         config,
       };
@@ -232,14 +234,33 @@ export const startNetworkRecording = (
   });
 };
 
+export interface RecordingSummary {
+  targetTabId: number;
+  url: string;
+  startTime: number;
+  endTime: number;
+  duration: number;
+  totalCount: number;
+}
+
 export const stopNetworkRecording = (
   targetTabId: number
-): { success: boolean; events?: NetworkHarEntry[]; error?: string } => {
-  if (!activeRecordings.has(targetTabId)) {
+): { success: boolean; summary?: RecordingSummary; error?: string } => {
+  const recording = activeRecordings.get(targetTabId);
+  if (!recording) {
     return { success: false, error: `No active recording for tab ${targetTabId}` };
   }
 
-  const events = recordingEntries.get(targetTabId) || [];
+  const entries = recordingEntries.get(targetTabId) || [];
+  const endTime = Date.now();
+  const summary: RecordingSummary = {
+    targetTabId,
+    url: recording.url,
+    startTime: recording.startTime,
+    endTime,
+    duration: endTime - recording.startTime,
+    totalCount: entries.length,
+  };
 
   // Notify subscribed LTS ports before tearing down the buffer.
   streamCompleteToPorts(targetTabId);
@@ -256,7 +277,7 @@ export const stopNetworkRecording = (
     chrome.sidePanel.setOptions({ tabId: targetTabId, enabled: false }).catch(() => {});
   }
 
-  return { success: true, events };
+  return { success: true, summary };
 };
 
 export const getNetworkRecordingState = (
