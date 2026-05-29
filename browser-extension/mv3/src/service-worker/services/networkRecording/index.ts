@@ -39,6 +39,57 @@ if (sidePanelApi) {
 
 const DEFAULT_MAX_DURATION = 15 * 60 * 1000;
 
+// --- Service-worker keepalive ----------------------------------------------------------------
+// An open port does NOT keep an MV3 SW alive — only events/API calls reset the 30s idle timer.
+// During idle gaps (user reading a page, no requests firing) the SW would die and lose the
+// in-memory buffer. Prevention: a ~20s API-ping interval keeps the SW warm while a recording is
+// active. Backstop: a chrome.alarms tick (0.5min floor; sub-0.5 is clamped in packed builds)
+// survives SW death, re-wakes it, and runs the max-duration auto-stop + correlation-map sweep so
+// a quiet page still stops and stale correlation entries don't leak.
+const KEEPALIVE_ALARM = "nr-keepalive";
+const KEEPALIVE_PING_MS = 20_000;
+const CORRELATION_TTL_MS = 60_000;
+let keepalivePingId: ReturnType<typeof setInterval> | undefined;
+
+const startKeepalive = () => {
+  if (keepalivePingId === undefined) {
+    keepalivePingId = setInterval(() => {
+      // Any extension API call resets the SW idle timer.
+      chrome.runtime.getPlatformInfo().catch(() => {});
+    }, KEEPALIVE_PING_MS);
+  }
+  chrome.alarms.create(KEEPALIVE_ALARM, { periodInMinutes: 0.5 });
+};
+
+const stopKeepaliveIfIdle = () => {
+  if (activeRecordings.size > 0) return;
+  if (keepalivePingId !== undefined) {
+    clearInterval(keepalivePingId);
+    keepalivePingId = undefined;
+  }
+  chrome.alarms.clear(KEEPALIVE_ALARM);
+};
+
+// Alarm tick: enforce max-duration even on quiet pages, and sweep stale correlation entries.
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== KEEPALIVE_ALARM) return;
+
+  const now = Date.now();
+  activeRecordings.forEach((recording, tabId) => {
+    const maxDuration = recording.config.maxDuration || DEFAULT_MAX_DURATION;
+    if (now - recording.startTime > maxDuration) {
+      stopNetworkRecording(tabId);
+    }
+  });
+
+  correlationMap.forEach((data, requestId) => {
+    if (now - data.startTime > CORRELATION_TTL_MS) {
+      correlationMap.delete(requestId);
+    }
+  });
+});
+// -------------------------------------------------------------------------------------------
+
 const onBeforeSendHeaders = (details: chrome.webRequest.WebRequestHeadersDetails) => {
   if (!activeRecordings.has(details.tabId)) return;
   correlationMap.set(details.requestId, {
@@ -50,14 +101,6 @@ const onBeforeSendHeaders = (details: chrome.webRequest.WebRequestHeadersDetails
 const onRequestCompleted = (details: chrome.webRequest.WebResponseCacheDetails) => {
   const recording = activeRecordings.get(details.tabId);
   if (!recording) return;
-
-  // PR1 stopgap: enforce maxDuration inline. PR5 moves this into the keepalive tick so a
-  // quiet page (no further requests) also auto-stops.
-  const maxDuration = recording.config.maxDuration || DEFAULT_MAX_DURATION;
-  if (Date.now() - recording.startTime > maxDuration) {
-    stopNetworkRecording(details.tabId);
-    return;
-  }
 
   const correlation = correlationMap.get(details.requestId);
   correlationMap.delete(details.requestId);
@@ -250,6 +293,7 @@ export const startNetworkRecording = (
       tabService.setData(tab.id, TAB_SERVICE_DATA.NETWORK_RECORDING, { active: true, senderTabId });
 
       addWebRequestListeners();
+      startKeepalive();
       openPanel(tab.id);
 
       resolve({ success: true, targetTabId: tab.id });
@@ -295,6 +339,7 @@ export const stopNetworkRecording = (
   if (activeRecordings.size === 0) {
     removeWebRequestListeners();
   }
+  stopKeepaliveIfIdle();
 
   closePanel(targetTabId);
 
@@ -327,6 +372,7 @@ const cleanupRecording = (tabId: number) => {
   if (activeRecordings.size === 0) {
     removeWebRequestListeners();
   }
+  stopKeepaliveIfIdle();
 };
 
 chrome.tabs.onRemoved.addListener((tabId) => {
