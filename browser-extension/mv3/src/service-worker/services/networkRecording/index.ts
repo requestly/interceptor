@@ -12,8 +12,13 @@ interface NetworkRecordingState {
 const activeRecordings = new Map<number, NetworkRecordingState>();
 const recordingEntries = new Map<number, NetworkHarEntry[]>();
 
+// LTS streaming subscribers, keyed by target tabId. One LTS page may subscribe to many tabs.
+const subscriptions = new Map<number, Set<chrome.runtime.Port>>();
+
 // webRequest requestId -> request-start correlation data (internal only, never surfaced).
 const correlationMap = new Map<string, CorrelationData>();
+
+const NETWORK_RECORDING_PORT = "network-recording";
 
 let entryCounter = 0;
 const nextRequestId = (tabId: number): string => `${tabId}-${++entryCounter}`;
@@ -70,8 +75,9 @@ const onRequestError = (details: chrome.webRequest.WebResponseErrorDetails) => {
   deliverEntry(details.tabId, entry);
 };
 
-/** Deliver a captured entry to the internal sidepanel. (External port delivery added in PR2.) */
+/** Deliver a captured entry to the internal sidepanel and any subscribed LTS ports. */
 const deliverEntry = (tabId: number, entry: NetworkHarEntry) => {
+  // Internal sidepanel (fire-and-forget; panel may be closed).
   chrome.runtime
     .sendMessage({
       action: CLIENT_MESSAGES.NETWORK_EVENT_CAPTURED,
@@ -79,6 +85,30 @@ const deliverEntry = (tabId: number, entry: NetworkHarEntry) => {
       tabId,
     })
     .catch(() => {});
+
+  // External LTS subscribers.
+  const subs = subscriptions.get(tabId);
+  subs?.forEach((port) => {
+    try {
+      port.postMessage({ type: "entry", entry });
+    } catch {
+      // Port died between events; onDisconnect will clean it up.
+    }
+  });
+};
+
+/** Notify subscribed LTS ports that a recording has ended. */
+const streamCompleteToPorts = (tabId: number) => {
+  const subs = subscriptions.get(tabId);
+  if (!subs) return;
+  const totalCount = recordingEntries.get(tabId)?.length ?? 0;
+  subs.forEach((port) => {
+    try {
+      port.postMessage({ type: "complete", totalCount });
+    } catch {
+      /* ignore */
+    }
+  });
 };
 
 const addWebRequestListeners = () => {
@@ -108,6 +138,53 @@ const isValidUrl = (url: string): boolean => {
   } catch {
     return false;
   }
+};
+
+const removePortFromAllSubscriptions = (port: chrome.runtime.Port) => {
+  subscriptions.forEach((ports, tabId) => {
+    ports.delete(port);
+    if (ports.size === 0) subscriptions.delete(tabId);
+  });
+};
+
+/**
+ * LTS connects a long-lived port (`network-recording`) and subscribes to a target tab.
+ * On subscribe we ack, synchronously backfill the buffer (entries from t=0), then register
+ * the port for live entries. Because the backfill is synchronous (no await), no live
+ * onCompleted can interleave, so there is no gap or duplicate.
+ */
+export const initNetworkRecordingPort = () => {
+  chrome.runtime.onConnectExternal.addListener((port) => {
+    if (port.name !== NETWORK_RECORDING_PORT) return;
+
+    port.onMessage.addListener((msg: { action?: string; targetTabId?: number }) => {
+      const tabId = msg?.targetTabId;
+      if (typeof tabId !== "number") return;
+
+      if (msg.action === "subscribe") {
+        port.postMessage({ type: "subscribed", targetTabId: tabId });
+
+        // Synchronous backfill, then register — no await in between.
+        const buffered = recordingEntries.get(tabId) || [];
+        for (const entry of buffered) {
+          port.postMessage({ type: "entry", entry });
+        }
+
+        if (!subscriptions.has(tabId)) subscriptions.set(tabId, new Set());
+        subscriptions.get(tabId)!.add(port);
+
+        // Recording already ended (e.g. very short) but buffer still around: tell LTS.
+        if (!activeRecordings.has(tabId)) {
+          port.postMessage({ type: "complete", totalCount: buffered.length });
+        }
+      } else if (msg.action === "unsubscribe") {
+        subscriptions.get(tabId)?.delete(port);
+        if (subscriptions.get(tabId)?.size === 0) subscriptions.delete(tabId);
+      }
+    });
+
+    port.onDisconnect.addListener(() => removePortFromAllSubscriptions(port));
+  });
 };
 
 const openPanel = (tabId: number) => {
@@ -164,6 +241,9 @@ export const stopNetworkRecording = (
 
   const events = recordingEntries.get(targetTabId) || [];
 
+  // Notify subscribed LTS ports before tearing down the buffer.
+  streamCompleteToPorts(targetTabId);
+
   activeRecordings.delete(targetTabId);
   recordingEntries.delete(targetTabId);
   tabService.removeData(targetTabId, TAB_SERVICE_DATA.NETWORK_RECORDING);
@@ -199,6 +279,7 @@ export const handleNetworkRecordingOnClientPageLoad = (tab: chrome.tabs.Tab) => 
 };
 
 const cleanupRecording = (tabId: number) => {
+  streamCompleteToPorts(tabId);
   activeRecordings.delete(tabId);
   recordingEntries.delete(tabId);
   if (activeRecordings.size === 0) {
