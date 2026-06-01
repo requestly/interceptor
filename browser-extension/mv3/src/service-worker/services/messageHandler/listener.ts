@@ -37,6 +37,7 @@ import {
   startNetworkRecording,
   stopNetworkRecording,
   getNetworkRecordingState,
+  getNetworkRecordingSummary,
   handleNetworkRecordingOnClientPageLoad,
 } from "../networkRecording";
 
@@ -56,6 +57,10 @@ export const initExternalMessageListener = () => {
 
       case EXTENSION_EXTERNAL_MESSAGES.STOP_NETWORK_RECORDING:
         sendResponse(stopNetworkRecording(message.payload?.targetTabId));
+        break;
+
+      case EXTENSION_EXTERNAL_MESSAGES.GET_NETWORK_RECORDING_SUMMARY:
+        sendResponse(getNetworkRecordingSummary(message.payload?.targetTabId));
         break;
     }
   });

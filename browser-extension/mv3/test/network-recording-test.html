@@ -57,7 +57,17 @@
 
   <div class="section">
     <h2>3. Stop Recording</h2>
+    <p style="color:#9e9e9e;font-size:12px;margin-bottom:8px;">
+      In the real flow the user clicks <b>Stop in the side panel</b> of the recorded tab.
+      This button is just a fallback — either way the summary below arrives via the stream's
+      <code>complete</code> event.
+    </p>
     <button class="btn-stop" id="btnStop" onclick="stopRecording()" disabled>Stop Recording</button>
+  </div>
+
+  <div class="section">
+    <h2>Recording Summary</h2>
+    <div id="summary" style="color:#666;font-size:13px;">No summary yet — start and stop a recording.</div>
   </div>
 
   <div class="section">
@@ -157,7 +167,12 @@
             break;
           }
           case "complete":
-            log(`Stream complete: extension captured ${msg.totalCount}, we streamed ${streamedEntries.length}`, 'info');
+            // Recording ended (possibly stopped from the side panel — we did NOT trigger it).
+            // The stream gave us totalCount; fetch the full summary metadata on demand.
+            log(`Stream complete: extension captured ${msg.totalCount}, we streamed ${streamedEntries.length}` +
+                (msg.totalCount === streamedEntries.length ? ' ✓' : ' ✗ MISMATCH'),
+                msg.totalCount === streamedEntries.length ? 'info' : 'error');
+            fetchSummary(extId, targetTabId);
             break;
           case "error":
             log(`Stream error: ${msg.error}`, 'error');
@@ -171,62 +186,68 @@
       });
     }
 
+    // On `complete` (recording ended — possibly from the side panel), fetch the summary metadata.
+    // The recording is already torn down; the extension retains the summary briefly for this.
+    function fetchSummary(extId, targetTabId) {
+      const summaryEl = document.getElementById('summary');
+      chrome.runtime.sendMessage(
+        extId,
+        { action: "getNetworkRecordingSummary", payload: { targetTabId } },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            const m = chrome.runtime.lastError.message;
+            log(`getNetworkRecordingSummary error: ${m}`, 'error');
+            summaryEl.innerHTML = `<span style="color:#e43434;">Error: ${m}</span>`;
+          } else if (response?.success) {
+            const s = response.summary;
+            const types = {};
+            streamedEntries.forEach(e => { const t = e._resourceType || 'other'; types[t] = (types[t] || 0) + 1; });
+            const breakdown = Object.entries(types).map(([k, v]) => `${k}: ${v}`).join(', ') || '—';
+            summaryEl.innerHTML = `
+              <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <tr><td style="color:#9e9e9e;padding:2px 8px 2px 0;">URL</td><td style="font-family:monospace;">${s.url}</td></tr>
+                <tr><td style="color:#9e9e9e;padding:2px 8px 2px 0;">Duration</td><td>${(s.duration / 1000).toFixed(1)} s</td></tr>
+                <tr><td style="color:#9e9e9e;padding:2px 8px 2px 0;">Total entries</td><td>${s.totalCount} <span style="color:${s.totalCount === streamedEntries.length ? '#4CAF50' : '#e43434'};">(streamed ${streamedEntries.length}${s.totalCount === streamedEntries.length ? ' ✓' : ' ✗'})</span></td></tr>
+                <tr><td style="color:#9e9e9e;padding:2px 8px 2px 0;">Started</td><td>${new Date(s.startTime).toLocaleTimeString()}</td></tr>
+                <tr><td style="color:#9e9e9e;padding:2px 8px 2px 0;">Ended</td><td>${new Date(s.endTime).toLocaleTimeString()}</td></tr>
+                <tr><td style="color:#9e9e9e;padding:2px 8px 2px 0;">By type</td><td>${breakdown}</td></tr>
+              </table>`;
+            log(`Summary received for tab ${targetTabId}`, 'info');
+          } else {
+            log(`Summary unavailable: ${response?.error}`, 'error');
+            summaryEl.innerHTML = `<span style="color:#e43434;">Unavailable: ${response?.error}</span>`;
+          }
+          resetUiAfterStop();
+        }
+      );
+    }
+
+    function resetUiAfterStop() {
+      if (streamPort) { streamPort.disconnect(); streamPort = null; }
+      currentTargetTabId = null;
+      document.getElementById('targetTabId').textContent = '—';
+      document.getElementById('status').textContent = 'Idle';
+      document.getElementById('status').className = 'status status-idle';
+      document.getElementById('btnStart').disabled = false;
+      document.getElementById('btnStop').disabled = true;
+    }
+
+    // In the real flow the user clicks Stop in the SIDE PANEL, not here — the harness (LTS)
+    // learns of the end via the stream `complete` and fetches the summary. This button just
+    // sends the stop; we deliberately ignore its response and let the `complete` path display
+    // the summary, so both triggers (this button OR the side panel) behave identically.
     function stopRecording() {
       const extId = getExtId();
       if (!extId) return;
-
       if (!currentTargetTabId) {
         log('No active recording to stop', 'error');
         return;
       }
-
-      log(`Sending stopNetworkRecording for tab: ${currentTargetTabId}`);
-
-      chrome.runtime.sendMessage(
-        extId,
-        {
-          action: "stopNetworkRecording",
-          payload: { targetTabId: currentTargetTabId },
-        },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            log(`Error: ${chrome.runtime.lastError.message}`, 'error');
-            return;
-          }
-
-          if (response?.success) {
-            const s = response.summary;
-            log(`Recording stopped. Summary: ${JSON.stringify(s)}`, 'info');
-            log(`Reconcile: summary.totalCount=${s.totalCount}, streamed=${streamedEntries.length}` +
-                (s.totalCount === streamedEntries.length ? ' ✓' : ' ✗ MISMATCH'),
-                s.totalCount === streamedEntries.length ? 'info' : 'error');
-
-            // The HAR entries are the locally-streamed ones (NOT in the stop response).
-            const types = {};
-            streamedEntries.forEach(e => {
-              const t = e._resourceType || 'other';
-              types[t] = (types[t] || 0) + 1;
-            });
-            log(`Entry breakdown by _resourceType: ${JSON.stringify(types)}`, 'data');
-            streamedEntries.slice(0, 5).forEach((e, i) => {
-              log(`  [${i}] ${e.request.method} ${e.request.url} → ${e.response.status} (${e._resourceType})`, 'data');
-            });
-            if (streamedEntries.length > 5) {
-              log(`  ... and ${streamedEntries.length - 5} more`, 'data');
-            }
-          } else {
-            log(`Stop failed: ${response?.error}`, 'error');
-          }
-
-          if (streamPort) { streamPort.disconnect(); streamPort = null; }
-          currentTargetTabId = null;
-          document.getElementById('targetTabId').textContent = '—';
-          document.getElementById('status').textContent = 'Idle';
-          document.getElementById('status').className = 'status status-idle';
-          document.getElementById('btnStart').disabled = false;
-          document.getElementById('btnStop').disabled = true;
-        }
-      );
+      log(`Sending stopNetworkRecording for tab: ${currentTargetTabId} (summary will arrive via the stream complete)`);
+      chrome.runtime.sendMessage(extId, {
+        action: "stopNetworkRecording",
+        payload: { targetTabId: currentTargetTabId },
+      });
     }
 
     log('Test harness loaded. Enter the extension ID and start recording.', 'info');

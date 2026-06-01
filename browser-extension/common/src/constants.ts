@@ -51,6 +51,7 @@ export const EXTENSION_EXTERNAL_MESSAGES = {
   GET_EXTENSION_METADATA: "getExtensionMetadata",
   START_NETWORK_RECORDING: "startNetworkRecording",
   STOP_NETWORK_RECORDING: "stopNetworkRecording",
+  GET_NETWORK_RECORDING_SUMMARY: "getNetworkRecordingSummary",
 };
 
 export const CLIENT_MESSAGES = {

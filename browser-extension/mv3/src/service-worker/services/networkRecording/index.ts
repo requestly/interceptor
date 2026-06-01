@@ -324,6 +324,18 @@ export interface RecordingSummary {
   totalCount: number;
 }
 
+const buildSummary = (recording: NetworkRecordingState, totalCount: number): RecordingSummary => {
+  const endTime = Date.now();
+  return {
+    targetTabId: recording.targetTabId,
+    url: recording.url,
+    startTime: recording.startTime,
+    endTime,
+    duration: endTime - recording.startTime,
+    totalCount,
+  };
+};
+
 export const stopNetworkRecording = (
   targetTabId: number
 ): { success: boolean; summary?: RecordingSummary; error?: string } => {
@@ -333,15 +345,13 @@ export const stopNetworkRecording = (
   }
 
   const entries = recordingEntries.get(targetTabId) || [];
-  const endTime = Date.now();
-  const summary: RecordingSummary = {
-    targetTabId,
-    url: recording.url,
-    startTime: recording.startTime,
-    endTime,
-    duration: endTime - recording.startTime,
-    totalCount: entries.length,
-  };
+  const summary = buildSummary(recording, entries.length);
+
+  // The stream is the data channel; the summary lives only here. A stream consumer (LTS)
+  // that didn't trigger this stop (e.g. the user clicked Stop in the side panel) learns of
+  // the end via the port `complete` message, then fetches this summary with
+  // getNetworkRecordingSummary — so we retain it briefly after teardown.
+  retainSummary(summary);
 
   // Notify subscribed LTS ports before tearing down the buffer.
   streamCompleteToPorts(targetTabId);
@@ -358,6 +368,40 @@ export const stopNetworkRecording = (
   closePanel(targetTabId);
 
   return { success: true, summary };
+};
+
+// Summaries are retained for a short window after a recording ends so a stream consumer can
+// fetch them on `complete` even though the buffer/state are already torn down.
+const recentSummaries = new Map<number, RecordingSummary>();
+const SUMMARY_RETENTION_MS = 5 * 60 * 1000;
+
+const retainSummary = (summary: RecordingSummary) => {
+  recentSummaries.set(summary.targetTabId, summary);
+  setTimeout(() => {
+    const current = recentSummaries.get(summary.targetTabId);
+    if (current === summary) recentSummaries.delete(summary.targetTabId);
+  }, SUMMARY_RETENTION_MS);
+};
+
+/**
+ * Fetch the summary for a recording. Works while the recording is active (live snapshot) and
+ * for a short window after it ends (retained). Intended to be called by a stream consumer when
+ * it receives the `complete` message, since whoever triggered the stop (e.g. the side panel)
+ * may not be the consumer holding the stream.
+ */
+export const getNetworkRecordingSummary = (
+  targetTabId: number
+): { success: boolean; summary?: RecordingSummary; error?: string } => {
+  const active = activeRecordings.get(targetTabId);
+  if (active) {
+    const totalCount = recordingEntries.get(targetTabId)?.length ?? 0;
+    return { success: true, summary: buildSummary(active, totalCount) };
+  }
+  const retained = recentSummaries.get(targetTabId);
+  if (retained) {
+    return { success: true, summary: retained };
+  }
+  return { success: false, error: `No recording summary for tab ${targetTabId}` };
 };
 
 export const getNetworkRecordingState = (
@@ -380,6 +424,10 @@ export const handleNetworkRecordingOnClientPageLoad = (tab: chrome.tabs.Tab) => 
 };
 
 const cleanupRecording = (tabId: number) => {
+  const recording = activeRecordings.get(tabId);
+  if (recording) {
+    retainSummary(buildSummary(recording, recordingEntries.get(tabId)?.length ?? 0));
+  }
   streamCompleteToPorts(tabId);
   activeRecordings.delete(tabId);
   recordingEntries.delete(tabId);
