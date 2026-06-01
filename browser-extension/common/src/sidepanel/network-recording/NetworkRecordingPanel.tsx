@@ -13,7 +13,6 @@ const RESOURCE_TYPE_DISPLAY: Record<string, string> = {
   media: "media",
   websocket: "ws",
   xhr: "xhr",
-  fetch: "fetch",
   other: "other",
 };
 
@@ -118,7 +117,7 @@ const NetworkRecordingPanel: React.FC = () => {
 
   const counts = useMemo(() => {
     const total = filteredEntries.length;
-    const xhr = filteredEntries.filter((e) => e._resourceType === "xhr" || e._resourceType === "fetch").length;
+    const xhr = filteredEntries.filter((e) => e._resourceType === "xhr").length;
     const docs = filteredEntries.filter((e) => e._resourceType === "document").length;
     const staticCount = filteredEntries.filter((e) =>
       ["script", "stylesheet", "image", "font"].includes(e._resourceType as string)
