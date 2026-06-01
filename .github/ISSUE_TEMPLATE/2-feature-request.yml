@@ -1,0 +1,61 @@
+name: 💡 Feature Request — Requestly HTTP Interceptor
+description: Suggest a new capability or improvement for the HTTP Interceptor.
+title: "[Feature] "
+labels: ["type:feature", "status:triage"]
+body:
+  - type: checkboxes
+    id: product-confirmation
+    attributes:
+      label: Is this about Requestly HTTP Interceptor?
+      description: API Client feature requests belong on [requestly/requestly](https://github.com/requestly/requestly/issues/new/choose).
+      options:
+        - label: Yes, this is about the HTTP Interceptor
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the friction or limitation in your current workflow.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What's your proposed solution?
+      description: How would the feature work? Be specific.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area?
+      multiple: false
+      options:
+        - rules
+        - mocks
+        - session-replay
+        - network-inspector
+        - proxy / desktop interception
+        - extension-ui
+        - webapp
+        - other / unsure
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Anything else?
+      description: Screenshots, mockups, references to similar features in other tools.
+    validations:
+      required: false

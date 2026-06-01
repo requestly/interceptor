@@ -1,0 +1,47 @@
+name: ❓ Question / Support — Requestly HTTP Interceptor
+description: Ask a question about using the HTTP Interceptor.
+title: "[Question] "
+labels: ["type:question", "status:triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        💡 **Faster routes for support:**
+        - [Community](https://get.requestly.com/join-community) — usually the fastest response
+        - [Documentation](https://docs.requestly.com/general/http-interceptor/overview) — most questions answered here
+        - [StackOverflow with the `requestly` tag](https://stackoverflow.com/questions/tagged/requestly)
+
+        For everything else, ask below.
+
+  - type: checkboxes
+    id: product-confirmation
+    attributes:
+      label: Is this about Requestly HTTP Interceptor?
+      description: API Client questions belong on [requestly/requestly](https://github.com/requestly/requestly/issues/new/choose).
+      options:
+        - label: Yes, this is about the HTTP Interceptor
+          required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: What's your question?
+      description: Be specific. Include what you've tried so we can help faster.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version (if relevant)
+      placeholder: e.g., extension 24.5.1, desktop 1.8.3
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Anything else?
+      description: Screenshots, error messages, related docs.
+    validations:
+      required: false

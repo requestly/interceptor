@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
-  - about: "Help us in creating Requestly's Roadmap by upvoting existing issues or feature requests"
-    name: "⬆️ Upvote features you want to see next in Requestly"
-    url: "https://github.com/requestly/requestly/issues?q=is%3Aissue+is%3Aopen+sort%3Areactions-%2B1-desc"
-  - about: "Ask a question on our forum"
-    name: "❓ Question."
-    url: "https://github.com/requestly/requestly/discussions"
-  - about: "Get instant support from the Requestly Community Slack"
-    name: "👋 Slack"
-    url: "https://bit.ly/requestly-slack"
+  - name: 📡 Filing a bug about Requestly API Client?
+    url: https://github.com/requestly/requestly/issues/new/choose
+    about: This repository tracks the open-source HTTP Interceptor. The API Client (closed-source desktop app) has its own repo.
+  - name: 💬 Community questions or support
+    url: https://get.requestly.com/join-community
+    about: Get help from the community and the Requestly team.
+  - name: 📚 Documentation
+    url: https://docs.requestly.com/general/http-interceptor/overview
+    about: Check the docs before filing — most questions are answered there.

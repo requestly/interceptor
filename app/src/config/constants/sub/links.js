@@ -168,7 +168,7 @@ const LINKS = {
 
   API_CLIENT_LOCAL_FIRST_ANNOUNCEMENT: "https://github.com/requestly/requestly/issues/2629",
 
-  REQUESTLY_GITHUB: "https://github.com/requestly/requestly",
+  REQUESTLY_GITHUB: "https://github.com/requestly/interceptor",
 
   OAUTH_REDIRECT_URL: `${process.env.VITE_BACKEND_BASE_URL}/oauth/authorize`,
 

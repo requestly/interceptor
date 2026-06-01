@@ -3,22 +3,22 @@
     <picture>
       <source
         media="(prefers-color-scheme: dark)"
-        srcset="https://github.com/requestly/requestly/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
+        srcset="https://github.com/requestly/interceptor/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
       />
       <source
         media="(prefers-color-scheme: light)"
-        srcset="https://github.com/requestly/requestly/blob/master/app/src/assets/img/brand/rq_logo_full_light_mode.svg?raw=true"
+        srcset="https://github.com/requestly/interceptor/blob/master/app/src/assets/img/brand/rq_logo_full_light_mode.svg?raw=true"
       />
       <img
         alt="Requestly Logo"
-        src="https://github.com/requestly/requestly/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
+        src="https://github.com/requestly/interceptor/blob/master/app/src/assets/img/brand/rq_logo_full.svg?raw=true"
         width="42%"
       />
     </picture>
   </a>
 </p>
 
-<h1 align="center">Requestly HTTP Interceptor</h1>
+<h1 align="center">Requestly HTTP Interceptor.</h1>
 
 <p align="center">
   Open-Source HTTP Interceptor & Mocking Tool
@@ -28,12 +28,14 @@
   <strong>Loved by 300k+ developers</strong> — intercept, modify, mock, and debug HTTP(S) traffic from your browser and desktop apps.
 </p>
 
+> **Part of the Requestly ecosystem** — [Requestly API Client](https://github.com/requestly/requestly) · [HTTP Interceptor](https://github.com/requestly/interceptor) · [HTTP Interceptor Desktop](https://github.com/requestly/http-interceptor-desktop-app) · [Docs](https://docs.requestly.com)
+
 <p align="center">
-  <a href="https://github.com/requestly/requestly/stargazers">
-    <img alt="GitHub stars" src="https://img.shields.io/github/stars/requestly/requestly?style=flat-square" />
+  <a href="https://github.com/requestly/interceptor/stargazers">
+    <img alt="GitHub stars" src="https://img.shields.io/github/stars/requestly/interceptor?style=flat-square" />
   </a>
 
-  <img alt="GitHub closed issues" src="https://img.shields.io/github/issues-closed/requestly/requestly?style=flat-square"/>
+  <img alt="GitHub closed issues" src="https://img.shields.io/github/issues-closed/requestly/interceptor?style=flat-square"/>
 
   <a target="_blank" rel="noopener noreferrer" href="https://chrome.google.com/webstore/detail/redirect-url-modify-heade/mdnleldcmiljblolnjhpnblkcekpdkpa/">
     <img alt="Chrome Web Store Rating" src="https://img.shields.io/chrome-web-store/rating/mdnleldcmiljblolnjhpnblkcekpdkpa?style=flat-square" />
@@ -57,9 +59,9 @@
   ·
   <a href="https://docs.requestly.com/general/http-interceptor/overview">Documentation</a>
   ·
-  <a href="https://github.com/requestly/requestly/issues">Report Bug</a>
+  <a href="https://github.com/requestly/interceptor/issues">Report Bug</a>
   ·
-  <a href="https://github.com/requestly/requestly/discussions">Discussions</a>
+  <a href="https://github.com/requestly/interceptor/discussions">Discussions</a>
   ·
   <a href="https://get.requestly.com/join-community">Community</a>
 </p>
@@ -166,7 +168,7 @@ Easily migrate existing configurations from other tools.
 
 ## 🏁 Getting Started
 
-### Install Requestly
+### Install Requestly HTTP Interceptor
 
 Pick the install that matches how you work — a lightweight browser extension for in-browser interception, or the desktop app for system-wide traffic capture.
 
@@ -193,15 +195,17 @@ Use the desktop app to capture traffic across browsers, mobile devices, and any 
 | Windows | [Download for Windows](https://get.requestly.com/windows) |
 | Linux | [Download for Linux](https://get.requestly.com/linux) |
 
+> The desktop app source code lives in a separate repo: [requestly/http-interceptor-desktop-app](https://github.com/requestly/http-interceptor-desktop-app).
+
 ---
 
 ## 🧑‍💻 Development
 
-This repository contains the core Requestly platform including:
+This repository contains:
 
-- Browser Extension
-- Web App UI
-- Core Traffic Interceptor Logic
+- **Browser Extension** (`browser-extension/`) — Chrome, Firefox, Edge (Manifest V3)
+- **Web App UI** (`app/`) — the dashboard at [app.requestly.com](https://app.requestly.com)
+- **Core Traffic Interceptor Logic**
 
 ### Local Setup
 
@@ -209,12 +213,13 @@ Follow the setup guide:
 
 👉 [Getting Started](./getting-started.md)
 
-### Repositories
+### Related Repositories
 
-- [Browser Extension](./browser-extension)
-- [UI Application](./app)
+- [Desktop App](https://github.com/requestly/http-interceptor-desktop-app) — Electron shell for system-wide interception
 - [Mock Server](https://github.com/requestly/requestly-mock-server)
-- [Backend](https://github.com/requestly/requestly-backend)
+- [Web SDK](https://github.com/requestly/requestly-web-sdk)
+- [Proxy Engine](https://github.com/requestly/requestly-proxy)
+- [Automation integrations](https://github.com/requestly/requestly-automation) — Selenium / Playwright / Puppeteer
 
 ---
 
@@ -233,9 +238,9 @@ Whether you're fixing bugs, improving docs, or building new features, your contr
 
 ### Useful links
 
-- [Issues](https://github.com/requestly/requestly/issues)
+- [Issues](https://github.com/requestly/interceptor/issues)
 - [Contributing Guide](./CONTRIBUTING.md)
-- [Discord Community](https://get.requestly.com/join-community)
+- [Community](https://get.requestly.com/join-community)
 
 ---
 
@@ -249,8 +254,24 @@ Whether you're fixing bugs, improving docs, or building new features, your contr
 
 ---
 
+## A note on this repository
+
+The open-source source code for the Requestly HTTP Interceptor extension and web app lives here at `requestly/interceptor`. Previously this code lived under `requestly/requestly`; that URL is now the community and issue tracker for the [Requestly API Client](https://github.com/requestly/requestly).
+
+The HTTP Interceptor remains fully open source and actively maintained. Contributions, bug reports, and feature requests are welcome here.
+
+---
+
 ## ❤️ Built for Developers
 
 Requestly is built to make debugging and testing faster and simpler.
 
 From HTTP interception and API mocking, Requestly gives developers everything needed to debug and ship confidently.
+
+---
+
+### Deferred / TODO before publishing
+
+- [ ] Brand asset paths (`https://github.com/requestly/interceptor/blob/master/app/src/assets/img/brand/...`) — verify these files exist in the new repo after the codebase migration
+- [ ] Screenshot URLs (currently `github.com/user-attachments/...`) — verify they remain accessible from the new repo context (user-attachments are organization-scoped, should be fine)
+- [ ] Decide whether to keep `discussions` link (current README has it; some teams disable Discussions to reduce triage surface)

@@ -32,7 +32,7 @@ export const MenuHeader = () => {
     return (
       <span className="github-star-button" onClick={() => trackHeaderClicked("github_star_button")}>
         <GitHubButton
-          href="https://github.com/requestly/requestly"
+          href="https://github.com/requestly/interceptor"
           data-color-scheme="dark_dimmed"
           data-text="Star"
           data-show-count="true"
