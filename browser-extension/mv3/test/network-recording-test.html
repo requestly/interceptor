@@ -168,10 +168,8 @@
           }
           case "complete":
             // Recording ended (possibly stopped from the side panel — we did NOT trigger it).
-            // The stream gave us totalCount; fetch the full summary metadata on demand.
-            log(`Stream complete: extension captured ${msg.totalCount}, we streamed ${streamedEntries.length}` +
-                (msg.totalCount === streamedEntries.length ? ' ✓' : ' ✗ MISMATCH'),
-                msg.totalCount === streamedEntries.length ? 'info' : 'error');
+            // `complete` is a pure signal; fetch the summary metadata on demand.
+            log(`Stream complete (signal). Streamed ${streamedEntries.length} entries. Fetching summary…`, 'info');
             fetchSummary(extId, targetTabId);
             break;
           case "error":

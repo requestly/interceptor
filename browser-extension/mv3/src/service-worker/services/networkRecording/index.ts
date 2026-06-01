@@ -157,14 +157,14 @@ const deliverEntry = (tabId: number, entry: NetworkHarEntry) => {
   });
 };
 
-/** Notify subscribed LTS ports that a recording has ended. */
+/** Signal subscribed LTS ports that a recording has ended. Pure signal — the consumer then
+ *  fetches the summary via getNetworkRecordingSummary. */
 const streamCompleteToPorts = (tabId: number) => {
   const subs = subscriptions.get(tabId);
   if (!subs) return;
-  const totalCount = recordingEntries.get(tabId)?.length ?? 0;
   subs.forEach((port) => {
     try {
-      port.postMessage({ type: "complete", totalCount });
+      port.postMessage({ type: "complete" });
     } catch {
       /* ignore */
     }
@@ -240,9 +240,9 @@ export const initNetworkRecordingPort = () => {
         if (!subscriptions.has(tabId)) subscriptions.set(tabId, new Set());
         subscriptions.get(tabId)!.add(port);
 
-        // Recording already ended (e.g. very short) but buffer still around: tell LTS.
+        // Recording already ended (e.g. very short) but buffer still around: signal complete.
         if (!activeRecordings.has(tabId)) {
-          port.postMessage({ type: "complete", totalCount: buffered.length });
+          port.postMessage({ type: "complete" });
         }
       } else if (msg.action === "unsubscribe") {
         subscriptions.get(tabId)?.delete(port);
@@ -336,24 +336,20 @@ const buildSummary = (recording: NetworkRecordingState, totalCount: number): Rec
   };
 };
 
-export const stopNetworkRecording = (
-  targetTabId: number
-): { success: boolean; summary?: RecordingSummary; error?: string } => {
+export const stopNetworkRecording = (targetTabId: number): { success: boolean; error?: string } => {
   const recording = activeRecordings.get(targetTabId);
   if (!recording) {
     return { success: false, error: `No active recording for tab ${targetTabId}` };
   }
 
   const entries = recordingEntries.get(targetTabId) || [];
-  const summary = buildSummary(recording, entries.length);
 
-  // The stream is the data channel; the summary lives only here. A stream consumer (LTS)
-  // that didn't trigger this stop (e.g. the user clicked Stop in the side panel) learns of
-  // the end via the port `complete` message, then fetches this summary with
-  // getNetworkRecordingSummary — so we retain it briefly after teardown.
-  retainSummary(summary);
+  // Stop returns { success } only. Whoever holds the stream (LTS) learns of the end via the
+  // port `complete` signal and fetches the metadata with getNetworkRecordingSummary — the same
+  // path regardless of who triggered this stop (LTS or the side panel) — so retain it briefly.
+  retainSummary(buildSummary(recording, entries.length));
 
-  // Notify subscribed LTS ports before tearing down the buffer.
+  // Signal subscribed LTS ports before tearing down the buffer.
   streamCompleteToPorts(targetTabId);
 
   activeRecordings.delete(targetTabId);
@@ -367,7 +363,7 @@ export const stopNetworkRecording = (
 
   closePanel(targetTabId);
 
-  return { success: true, summary };
+  return { success: true };
 };
 
 // Summaries are retained for a short window after a recording ends so a stream consumer can
@@ -384,24 +380,22 @@ const retainSummary = (summary: RecordingSummary) => {
 };
 
 /**
- * Fetch the summary for a recording. Works while the recording is active (live snapshot) and
- * for a short window after it ends (retained). Intended to be called by a stream consumer when
- * it receives the `complete` message, since whoever triggered the stop (e.g. the side panel)
- * may not be the consumer holding the stream.
+ * Fetch the final summary for a recording. Call this AFTER the stream's `complete` signal —
+ * it only succeeds once the recording has stopped (the summary is retained ~5 min after end).
+ * While the recording is still active it returns an error, so a half-finished summary is never
+ * mistaken for the final one. Works regardless of who triggered the stop (LTS or the side panel).
  */
 export const getNetworkRecordingSummary = (
   targetTabId: number
 ): { success: boolean; summary?: RecordingSummary; error?: string } => {
-  const active = activeRecordings.get(targetTabId);
-  if (active) {
-    const totalCount = recordingEntries.get(targetTabId)?.length ?? 0;
-    return { success: true, summary: buildSummary(active, totalCount) };
+  if (activeRecordings.has(targetTabId)) {
+    return { success: false, error: `Recording for tab ${targetTabId} is still active` };
   }
   const retained = recentSummaries.get(targetTabId);
   if (retained) {
     return { success: true, summary: retained };
   }
-  return { success: false, error: `No recording summary for tab ${targetTabId}` };
+  return { success: false, error: `No summary for tab ${targetTabId}` };
 };
 
 export const getNetworkRecordingState = (
