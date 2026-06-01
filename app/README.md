@@ -19,7 +19,7 @@ npm install
 
 ### Prerequisite - Build and Install Local Extension
 Some features require the Requestly Extension to be installed. Follow the steps below to build and install the extension
-https://github.com/requestly/requestly/blob/master/browser-extension/mv3/README.md
+https://github.com/requestly/interceptor/blob/master/browser-extension/mv3/README.md
 
 ### Build WebApp
 ```

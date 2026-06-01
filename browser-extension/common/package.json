@@ -6,7 +6,7 @@
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/requestly/requestly.git",
+    "url": "git+https://github.com/requestly/interceptor.git",
     "directory": "browser-extension/common"
   },
   "author": {
@@ -20,7 +20,7 @@
   },
   "license": "SEE LICENSE IN LICENSE",
   "bugs": {
-    "url": "https://github.com/requestly/requestly/issues"
+    "url": "https://github.com/requestly/interceptor/issues"
   },
   "scripts": {
     "preinstall": "sh ./scripts/build-analytics-vendor.sh",

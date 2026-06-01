@@ -18,7 +18,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/requestly/requestly.git"
+    "url": "git+https://github.com/requestly/interceptor.git"
   },
   "author": {
     "name": "Requestly",
@@ -31,7 +31,7 @@
     "npm": ">=8.0.0"
   },
   "bugs": {
-    "url": "https://github.com/requestly/requestly/issues"
+    "url": "https://github.com/requestly/interceptor/issues"
   },
   "homepage": "https://requestly.com",
   "devDependencies": {

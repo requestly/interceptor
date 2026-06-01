@@ -154,7 +154,7 @@ const AppFooter: React.FC = () => {
                 onClick={() => handleFooterLinkClick(APP_CONSTANTS.LINKS.REQUESTLY_DOCS, FOOTER_LINKS.DOCUMENTATION)}
               >
                 <ReadOutlined />
-                Documentation
+                Documentations
               </Text>
               <Dropdown trigger={["click"]} menu={{ items: helpItems }}>
                 <Text>
