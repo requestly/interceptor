@@ -83,8 +83,19 @@ const NetworkRecordingPanel: React.FC = () => {
     return () => clearInterval(interval);
   }, [isRecording, recordingStartTime]);
 
+  // Auto-scroll to the newest entry, but only while the user is pinned to the bottom.
+  // Once they scroll up, stop yanking them back down until they return to the bottom.
+  const stickToBottomRef = useRef(true);
+
+  const handleListScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distanceFromBottom <= 24; // within ~1 row of the bottom
+  }, []);
+
   useEffect(() => {
-    if (listRef.current) {
+    if (listRef.current && stickToBottomRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
     }
   }, [entries.length]);
@@ -155,7 +166,7 @@ const NetworkRecordingPanel: React.FC = () => {
 
       <FilterBar filter={filter} onFilterChange={setFilter} />
 
-      <div className="request-list" ref={listRef}>
+      <div className="request-list" ref={listRef} onScroll={handleListScroll}>
         {filteredEntries.map((entry) => (
           <NetworkEventRow
             key={entry._request_id as string}
@@ -174,7 +185,6 @@ const NetworkRecordingPanel: React.FC = () => {
       </div>
 
       <div className="panel-footer">
-        <span>Sending live updates to BrowserStack Load Testing</span>
         <span className="version">v{chrome.runtime.getManifest().version}</span>
       </div>
     </div>

@@ -19,12 +19,12 @@ const getStatusColor = (statusCode: number): string => {
   return "#F44336";
 };
 
-const getUrlPath = (url: string): string => {
+const splitUrl = (url: string): { host: string; path: string } => {
   try {
     const parsed = new URL(url);
-    return parsed.pathname + parsed.search;
+    return { host: parsed.host, path: parsed.pathname + parsed.search || "/" };
   } catch {
-    return url;
+    return { host: "", path: url };
   }
 };
 
@@ -39,6 +39,7 @@ const NetworkEventRow: React.FC<NetworkEventRowProps> = ({ entry, typeDisplay, f
   const { status } = entry.response;
   const error = (entry as { _error?: string })._error;
   const isError = !!error;
+  const { host, path } = splitUrl(url);
 
   return (
     <div className={`network-row ${isError ? "network-row--error" : ""}`}>
@@ -47,10 +48,18 @@ const NetworkEventRow: React.FC<NetworkEventRowProps> = ({ entry, typeDisplay, f
           {method}
         </span>
         <span className="row-url" title={url}>
-          {getUrlPath(url)}
+          {path}
         </span>
       </div>
       <div className="row-details">
+        {host && (
+          <>
+            <span className="row-host" title={url}>
+              {host}
+            </span>
+            <span className="row-separator">·</span>
+          </>
+        )}
         <span className="row-status" style={{ color: getStatusColor(status) }}>
           {isError ? error : status}
         </span>
