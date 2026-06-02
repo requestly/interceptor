@@ -30,11 +30,30 @@ const formatSize = (bytes: number | undefined): string => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+// Why a recording ended — mirrors the StopReason union in the service worker.
+type StopReason = "user" | "max-duration" | "connection-lost" | "tab-closed";
+
+// Banner shown for SW-initiated stops. `user` and `tab-closed` show no banner (the user knows /
+// the panel is gone), so they're absent from this map.
+const STOP_BANNERS: Partial<Record<StopReason, { icon: string; text: string; variant: string }>> = {
+  "max-duration": {
+    icon: "⏱",
+    text: "Recording stopped — time limit reached",
+    variant: "warning",
+  },
+  "connection-lost": {
+    icon: "⚠",
+    text: "Connection to Load Testing lost — recording stopped",
+    variant: "error",
+  },
+};
+
 const NetworkRecordingPanel: React.FC = () => {
   const [entries, setEntries] = useState<NetworkEntry[]>([]);
   const [filter, setFilter] = useState({ text: "", method: "ALL" });
   const [recordingStartTime, setRecordingStartTime] = useState<number>(Date.now());
   const [isRecording, setIsRecording] = useState(true);
+  const [stopReason, setStopReason] = useState<StopReason | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [targetUrl, setTargetUrl] = useState("");
   const currentTabIdRef = useRef<number | null>(null);
@@ -63,8 +82,12 @@ const NetworkRecordingPanel: React.FC = () => {
     init();
 
     const listener = (message: any) => {
-      if (message.action === "networkEventCaptured" && message.tabId === currentTabIdRef.current) {
+      if (message.tabId !== currentTabIdRef.current) return;
+      if (message.action === "networkEventCaptured") {
         setEntries((prev) => [...prev, message.entry]);
+      } else if (message.action === "networkRecordingEnded") {
+        setIsRecording(false);
+        setStopReason(message.reason ?? "user");
       }
     };
 
@@ -105,6 +128,7 @@ const NetworkRecordingPanel: React.FC = () => {
       targetTabId: currentTabIdRef.current,
     });
     setIsRecording(false);
+    setStopReason("user");
   }, []);
 
   const filteredEntries = useMemo(() => {
@@ -143,6 +167,13 @@ const NetworkRecordingPanel: React.FC = () => {
         </div>
         {targetUrl && <div className="target-url">{targetUrl}</div>}
       </div>
+
+      {!isRecording && stopReason && STOP_BANNERS[stopReason] && (
+        <div className={`end-banner end-banner--${STOP_BANNERS[stopReason].variant}`}>
+          <span className="end-banner-icon">{STOP_BANNERS[stopReason].icon}</span>
+          <span className="end-banner-text">{STOP_BANNERS[stopReason].text}</span>
+        </div>
+      )}
 
       <div className="summary-counters">
         <div className="counter">

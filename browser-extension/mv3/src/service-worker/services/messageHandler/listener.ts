@@ -52,7 +52,10 @@ export const initExternalMessageListener = () => {
         break;
 
       case EXTENSION_EXTERNAL_MESSAGES.START_NETWORK_RECORDING:
-        startNetworkRecording(message.payload?.url, message.payload?.config || {}).then(sendResponse);
+        startNetworkRecording(message.payload?.url, message.payload?.config || {}, {
+          tabId: sender.tab?.id,
+          windowId: sender.tab?.windowId,
+        }).then(sendResponse);
         return true;
 
       case EXTENSION_EXTERNAL_MESSAGES.STOP_NETWORK_RECORDING:

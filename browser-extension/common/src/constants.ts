@@ -78,6 +78,7 @@ export const CLIENT_MESSAGES = {
   NOTIFY_EXTENSION_STATUS_UPDATED: "notifyExtensionStatusUpdated",
   OPEN_CURL_IMPORT_MODAL: "openCurlImportModal",
   NETWORK_EVENT_CAPTURED: "networkEventCaptured",
+  NETWORK_RECORDING_ENDED: "networkRecordingEnded",
 };
 
 export const STORAGE_TYPE = "local";

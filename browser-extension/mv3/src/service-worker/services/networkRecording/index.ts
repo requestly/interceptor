@@ -7,13 +7,30 @@ interface NetworkRecordingState {
   url: string;
   startTime: number;
   config: { maxDuration?: number };
+  // The LTS tab/window that started the recording. On stop we return focus here.
+  // Both may be gone by stop time (user closed the tab/window mid-recording).
+  senderTabId?: number;
+  senderWindowId?: number;
 }
+
+// TODO(before-merge): replace with the real LTS fallback URL provided by the LTS team.
+// Used only when the originating LTS tab AND its window are both gone at stop time —
+// we open this so the user always lands back in an LTS context. Placeholder for now.
+const LTS_FALLBACK_URL = "https://www.browserstack.com";
 
 const activeRecordings = new Map<number, NetworkRecordingState>();
 const recordingEntries = new Map<number, NetworkHarEntry[]>();
 
-// LTS streaming subscribers, keyed by target tabId. One LTS page may subscribe to many tabs.
+// LTS streaming subscribers, keyed by target tabId. One LTS page may subscribe to many tabs,
+// but a given recorded tab has exactly one port (one consumer per recording).
 const subscriptions = new Map<number, Set<chrome.runtime.Port>>();
+
+// In v1 the LTS port is the only data channel, so a recording is pointless once its consumer
+// is gone — every entry after that is buffered for nobody. When a tab's port disconnects we
+// give LTS a short window to reconnect (it dedups on _request_id, so a brief drop+reconnect is
+// expected). If nobody re-subscribes within the window, the recording is stopped.
+const disconnectGraceTimers = new Map<number, ReturnType<typeof setTimeout>>();
+const DISCONNECT_GRACE_MS = 3_000;
 
 // webRequest requestId -> request-start correlation data (internal only, never surfaced).
 const correlationMap = new Map<string, CorrelationData>();
@@ -37,8 +54,6 @@ const sidePanelApi = (chrome as any).sidePanel as
 if (sidePanelApi) {
   sidePanelApi.setOptions({ enabled: false }).catch(() => {});
 }
-
-const DEFAULT_MAX_DURATION = 15 * 60 * 1000;
 
 // --- Service-worker keepalive ----------------------------------------------------------------
 // An open port does NOT keep an MV3 SW alive — only events/API calls reset the 30s idle timer.
@@ -77,7 +92,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 
   activeRecordings.forEach((recording, tabId) => {
     if (isOverMaxDuration(recording)) {
-      stopNetworkRecording(tabId);
+      stopNetworkRecording(tabId, "max-duration");
     }
   });
 
@@ -98,8 +113,10 @@ const onBeforeSendHeaders = (details: chrome.webRequest.WebRequestHeadersDetails
   });
 };
 
+// maxDuration is optional with no default — when LTS omits it there is no time cap, and the
+// recording runs until the user stops it, the tab closes, or the LTS port disconnects (grace).
 const isOverMaxDuration = (recording: NetworkRecordingState): boolean =>
-  Date.now() - recording.startTime > (recording.config.maxDuration || DEFAULT_MAX_DURATION);
+  recording.config.maxDuration !== undefined && Date.now() - recording.startTime > recording.config.maxDuration;
 
 const onRequestCompleted = (details: chrome.webRequest.WebResponseCacheDetails) => {
   const recording = activeRecordings.get(details.tabId);
@@ -107,7 +124,7 @@ const onRequestCompleted = (details: chrome.webRequest.WebResponseCacheDetails) 
 
   // Prompt auto-stop on a busy page; the alarm tick is the backstop for a quiet page.
   if (isOverMaxDuration(recording)) {
-    stopNetworkRecording(details.tabId);
+    stopNetworkRecording(details.tabId, "max-duration");
     return;
   }
 
@@ -157,6 +174,25 @@ const deliverEntry = (tabId: number, entry: NetworkHarEntry) => {
   });
 };
 
+// Why a recording ended — drives the message the side panel shows.
+//   user            – the user clicked Stop in the panel (no banner; just "Stopped")
+//   max-duration    – config.maxDuration elapsed (amber banner)
+//   connection-lost – the LTS port disconnected and no reconnect within the grace window (red)
+//   tab-closed      – the recorded tab was removed (panel is gone with it; informational only)
+type StopReason = "user" | "max-duration" | "connection-lost" | "tab-closed";
+
+/** Tell the side panel a recording ended and why, so it can flip to a stopped state with the
+ *  right banner. Fire-and-forget — the panel may already be closed. */
+const notifyPanelEnded = (tabId: number, reason: StopReason) => {
+  chrome.runtime
+    .sendMessage({
+      action: CLIENT_MESSAGES.NETWORK_RECORDING_ENDED,
+      tabId,
+      reason,
+    })
+    .catch(() => {});
+};
+
 /** Signal subscribed LTS ports that a recording has ended. Pure signal — the consumer then
  *  fetches the summary via getNetworkRecordingSummary. */
 const streamCompleteToPorts = (tabId: number) => {
@@ -200,10 +236,29 @@ const isValidUrl = (url: string): boolean => {
   }
 };
 
+const cancelDisconnectGrace = (tabId: number) => {
+  const timer = disconnectGraceTimers.get(tabId);
+  if (timer !== undefined) {
+    clearTimeout(timer);
+    disconnectGraceTimers.delete(tabId);
+  }
+};
+
 const removePortFromAllSubscriptions = (port: chrome.runtime.Port) => {
   subscriptions.forEach((ports, tabId) => {
-    ports.delete(port);
-    if (ports.size === 0) subscriptions.delete(tabId);
+    if (!ports.delete(port)) return;
+    if (ports.size > 0) return;
+    subscriptions.delete(tabId);
+
+    // The consumer for an active recording just vanished. Hold a short grace window for a
+    // reconnect; if none arrives, stop the recording (its data channel is gone).
+    if (!activeRecordings.has(tabId) || disconnectGraceTimers.has(tabId)) return;
+    const timer = setTimeout(() => {
+      disconnectGraceTimers.delete(tabId);
+      if (subscriptions.get(tabId)?.size) return; // reconnected in the meantime
+      if (activeRecordings.has(tabId)) stopNetworkRecording(tabId, "connection-lost");
+    }, DISCONNECT_GRACE_MS);
+    disconnectGraceTimers.set(tabId, timer);
   });
 };
 
@@ -239,6 +294,7 @@ export const initNetworkRecordingPort = () => {
 
         if (!subscriptions.has(tabId)) subscriptions.set(tabId, new Set());
         subscriptions.get(tabId)!.add(port);
+        cancelDisconnectGrace(tabId); // a reconnect within the grace window keeps the recording alive
 
         // Recording already ended (e.g. very short) but buffer still around: signal complete.
         if (!activeRecordings.has(tabId)) {
@@ -273,16 +329,10 @@ const openPanel = (tabId: number) => {
   // Safari / other: no panel API → no-op (capture + streaming still work).
 };
 
-const closePanel = (tabId: number) => {
-  if (sidePanelApi) {
-    sidePanelApi.setOptions({ tabId, enabled: false }).catch(() => {});
-  }
-  // Firefox sidebar is global; leave it for the user to close.
-};
-
 export const startNetworkRecording = (
   url: string,
-  config: { maxDuration?: number } = {}
+  config: { maxDuration?: number } = {},
+  sender?: { tabId?: number; windowId?: number }
 ): Promise<{ success: boolean; targetTabId?: number; error?: string }> => {
   if (!url || !isValidUrl(url)) {
     return Promise.resolve({ success: false, error: "Invalid URL. Must be a valid http or https URL." });
@@ -300,6 +350,8 @@ export const startNetworkRecording = (
         url,
         startTime: Date.now(),
         config,
+        senderTabId: sender?.tabId,
+        senderWindowId: sender?.windowId,
       };
 
       activeRecordings.set(tab.id, state);
@@ -336,13 +388,55 @@ const buildSummary = (recording: NetworkRecordingState, totalCount: number): Rec
   };
 };
 
-export const stopNetworkRecording = (targetTabId: number): { success: boolean; error?: string } => {
+// Return the user to where they came from after a recording ends. Cascade:
+//   1. the originating LTS tab, if it still exists
+//   2. else its window (LTS tab closed but window alive), focusing it
+//   3. else open the LTS fallback URL in a new tab (tab + window both gone)
+// Each step is guarded; failures fall through to the next.
+const returnFocusToSender = (recording: NetworkRecordingState) => {
+  const { senderTabId, senderWindowId } = recording;
+
+  const openFallback = () => {
+    chrome.tabs.create({ url: LTS_FALLBACK_URL }).catch(() => {});
+  };
+
+  const tryWindowThenFallback = () => {
+    if (senderWindowId === undefined) {
+      openFallback();
+      return;
+    }
+    chrome.windows.update(senderWindowId, { focused: true }).then(
+      () => {},
+      () => openFallback()
+    );
+  };
+
+  if (senderTabId === undefined) {
+    tryWindowThenFallback();
+    return;
+  }
+
+  // tabs.get rejects if the tab is gone -> fall through to window, then fallback.
+  chrome.tabs
+    .get(senderTabId)
+    .then(
+      () => chrome.tabs.update(senderTabId, { active: true }).then(() => {}, tryWindowThenFallback),
+      tryWindowThenFallback
+    );
+};
+
+export const stopNetworkRecording = (
+  targetTabId: number,
+  reason: StopReason = "user"
+): { success: boolean; error?: string } => {
   const recording = activeRecordings.get(targetTabId);
   if (!recording) {
     return { success: false, error: `No active recording for tab ${targetTabId}` };
   }
 
   const entries = recordingEntries.get(targetTabId) || [];
+
+  cancelDisconnectGrace(targetTabId);
 
   // Stop returns { success } only. Whoever holds the stream (LTS) learns of the end via the
   // port `complete` signal and fetches the metadata with getNetworkRecordingSummary — the same
@@ -351,6 +445,8 @@ export const stopNetworkRecording = (targetTabId: number): { success: boolean; e
 
   // Signal subscribed LTS ports before tearing down the buffer.
   streamCompleteToPorts(targetTabId);
+  // Tell the side panel why it ended so it can show the right stopped state / banner.
+  notifyPanelEnded(targetTabId, reason);
 
   activeRecordings.delete(targetTabId);
   recordingEntries.delete(targetTabId);
@@ -361,7 +457,8 @@ export const stopNetworkRecording = (targetTabId: number): { success: boolean; e
   }
   stopKeepaliveIfIdle();
 
-  closePanel(targetTabId);
+  // Leave the panel open showing the stopped state + reason banner; the user closes it.
+  returnFocusToSender(recording);
 
   return { success: true };
 };
@@ -418,11 +515,14 @@ export const handleNetworkRecordingOnClientPageLoad = (tab: chrome.tabs.Tab) => 
 };
 
 const cleanupRecording = (tabId: number) => {
+  cancelDisconnectGrace(tabId);
   const recording = activeRecordings.get(tabId);
   if (recording) {
     retainSummary(buildSummary(recording, recordingEntries.get(tabId)?.length ?? 0));
   }
   streamCompleteToPorts(tabId);
+  // The recorded tab closed — its panel is gone with it, but send for contract completeness.
+  notifyPanelEnded(tabId, "tab-closed");
   activeRecordings.delete(tabId);
   recordingEntries.delete(tabId);
   if (activeRecordings.size === 0) {
