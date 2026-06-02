@@ -162,6 +162,7 @@
             if (id && seenRequestIds.has(id)) break;  // dedup across reconnects
             if (id) seenRequestIds.add(id);
             streamedEntries.push(msg.entry);
+            console.log('[network-recording] entry received:', msg.entry);
             document.getElementById('targetTabId').textContent =
               `${targetTabId} (${streamedEntries.length} entries)`;
             break;
