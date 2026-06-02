@@ -39,6 +39,7 @@ import {
   getNetworkRecordingState,
   getNetworkRecordingSummary,
   handleNetworkRecordingOnClientPageLoad,
+  onNetworkBodyCaptured,
 } from "../networkRecording";
 
 export const initExternalMessageListener = () => {
@@ -98,6 +99,11 @@ export const initMessageHandler = () => {
 
       case CLIENT_MESSAGES.NOTIFY_SESSION_RECORDING_STOPPED:
         onSessionRecordingStoppedNotification(sender.tab.id);
+        break;
+
+      case CLIENT_MESSAGES.NETWORK_BODY_CAPTURED:
+        // Network Interceptor v2: an XHR/Fetch body+headers captured by the SDK page script.
+        onNetworkBodyCaptured(sender.tab?.id, message.payload);
         break;
 
       case EXTENSION_MESSAGES.START_RECORDING_EXPLICITLY:

@@ -45,6 +45,9 @@ export const EXTENSION_MESSAGES = {
   TRIGGER_OPEN_CURL_MODAL: "triggerOpenCurlModal",
   STOP_NETWORK_RECORDING: "stopNetworkRecording",
   GET_NETWORK_RECORDING_STATE: "getNetworkRecordingState",
+  // v2 body capture: SW → client content script → page script (networkBodyRecorder) start/stop.
+  START_NETWORK_BODY_CAPTURE: "startNetworkBodyCapture",
+  STOP_NETWORK_BODY_CAPTURE: "stopNetworkBodyCapture",
 };
 
 export const EXTENSION_EXTERNAL_MESSAGES = {
@@ -79,6 +82,7 @@ export const CLIENT_MESSAGES = {
   OPEN_CURL_IMPORT_MODAL: "openCurlImportModal",
   NETWORK_EVENT_CAPTURED: "networkEventCaptured",
   NETWORK_RECORDING_ENDED: "networkRecordingEnded",
+  NETWORK_BODY_CAPTURED: "networkBodyCaptured",
 };
 
 export const STORAGE_TYPE = "local";

@@ -1,7 +1,33 @@
 import { Entry, Header, QueryString } from "har-format";
 
-/** HAR Entry plus our `_error` extension (set on failed/aborted requests). */
-export type NetworkHarEntry = Entry & { _error?: string };
+/**
+ * HAR Entry plus our extensions:
+ * - `_error`: set on failed/aborted requests (webRequest path).
+ * - `_truncated`: per-body cap codes when the SDK page script dropped an over-size / media body
+ *   (101 = request too large, 102 = response too large). Lets LTS tell "dropped (too large)"
+ *   from a genuinely empty body. Mirrors the web-sdk RQNetworkEventErrorCodes.
+ */
+export type NetworkHarEntry = Entry & { _error?: string; _truncated?: number[] };
+
+/**
+ * Shape posted by the networkBodyRecorder page script (derived from the web-sdk
+ * Network interceptor callback). Headers are a plain name→value record.
+ */
+export interface SdkNetworkPayload {
+  api?: string; // "xmlhttprequest" | "fetch"
+  method: string;
+  url: string;
+  status: number;
+  statusText?: string;
+  requestHeaders?: Record<string, string>;
+  responseHeaders?: Record<string, string>;
+  requestData?: unknown;
+  response?: unknown;
+  contentType?: string;
+  responseTime?: number;
+  responseURL?: string;
+  errors?: number[];
+}
 
 /**
  * The HAR _resourceType enum (Chrome DevTools convention) differs from
@@ -172,4 +198,86 @@ export const buildErrorEntry = (
     _request_id: requestId,
     _error: error,
   };
+};
+
+/** Record<name,value> headers → HAR Header[]. */
+const recordToHarHeaders = (headers: Record<string, string> | undefined): Header[] =>
+  Object.entries(headers || {}).map(([name, value]) => ({ name, value: value ?? "" }));
+
+/** Coerce an SDK body (string | object | undefined) to a HAR body string. */
+const bodyToText = (body: unknown): string | undefined => {
+  if (body === undefined || body === null || body === "") return undefined;
+  if (typeof body === "string") return body;
+  try {
+    return JSON.stringify(body);
+  } catch {
+    return undefined;
+  }
+};
+
+const byteLength = (text: string | undefined): number => (text === undefined ? -1 : text.length);
+
+/**
+ * Build a HAR 1.2 Entry from an SDK (web-sdk Network interceptor) payload — the v2 source for
+ * XHR/Fetch. Unlike the webRequest path this carries request + response BODIES and headers, with
+ * no correlation needed (the payload is self-complete). `requestId` is extension-assigned.
+ */
+export const buildSdkEntry = (payload: SdkNetworkPayload, requestId: string): NetworkHarEntry => {
+  const responseTime = Math.max(0, Math.round(payload.responseTime ?? 0));
+  // The SDK doesn't give a start timestamp; derive it so startedDateTime + time are consistent.
+  const startTime = Date.now() - responseTime;
+
+  const requestText = bodyToText(payload.requestData);
+  const responseText = bodyToText(payload.response);
+  const requestContentType = payload.requestHeaders
+    ? payload.requestHeaders["content-type"] || payload.requestHeaders["Content-Type"]
+    : undefined;
+
+  const entry: NetworkHarEntry = {
+    startedDateTime: new Date(startTime).toISOString(),
+    time: responseTime,
+    request: {
+      method: payload.method,
+      url: payload.url,
+      httpVersion: "",
+      cookies: [],
+      headers: recordToHarHeaders(payload.requestHeaders),
+      queryString: parseQueryString(payload.url),
+      headersSize: -1,
+      bodySize: requestText !== undefined ? requestText.length : -1,
+    },
+    response: {
+      status: payload.status,
+      statusText: payload.statusText || "",
+      httpVersion: "",
+      cookies: [],
+      headers: recordToHarHeaders(payload.responseHeaders),
+      content: {
+        size: byteLength(responseText),
+        mimeType: payload.contentType || "",
+      },
+      redirectURL: payload.responseURL && payload.responseURL !== payload.url ? payload.responseURL : "",
+      headersSize: -1,
+      bodySize: byteLength(responseText),
+    },
+    cache: {},
+    timings: { send: 0, wait: responseTime, receive: 0 },
+    _resourceType: "xhr", // SDK only sees xhr/fetch; single-bucket to match v1 (api field has the split)
+    _request_id: requestId,
+    _fromCache: null,
+  };
+
+  // Only set postData when there's an actual request body (strict HAR: omit otherwise).
+  if (requestText !== undefined) {
+    entry.request.postData = { mimeType: requestContentType || "", text: requestText };
+  }
+  // content.text only when a body survived the cap.
+  if (responseText !== undefined) {
+    entry.response.content.text = responseText;
+  }
+  if (payload.errors && payload.errors.length) {
+    entry._truncated = payload.errors;
+  }
+
+  return entry;
 };

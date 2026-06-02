@@ -145,4 +145,15 @@ export default [
     },
     plugins: commonPlugins,
   },
+  {
+    ...commonConfig,
+    // Network Interceptor v2 body capture. Uses the global Requestly.Network (web-sdk UMD injected
+    // separately), so no npm deps to resolve — commonPlugins (no nodeResolve) is sufficient.
+    input: "src/page-scripts/networkBodyRecorder.js",
+    output: {
+      file: `${OUTPUT_DIR}/page-scripts/networkBodyRecorder.ps.js`,
+      format: "iife",
+    },
+    plugins: commonPlugins,
+  },
 ];

@@ -1,12 +1,31 @@
 import { tabService, TAB_SERVICE_DATA } from "../tabService";
-import { CLIENT_MESSAGES } from "common/constants";
-import { buildCompletedEntry, buildErrorEntry, CorrelationData, NetworkHarEntry } from "./harBuilder";
+import { CLIENT_MESSAGES, EXTENSION_MESSAGES } from "common/constants";
+import { injectWebAccessibleScript } from "../utils";
+import {
+  buildCompletedEntry,
+  buildErrorEntry,
+  buildSdkEntry,
+  CorrelationData,
+  NetworkHarEntry,
+  SdkNetworkPayload,
+} from "./harBuilder";
+
+// Recording config from the LTS start call. All optional.
+// - maxDuration: time cap (no cap when omitted; see isOverMaxDuration).
+// - maxPayloadSize: per-body cap (bytes) applied to SDK-captured request/response bodies (v2);
+//   defaults to DEFAULT_MAX_PAYLOAD_SIZE when omitted.
+export interface NetworkRecordingConfig {
+  maxDuration?: number;
+  maxPayloadSize?: number;
+}
+
+const DEFAULT_MAX_PAYLOAD_SIZE = 100 * 1024; // 100 KB, matches the web-sdk SessionRecorder default
 
 interface NetworkRecordingState {
   targetTabId: number;
   url: string;
   startTime: number;
-  config: { maxDuration?: number };
+  config: NetworkRecordingConfig;
   // The LTS tab/window that started the recording. On stop we return focus here.
   // Both may be gone by stop time (user closed the tab/window mid-recording).
   senderTabId?: number;
@@ -105,8 +124,14 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 });
 // -------------------------------------------------------------------------------------------
 
+// XHR/Fetch are captured solely by the web-sdk Network interceptor (page script) in v2 — it
+// carries headers AND bodies. We hard-suppress the webRequest path for "xmlhttprequest" (the
+// resource type for both XHR and fetch) so there's exactly one source and no correlation needed.
+const isSdkOwnedRequest = (type: chrome.webRequest.ResourceType): boolean => type === "xmlhttprequest";
+
 const onBeforeSendHeaders = (details: chrome.webRequest.WebRequestHeadersDetails) => {
   if (!activeRecordings.has(details.tabId)) return;
+  if (isSdkOwnedRequest(details.type)) return; // SDK owns xhr/fetch; don't populate correlationMap for them
   correlationMap.set(details.requestId, {
     startTime: details.timeStamp,
     requestHeaders: details.requestHeaders,
@@ -128,6 +153,8 @@ const onRequestCompleted = (details: chrome.webRequest.WebResponseCacheDetails) 
     return;
   }
 
+  if (isSdkOwnedRequest(details.type)) return; // xhr/fetch come from the SDK page script, not webRequest
+
   const correlation = correlationMap.get(details.requestId);
   correlationMap.delete(details.requestId);
 
@@ -141,6 +168,8 @@ const IGNORED_ERRORS = new Set(["net::ERR_CACHE_MISS", "net::ERR_ABORTED", "net:
 const onRequestError = (details: chrome.webRequest.WebResponseErrorDetails) => {
   const recording = activeRecordings.get(details.tabId);
   if (!recording) return;
+
+  if (isSdkOwnedRequest(details.type)) return; // xhr/fetch come from the SDK page script, not webRequest
 
   const correlation = correlationMap.get(details.requestId);
   correlationMap.delete(details.requestId);
@@ -172,6 +201,21 @@ const deliverEntry = (tabId: number, entry: NetworkHarEntry) => {
       // Port died between events; onDisconnect will clean it up.
     }
   });
+};
+
+/**
+ * v2: an XHR/Fetch body+headers captured by the SDK page script (networkBodyRecorder) arrives
+ * here via the content-script relay. These are the SOLE source for xhr/fetch (webRequest is
+ * hard-suppressed for them), so we just build the HAR entry and feed the same buffer + stream
+ * path as v1 — no correlation. `tabId` comes from the message sender.
+ */
+export const onNetworkBodyCaptured = (tabId: number | undefined, payload: SdkNetworkPayload | undefined) => {
+  if (tabId === undefined || !payload) return;
+  if (!activeRecordings.has(tabId)) return; // not recording this tab (stale page script / race)
+
+  const entry = buildSdkEntry(payload, nextRequestId());
+  recordingEntries.get(tabId)?.push(entry);
+  deliverEntry(tabId, entry);
 };
 
 // Why a recording ended — drives the message the side panel shows.
@@ -310,6 +354,44 @@ export const initNetworkRecordingPort = () => {
   });
 };
 
+// --- v2 body capture: inject the web-sdk Network interceptor into the recorded tab ----------
+// The web-sdk UMD exposes the global `Requestly` (incl. Network); networkBodyRecorder.ps.js uses
+// it. Both are MAIN-world. executeScript is one-shot, so we re-inject on each navigation of the
+// recorded tab (handled by chrome.webNavigation.onCommitted below). The content-script relay
+// forwards the start/stop control signals to the page script.
+
+const injectBodyRecorder = async (tabId: number, frameId = 0) => {
+  try {
+    // 1) web-sdk UMD lib (exposes global Requestly.Network)
+    await injectWebAccessibleScript("libs/requestly-web-sdk.js", { tabId, frameIds: [frameId] });
+    // 2) our page script that registers the interceptor
+    await injectWebAccessibleScript("page-scripts/networkBodyRecorder.ps.js", { tabId, frameIds: [frameId] });
+    // 3) start signal with the resolved caps (relayed by the content script to the page)
+    sendBodyCaptureSignal(tabId, EXTENSION_MESSAGES.START_NETWORK_BODY_CAPTURE);
+  } catch {
+    // Injection can fail on restricted pages (e.g. chrome://, strict CSP) — body capture is
+    // best-effort; webRequest still covers non-xhr/fetch. Don't break the recording.
+  }
+};
+
+const sendBodyCaptureSignal = (tabId: number, action: string) => {
+  const recording = activeRecordings.get(tabId);
+  const payload =
+    action === EXTENSION_MESSAGES.START_NETWORK_BODY_CAPTURE
+      ? { maxPayloadSize: recording?.config.maxPayloadSize, ignoreMediaResponse: true }
+      : undefined;
+  // Relayed by the client content script → page (source "requestly:extension").
+  chrome.tabs.sendMessage(tabId, { action, payload }).catch(() => {});
+};
+
+// Re-inject on navigation of a recorded tab (executeScript is one-shot). Single-tab scoped,
+// matching v1's model. Gated to active recordings; main frame only.
+chrome.webNavigation.onCommitted.addListener((details) => {
+  if (details.frameId !== 0) return;
+  if (!activeRecordings.has(details.tabId)) return;
+  injectBodyRecorder(details.tabId, 0);
+});
+
 // Firefox exposes sidebarAction only on the `browser.*` namespace, not the `chrome` alias.
 const firefoxSidebar = (globalThis as any).browser?.sidebarAction as { open?: () => Promise<void> } | undefined;
 
@@ -331,7 +413,7 @@ const openPanel = (tabId: number) => {
 
 export const startNetworkRecording = (
   url: string,
-  config: { maxDuration?: number } = {},
+  config: NetworkRecordingConfig = {},
   sender?: { tabId?: number; windowId?: number }
 ): Promise<{ success: boolean; targetTabId?: number; error?: string }> => {
   if (!url || !isValidUrl(url)) {
@@ -349,7 +431,9 @@ export const startNetworkRecording = (
         targetTabId: tab.id,
         url,
         startTime: Date.now(),
-        config,
+        // Resolve maxPayloadSize to its default now so the body page script (v2) can read a
+        // concrete cap off state without re-defaulting. maxDuration stays undefined = no cap.
+        config: { ...config, maxPayloadSize: config.maxPayloadSize ?? DEFAULT_MAX_PAYLOAD_SIZE },
         senderTabId: sender?.tabId,
         senderWindowId: sender?.windowId,
       };
@@ -361,6 +445,9 @@ export const startNetworkRecording = (
       addWebRequestListeners();
       startKeepalive();
       openPanel(tab.id);
+      // v2: inject the body recorder now (covers the initial load); webNavigation.onCommitted
+      // re-injects on later navigations. Idempotent — the page script guards re-registration.
+      injectBodyRecorder(tab.id, 0);
 
       resolve({ success: true, targetTabId: tab.id });
     });
@@ -447,6 +534,8 @@ export const stopNetworkRecording = (
   streamCompleteToPorts(targetTabId);
   // Tell the side panel why it ended so it can show the right stopped state / banner.
   notifyPanelEnded(targetTabId, reason);
+  // v2: tell the page script to stop capturing bodies (gates its callback off; no clearInterceptors).
+  sendBodyCaptureSignal(targetTabId, EXTENSION_MESSAGES.STOP_NETWORK_BODY_CAPTURE);
 
   activeRecordings.delete(targetTabId);
   recordingEntries.delete(targetTabId);
