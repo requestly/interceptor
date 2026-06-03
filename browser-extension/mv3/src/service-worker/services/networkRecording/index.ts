@@ -1,6 +1,7 @@
 import { tabService, TAB_SERVICE_DATA } from "../tabService";
 import { CLIENT_MESSAGES, EXTENSION_MESSAGES } from "common/constants";
 import { injectWebAccessibleScript } from "../utils";
+import { isExtensionEnabled } from "../../../utils";
 import { onVariableChange, Variable } from "../../variable";
 import {
   buildCompletedEntry,
@@ -403,14 +404,23 @@ chrome.webNavigation.onCommitted.addListener((details) => {
   injectBodyRecorder(details.tabId, 0);
 });
 
+// Synchronously-readable copy of IS_EXTENSION_ENABLED, so startNetworkRecording can reject a start
+// while the extension is off WITHOUT an async storage read — an await there would push
+// sidePanel.open() past its user-gesture window and the panel would never open. Seeded at init and
+// kept fresh via onVariableChange (the same cache pattern clientHandler uses). Optimistic default
+// (true) covers the tiny window before the seed resolves; the SW seeds long before any LTS call.
+let isExtensionEnabledCache = true;
+
 /**
- * Stop every active recording if the extension is turned off mid-recording. The recorder's
- * webRequest listeners are independent of the extension-enabled flag, so without this a recording
- * would keep capturing while the UI says "disabled". Each stop runs the normal teardown — LTS gets
- * `complete` + a fetchable summary, the panel shows the disabled banner.
+ * Seed the enabled cache and stop every active recording if the extension is turned off
+ * mid-recording. The recorder's webRequest listeners are independent of the extension-enabled flag,
+ * so without this a recording would keep capturing while the UI says "disabled". Each stop runs the
+ * normal teardown — LTS gets `complete` + a fetchable summary, the panel shows the disabled banner.
  */
-export const initNetworkRecordingExtensionToggleListener = () => {
+export const initNetworkRecordingExtensionToggleListener = async () => {
+  isExtensionEnabledCache = await isExtensionEnabled();
   onVariableChange<boolean>(Variable.IS_EXTENSION_ENABLED, (enabled) => {
+    isExtensionEnabledCache = enabled;
     if (enabled) return;
     // Snapshot keys first — stopNetworkRecording mutates activeRecordings while we iterate.
     Array.from(activeRecordings.keys()).forEach((tabId) => stopNetworkRecording(tabId, "extension-disabled"));
@@ -443,6 +453,15 @@ export const startNetworkRecording = (
 ): Promise<{ success: boolean; targetTabId?: number; error?: string }> => {
   // NOTE: kept synchronous up to chrome.tabs.create (no await) so the LTS sendMessage user gesture
   // survives to the openPanel() call — chrome.sidePanel.open() requires an in-gesture call stack.
+  // Reject a start while the extension is off, so the UI never says "disabled" with a live
+  // recording. Read from the in-memory cache (NOT an await) to keep that path synchronous.
+  if (!isExtensionEnabledCache) {
+    return Promise.resolve({
+      success: false,
+      error: "Requestly extension is disabled. Enable it to start a recording.",
+    });
+  }
+
   if (!url || !isValidUrl(url)) {
     return Promise.resolve({ success: false, error: "Invalid URL. Must be a valid http or https URL." });
   }
