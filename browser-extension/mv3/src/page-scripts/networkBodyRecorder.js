@@ -8,8 +8,9 @@ import { CLIENT_MESSAGES, EXTENSION_MESSAGES } from "common/constants";
  * module session recording uses), which sees request + response headers AND bodies. The service
  * worker hard-suppresses webRequest for xhr/fetch, so this is their sole source — no correlation.
  *
- * The web-sdk UMD (`libs/requestly-web-sdk.js`) is injected before this script and exposes the
- * global `Requestly`, so we call `Requestly.Network.intercept(...)` (no import/bundle needed).
+ * The web-sdk UMD (`libs/requestly-web-sdk.js`) is injected before this script and declares a
+ * top-level `var Requestly` (global binding), so we call `Requestly.Network.intercept(...)`
+ * directly — no import/bundle needed. (Same global-reference style as sessionRecorderHelper.js.)
  *
  * Caps: Network.intercept has no size options — those live only on SessionRecorder — so we port
  * its `#filterOutLargeNetworkValues` here (media-skip + per-body maxPayloadSize, with error flags).
@@ -67,10 +68,13 @@ const applyCaps = (data, cfg) => {
 
   const registerInterceptorOnce = () => {
     if (registered) return;
-    if (!window.Requestly?.Network?.intercept) return; // UMD not present yet; start signal will retry
+    // The web-sdk UMD declares a top-level `var Requestly`; reference it bare (same as
+    // sessionRecorderHelper.js does with `Requestly.SessionRecorder`) rather than via window,
+    // so it resolves the global binding regardless of how the file scope reflects onto window.
+    if (typeof Requestly === "undefined" || !Requestly?.Network?.intercept) return; // UMD not present yet
     registered = true;
     // overrideResponse=false → observe only, never block/alter the real response.
-    window.Requestly.Network.intercept(
+    Requestly.Network.intercept(
       /.*/,
       (data) => {
         if (!enabled) return;
