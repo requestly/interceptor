@@ -1,5 +1,7 @@
 import { tabService, TAB_SERVICE_DATA } from "../tabService";
 import { CLIENT_MESSAGES } from "common/constants";
+import { isExtensionEnabled } from "../../../utils";
+import { onVariableChange, Variable } from "../../variable";
 import { buildCompletedEntry, buildErrorEntry, CorrelationData, NetworkHarEntry } from "./harBuilder";
 
 interface NetworkRecordingState {
@@ -175,11 +177,12 @@ const deliverEntry = (tabId: number, entry: NetworkHarEntry) => {
 };
 
 // Why a recording ended — drives the message the side panel shows.
-//   user            – the user clicked Stop in the panel (no banner; just "Stopped")
-//   max-duration    – config.maxDuration elapsed (amber banner)
-//   connection-lost – the LTS port disconnected and no reconnect within the grace window (red)
-//   tab-closed      – the recorded tab was removed (panel is gone with it; informational only)
-type StopReason = "user" | "max-duration" | "connection-lost" | "tab-closed";
+//   user               – the user clicked Stop in the panel (no banner; just "Stopped")
+//   max-duration       – config.maxDuration elapsed (amber banner)
+//   connection-lost    – the LTS port disconnected and no reconnect within the grace window (red)
+//   tab-closed         – the recorded tab was removed (panel is gone with it; informational only)
+//   extension-disabled – the Requestly extension was toggled off mid-recording (red banner)
+type StopReason = "user" | "max-duration" | "connection-lost" | "tab-closed" | "extension-disabled";
 
 /** Tell the side panel a recording ended and why, so it can flip to a stopped state with the
  *  right banner. Fire-and-forget — the panel may already be closed. */
@@ -310,6 +313,20 @@ export const initNetworkRecordingPort = () => {
   });
 };
 
+/**
+ * Stop every active recording if the extension is turned off mid-recording. The recorder's
+ * webRequest listeners are independent of the extension-enabled flag, so without this a recording
+ * would keep capturing while the UI says "disabled". Each stop runs the normal teardown — LTS gets
+ * `complete` + a fetchable summary, the panel shows the disabled banner.
+ */
+export const initNetworkRecordingExtensionToggleListener = () => {
+  onVariableChange<boolean>(Variable.IS_EXTENSION_ENABLED, (enabled) => {
+    if (enabled) return;
+    // Snapshot keys first — stopNetworkRecording mutates activeRecordings while we iterate.
+    Array.from(activeRecordings.keys()).forEach((tabId) => stopNetworkRecording(tabId, "extension-disabled"));
+  });
+};
+
 // Firefox exposes sidebarAction only on the `browser.*` namespace, not the `chrome` alias.
 const firefoxSidebar = (globalThis as any).browser?.sidebarAction as { open?: () => Promise<void> } | undefined;
 
@@ -329,13 +346,20 @@ const openPanel = (tabId: number) => {
   // Safari / other: no panel API → no-op (capture + streaming still work).
 };
 
-export const startNetworkRecording = (
+export const startNetworkRecording = async (
   url: string,
   config: { maxDuration?: number } = {},
   sender?: { tabId?: number; windowId?: number }
 ): Promise<{ success: boolean; targetTabId?: number; error?: string }> => {
+  // Don't start a recording while the extension is off — the user-facing state would be
+  // inconsistent (UI says "disabled" yet a recording + panel are live). Return a structured
+  // error so LTS can surface "enable the Requestly extension" instead of getting an empty HAR.
+  if (!(await isExtensionEnabled())) {
+    return { success: false, error: "Requestly extension is disabled. Enable it to start a recording." };
+  }
+
   if (!url || !isValidUrl(url)) {
-    return Promise.resolve({ success: false, error: "Invalid URL. Must be a valid http or https URL." });
+    return { success: false, error: "Invalid URL. Must be a valid http or https URL." };
   }
 
   return new Promise((resolve) => {
