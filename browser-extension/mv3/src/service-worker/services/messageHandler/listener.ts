@@ -46,11 +46,14 @@ export const initExternalMessageListener = () => {
   chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
     switch (message.action) {
       case EXTENSION_EXTERNAL_MESSAGES.GET_EXTENSION_METADATA:
-        sendResponse({
-          name: chrome.runtime.getManifest().name,
-          version: chrome.runtime.getManifest().version,
+        isExtensionEnabled().then((enabled) => {
+          sendResponse({
+            name: chrome.runtime.getManifest().name,
+            version: chrome.runtime.getManifest().version,
+            isExtensionEnabled: enabled,
+          });
         });
-        break;
+        return true;
 
       case EXTENSION_EXTERNAL_MESSAGES.START_NETWORK_RECORDING:
         startNetworkRecording(message.payload?.url, message.payload?.config || {}, {
