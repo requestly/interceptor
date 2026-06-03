@@ -71,7 +71,6 @@
     ]
   },
   "permissions": [
-    "alarms",
     "contextMenus",
     "declarativeNetRequest",
     "proxy",
