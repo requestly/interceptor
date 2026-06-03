@@ -517,7 +517,13 @@ export const stopNetworkRecording = (
   stopKeepaliveIfIdle();
 
   // Leave the panel open showing the stopped state + reason banner; the user closes it.
-  returnFocusToSender(recording);
+  // Don't yank focus on an extension-disabled stop: that's a side effect of the user toggling
+  // the extension off, not a recording they were watching finishing — moving them to another
+  // tab would be surprising. The banner already tells them why it stopped. Other reasons
+  // (user / max-duration / connection-lost) return the user to their LTS context.
+  if (reason !== "extension-disabled") {
+    returnFocusToSender(recording);
+  }
 
   return { success: true };
 };
