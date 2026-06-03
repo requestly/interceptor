@@ -1,5 +1,6 @@
 import { tabService, TAB_SERVICE_DATA } from "../tabService";
 import { CLIENT_MESSAGES, EXTENSION_MESSAGES } from "common/constants";
+import { ChangeType } from "common/storage";
 import { injectWebAccessibleScript } from "../utils";
 import { isExtensionEnabled } from "../../../utils";
 import { onVariableChange, Variable } from "../../variable";
@@ -158,7 +159,7 @@ const onRequestCompleted = (details: chrome.webRequest.WebResponseCacheDetails) 
   const recording = activeRecordings.get(details.tabId);
   if (!recording) return;
 
-  // Prompt auto-stop on a busy page; the alarm tick is the backstop for a quiet page.
+  // Prompt auto-stop on a busy page; the per-recording setTimeout is the backstop for a quiet page.
   if (isOverMaxDuration(recording)) {
     stopNetworkRecording(details.tabId, "max-duration");
     return;
@@ -419,12 +420,18 @@ let isExtensionEnabledCache = true;
  */
 export const initNetworkRecordingExtensionToggleListener = async () => {
   isExtensionEnabledCache = await isExtensionEnabled();
-  onVariableChange<boolean>(Variable.IS_EXTENSION_ENABLED, (enabled) => {
-    isExtensionEnabledCache = enabled;
-    if (enabled) return;
-    // Snapshot keys first — stopNetworkRecording mutates activeRecordings while we iterate.
-    Array.from(activeRecordings.keys()).forEach((tabId) => stopNetworkRecording(tabId, "extension-disabled"));
-  });
+  onVariableChange<boolean>(
+    Variable.IS_EXTENSION_ENABLED,
+    (enabled) => {
+      isExtensionEnabledCache = enabled;
+      if (enabled) return;
+      // Snapshot keys first — stopNetworkRecording mutates activeRecordings while we iterate.
+      Array.from(activeRecordings.keys()).forEach((tabId) => stopNetworkRecording(tabId, "extension-disabled"));
+    },
+    // Catch CREATED too: the flag is lazily stored, so the first time the user disables it the
+    // write is a CREATED change (no prior value), which the default MODIFIED-only filter drops.
+    [ChangeType.MODIFIED, ChangeType.CREATED]
+  );
 };
 
 // Firefox exposes sidebarAction only on the `browser.*` namespace, not the `chrome` alias.
