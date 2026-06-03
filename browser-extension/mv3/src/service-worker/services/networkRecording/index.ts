@@ -340,13 +340,19 @@ const firefoxSidebar = (globalThis as any).browser?.sidebarAction as { open?: ()
 
 const openPanel = (tabId: number) => {
   if (sidePanelApi) {
-    // Chrome / Edge: per-tab side panel.
-    sidePanelApi.setOptions({
-      tabId,
-      path: "sidepanel/network-recording/index.html",
-      enabled: true,
-    });
-    sidePanelApi.open({ tabId }).catch(() => {});
+    // Chrome / Edge: register the per-tab panel first, then open. open() must follow setOptions
+    // so it targets the enabled per-tab path rather than racing the registration.
+    sidePanelApi
+      .setOptions({
+        tabId,
+        path: "sidepanel/network-recording/index.html",
+        enabled: true,
+      })
+      .then(() => sidePanelApi.open({ tabId }))
+      // TODO(network-recording): temporary logging to confirm whether open() succeeds from the
+      // CLIENT_PAGE_LOADED path (vs. being blocked by the user-gesture requirement). Remove once
+      // the panel-open strategy is confirmed.
+      .catch((e) => console.warn("[network-recording] sidePanel open failed:", e));
   } else if (firefoxSidebar?.open) {
     // Firefox: global sidebar (auto-open validated on FF 151, no user gesture needed).
     firefoxSidebar.open().catch(() => {});
@@ -399,7 +405,10 @@ export const startNetworkRecording = async (
 
       addWebRequestListeners();
       startKeepalive();
-      openPanel(tab.id);
+      // Panel opening is decoupled from tab creation: the NETWORK_RECORDING tab flag is set above,
+      // and handleNetworkRecordingOnClientPageLoad opens the panel on CLIENT_PAGE_LOADED once the
+      // new tab's page loads. This matches the session-recording pattern and avoids opening the
+      // side panel off this external-message path (where the user-gesture window is already gone).
 
       resolve({ success: true, targetTabId: tab.id });
     });
