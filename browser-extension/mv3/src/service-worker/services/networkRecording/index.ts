@@ -1,6 +1,5 @@
 import { tabService, TAB_SERVICE_DATA } from "../tabService";
 import { CLIENT_MESSAGES } from "common/constants";
-import { isExtensionEnabled } from "../../../utils";
 import { onVariableChange, Variable } from "../../variable";
 import { buildCompletedEntry, buildErrorEntry, CorrelationData, NetworkHarEntry } from "./harBuilder";
 
@@ -340,19 +339,13 @@ const firefoxSidebar = (globalThis as any).browser?.sidebarAction as { open?: ()
 
 const openPanel = (tabId: number) => {
   if (sidePanelApi) {
-    // Chrome / Edge: register the per-tab panel first, then open. open() must follow setOptions
-    // so it targets the enabled per-tab path rather than racing the registration.
-    sidePanelApi
-      .setOptions({
-        tabId,
-        path: "sidepanel/network-recording/index.html",
-        enabled: true,
-      })
-      .then(() => sidePanelApi.open({ tabId }))
-      // TODO(network-recording): temporary logging to confirm whether open() succeeds from the
-      // CLIENT_PAGE_LOADED path (vs. being blocked by the user-gesture requirement). Remove once
-      // the panel-open strategy is confirmed.
-      .catch((e) => console.warn("[network-recording] sidePanel open failed:", e));
+    // Chrome / Edge: per-tab side panel.
+    sidePanelApi.setOptions({
+      tabId,
+      path: "sidepanel/network-recording/index.html",
+      enabled: true,
+    });
+    sidePanelApi.open({ tabId }).catch(() => {});
   } else if (firefoxSidebar?.open) {
     // Firefox: global sidebar (auto-open validated on FF 151, no user gesture needed).
     firefoxSidebar.open().catch(() => {});
@@ -360,20 +353,13 @@ const openPanel = (tabId: number) => {
   // Safari / other: no panel API → no-op (capture + streaming still work).
 };
 
-export const startNetworkRecording = async (
+export const startNetworkRecording = (
   url: string,
   config: { maxDuration?: number } = {},
   sender?: { tabId?: number; windowId?: number }
 ): Promise<{ success: boolean; targetTabId?: number; error?: string }> => {
-  // Don't start a recording while the extension is off — the user-facing state would be
-  // inconsistent (UI says "disabled" yet a recording + panel are live). Return a structured
-  // error so LTS can surface "enable the Requestly extension" instead of getting an empty HAR.
-  if (!(await isExtensionEnabled())) {
-    return { success: false, error: "Requestly extension is disabled. Enable it to start a recording." };
-  }
-
   if (!url || !isValidUrl(url)) {
-    return { success: false, error: "Invalid URL. Must be a valid http or https URL." };
+    return Promise.resolve({ success: false, error: "Invalid URL. Must be a valid http or https URL." });
   }
 
   return new Promise((resolve) => {
@@ -405,10 +391,7 @@ export const startNetworkRecording = async (
 
       addWebRequestListeners();
       startKeepalive();
-      // Panel opening is decoupled from tab creation: the NETWORK_RECORDING tab flag is set above,
-      // and handleNetworkRecordingOnClientPageLoad opens the panel on CLIENT_PAGE_LOADED once the
-      // new tab's page loads. This matches the session-recording pattern and avoids opening the
-      // side panel off this external-message path (where the user-gesture window is already gone).
+      openPanel(tab.id);
 
       resolve({ success: true, targetTabId: tab.id });
     });
