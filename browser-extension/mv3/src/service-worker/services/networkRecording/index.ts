@@ -1,7 +1,6 @@
 import { tabService, TAB_SERVICE_DATA } from "../tabService";
 import { CLIENT_MESSAGES, EXTENSION_MESSAGES } from "common/constants";
 import { injectWebAccessibleScript } from "../utils";
-import { isExtensionEnabled } from "../../../utils";
 import { onVariableChange, Variable } from "../../variable";
 import {
   buildCompletedEntry,
@@ -443,20 +442,15 @@ const openPanel = (tabId: number) => {
   // Safari / other: no panel API → no-op (capture + streaming still work).
 };
 
-export const startNetworkRecording = async (
+export const startNetworkRecording = (
   url: string,
   config: NetworkRecordingConfig = {},
   sender?: { tabId?: number; windowId?: number }
 ): Promise<{ success: boolean; targetTabId?: number; error?: string }> => {
-  // Don't start a recording while the extension is off — the user-facing state would be
-  // inconsistent (UI says "disabled" yet a recording + panel are live). Return a structured
-  // error so LTS can surface "enable the Requestly extension" instead of getting an empty HAR.
-  if (!(await isExtensionEnabled())) {
-    return { success: false, error: "Requestly extension is disabled. Enable it to start a recording." };
-  }
-
+  // NOTE: kept synchronous up to chrome.tabs.create (no await) so the LTS sendMessage user gesture
+  // survives to the openPanel() call — chrome.sidePanel.open() requires an in-gesture call stack.
   if (!url || !isValidUrl(url)) {
-    return { success: false, error: "Invalid URL. Must be a valid http or https URL." };
+    return Promise.resolve({ success: false, error: "Invalid URL. Must be a valid http or https URL." });
   }
 
   return new Promise((resolve) => {
@@ -490,14 +484,15 @@ export const startNetworkRecording = async (
 
       addWebRequestListeners();
       startKeepalive();
-      // Panel opening is decoupled from tab creation: the NETWORK_RECORDING tab flag is set above,
-      // and handleNetworkRecordingOnClientPageLoad opens the panel on CLIENT_PAGE_LOADED once the
-      // new tab's page loads. This matches the session-recording pattern and avoids opening the
-      // side panel off this external-message path (where the user-gesture window is already gone).
-      //
-      // v2: the body recorder is injected the same way — webNavigation.onCommitted fires for this
-      // new tab's initial navigation (and every later one), so injectBodyRecorder runs there. No
-      // explicit inject here (it would be too early — the document isn't committed yet).
+      // Open the panel here, synchronously on the external-message path. chrome.sidePanel.open()
+      // requires a user gesture and must run within its call stack — the LTS sendMessage provides
+      // that gesture, but only as long as nothing awaits before this point (hence no async
+      // isExtensionEnabled check above). handleNetworkRecordingOnClientPageLoad re-opens it on
+      // later navigations of the recorded tab as a backstop.
+      openPanel(tab.id);
+      // v2: the body recorder is injected via webNavigation.onCommitted, which fires for this new
+      // tab's initial navigation (and every later one). No explicit inject here — it would be too
+      // early (the document isn't committed yet).
 
       resolve({ success: true, targetTabId: tab.id });
     });
