@@ -6,7 +6,7 @@ import { handleInstallUninstall } from "./services/installUninstall";
 import { initExternalMessageListener, initMessageHandler } from "./services/messageHandler/listener";
 import { initRulesManager } from "./services/rulesManager";
 import { initWebRequestInterceptor } from "./services/webRequestInterceptor";
-import { initNetworkRecordingPort } from "./services/networkRecording";
+import { initNetworkRecordingPort, initNetworkRecordingExtensionToggleListener } from "./services/networkRecording";
 
 // initialize
 (async () => {
@@ -21,4 +21,5 @@ import { initNetworkRecordingPort } from "./services/networkRecording";
   initWebRequestInterceptor();
   initDevtoolsListener();
   initNetworkRecordingPort();
+  initNetworkRecordingExtensionToggleListener();
 })();

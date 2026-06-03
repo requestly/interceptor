@@ -1,6 +1,8 @@
 import { tabService, TAB_SERVICE_DATA } from "../tabService";
 import { CLIENT_MESSAGES, EXTENSION_MESSAGES } from "common/constants";
 import { injectWebAccessibleScript } from "../utils";
+import { isExtensionEnabled } from "../../../utils";
+import { onVariableChange, Variable } from "../../variable";
 import {
   buildCompletedEntry,
   buildErrorEntry,
@@ -30,6 +32,8 @@ interface NetworkRecordingState {
   // Both may be gone by stop time (user closed the tab/window mid-recording).
   senderTabId?: number;
   senderWindowId?: number;
+  // Per-recording max-duration auto-stop timer (only set when config.maxDuration is given).
+  maxDurationTimer?: ReturnType<typeof setTimeout>;
 }
 
 // TODO(before-merge): replace with the real LTS fallback URL provided by the LTS team.
@@ -77,23 +81,36 @@ if (sidePanelApi) {
 // --- Service-worker keepalive ----------------------------------------------------------------
 // An open port does NOT keep an MV3 SW alive — only events/API calls reset the 30s idle timer.
 // During idle gaps (user reading a page, no requests firing) the SW would die and lose the
-// in-memory buffer. Prevention: a ~20s API-ping interval keeps the SW warm while a recording is
-// active. Backstop: a chrome.alarms tick (0.5min floor; sub-0.5 is clamped in packed builds)
-// survives SW death, re-wakes it, and runs the max-duration auto-stop + correlation-map sweep so
-// a quiet page still stops and stale correlation entries don't leak.
-const KEEPALIVE_ALARM = "nr-keepalive";
+// in-memory buffer. A ~20s API-ping interval (well under the 30s limit) keeps the SW warm for the
+// whole recording, so we don't need chrome.alarms: max-duration runs off a per-recording setTimeout
+// (see startNetworkRecording) and the correlation-map sweep piggybacks on the ping below.
+//
+// Accepted edge case: the SW can still be killed abruptly on OS sleep/wake regardless of the ping.
+// While asleep nothing is being recorded, so a max-duration "overrun" is meaningless; on wake the
+// next network event (onCompleted's inline isOverMaxDuration check) or the next ping stops it — a
+// few seconds' delay on a fully idle tab, never lost data. Not worth an alarms permission to cover.
 const KEEPALIVE_PING_MS = 20_000;
 const CORRELATION_TTL_MS = 60_000;
 let keepalivePingId: ReturnType<typeof setInterval> | undefined;
 
+const sweepStaleCorrelations = () => {
+  const now = Date.now();
+  correlationMap.forEach((data, requestId) => {
+    if (now - data.startTime > CORRELATION_TTL_MS) {
+      correlationMap.delete(requestId);
+    }
+  });
+};
+
 const startKeepalive = () => {
-  if (keepalivePingId === undefined) {
-    keepalivePingId = setInterval(() => {
-      // Any extension API call resets the SW idle timer.
-      chrome.runtime.getPlatformInfo().catch(() => {});
-    }, KEEPALIVE_PING_MS);
-  }
-  chrome.alarms.create(KEEPALIVE_ALARM, { periodInMinutes: 0.5 });
+  if (keepalivePingId !== undefined) return;
+  keepalivePingId = setInterval(() => {
+    // Any extension API call resets the SW idle timer.
+    chrome.runtime.getPlatformInfo().catch(() => {});
+    // Sweep orphaned correlation entries (request started, never completed/errored) so they
+    // don't leak. Normal entries are deleted on completion; this is only the un-correlated tail.
+    sweepStaleCorrelations();
+  }, KEEPALIVE_PING_MS);
 };
 
 const stopKeepaliveIfIdle = () => {
@@ -102,31 +119,25 @@ const stopKeepaliveIfIdle = () => {
     clearInterval(keepalivePingId);
     keepalivePingId = undefined;
   }
-  chrome.alarms.clear(KEEPALIVE_ALARM);
 };
-
-// Alarm tick: enforce max-duration even on quiet pages, and sweep stale correlation entries.
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name !== KEEPALIVE_ALARM) return;
-
-  activeRecordings.forEach((recording, tabId) => {
-    if (isOverMaxDuration(recording)) {
-      stopNetworkRecording(tabId, "max-duration");
-    }
-  });
-
-  const now = Date.now();
-  correlationMap.forEach((data, requestId) => {
-    if (now - data.startTime > CORRELATION_TTL_MS) {
-      correlationMap.delete(requestId);
-    }
-  });
-});
 // -------------------------------------------------------------------------------------------
 
-// XHR/Fetch are captured solely by the web-sdk Network interceptor (page script) in v2 — it
-// carries headers AND bodies. We hard-suppress the webRequest path for "xmlhttprequest" (the
-// resource type for both XHR and fetch) so there's exactly one source and no correlation needed.
+// --- Request/response correlation -----------------------------------------------------------
+// A HAR entry needs request-side data (start time, request headers) AND response-side data
+// (status, response headers, timing), but those arrive on two different webRequest events. We
+// stitch them via correlationMap, keyed by the browser's details.requestId (NOT the LTS-facing
+// _request_id — that's a separate per-entry UUID):
+//   1. onBeforeSendHeaders  → store { startTime, requestHeaders } keyed by requestId.
+//   2. onCompleted/onError  → look up + delete that entry (one-shot), merge with response data
+//      into one HAR entry via buildCompletedEntry/buildErrorEntry.
+//   3. Cache hits have no onBeforeSendHeaders → correlation is undefined; the builder falls back
+//      to details.timeStamp + empty request headers. Expected, not an error.
+//   4. Orphans (started, never completed/errored — cancelled, navigated away) are swept by the
+//      CORRELATION_TTL_MS pass in the keepalive ping.
+//
+// v2: XHR/Fetch are captured solely by the web-sdk Network interceptor (page script) — it carries
+// headers AND bodies. We hard-suppress the webRequest path for "xmlhttprequest" (the resource type
+// for both XHR and fetch) so there's exactly one source and no correlation needed for them.
 const isSdkOwnedRequest = (type: chrome.webRequest.ResourceType): boolean => type === "xmlhttprequest";
 
 const onBeforeSendHeaders = (details: chrome.webRequest.WebRequestHeadersDetails) => {
@@ -219,11 +230,12 @@ export const onNetworkBodyCaptured = (tabId: number | undefined, payload: SdkNet
 };
 
 // Why a recording ended — drives the message the side panel shows.
-//   user            – the user clicked Stop in the panel (no banner; just "Stopped")
-//   max-duration    – config.maxDuration elapsed (amber banner)
-//   connection-lost – the LTS port disconnected and no reconnect within the grace window (red)
-//   tab-closed      – the recorded tab was removed (panel is gone with it; informational only)
-type StopReason = "user" | "max-duration" | "connection-lost" | "tab-closed";
+//   user               – the user clicked Stop in the panel (no banner; just "Stopped")
+//   max-duration       – config.maxDuration elapsed (amber banner)
+//   connection-lost    – the LTS port disconnected and no reconnect within the grace window (red)
+//   tab-closed         – the recorded tab was removed (panel is gone with it; informational only)
+//   extension-disabled – the Requestly extension was toggled off mid-recording (red banner)
+type StopReason = "user" | "max-duration" | "connection-lost" | "tab-closed" | "extension-disabled";
 
 /** Tell the side panel a recording ended and why, so it can flip to a stopped state with the
  *  right banner. Fire-and-forget — the panel may already be closed. */
@@ -392,6 +404,20 @@ chrome.webNavigation.onCommitted.addListener((details) => {
   injectBodyRecorder(details.tabId, 0);
 });
 
+/**
+ * Stop every active recording if the extension is turned off mid-recording. The recorder's
+ * webRequest listeners are independent of the extension-enabled flag, so without this a recording
+ * would keep capturing while the UI says "disabled". Each stop runs the normal teardown — LTS gets
+ * `complete` + a fetchable summary, the panel shows the disabled banner.
+ */
+export const initNetworkRecordingExtensionToggleListener = () => {
+  onVariableChange<boolean>(Variable.IS_EXTENSION_ENABLED, (enabled) => {
+    if (enabled) return;
+    // Snapshot keys first — stopNetworkRecording mutates activeRecordings while we iterate.
+    Array.from(activeRecordings.keys()).forEach((tabId) => stopNetworkRecording(tabId, "extension-disabled"));
+  });
+};
+
 // Firefox exposes sidebarAction only on the `browser.*` namespace, not the `chrome` alias.
 const firefoxSidebar = (globalThis as any).browser?.sidebarAction as { open?: () => Promise<void> } | undefined;
 
@@ -411,13 +437,20 @@ const openPanel = (tabId: number) => {
   // Safari / other: no panel API → no-op (capture + streaming still work).
 };
 
-export const startNetworkRecording = (
+export const startNetworkRecording = async (
   url: string,
   config: NetworkRecordingConfig = {},
   sender?: { tabId?: number; windowId?: number }
 ): Promise<{ success: boolean; targetTabId?: number; error?: string }> => {
+  // Don't start a recording while the extension is off — the user-facing state would be
+  // inconsistent (UI says "disabled" yet a recording + panel are live). Return a structured
+  // error so LTS can surface "enable the Requestly extension" instead of getting an empty HAR.
+  if (!(await isExtensionEnabled())) {
+    return { success: false, error: "Requestly extension is disabled. Enable it to start a recording." };
+  }
+
   if (!url || !isValidUrl(url)) {
-    return Promise.resolve({ success: false, error: "Invalid URL. Must be a valid http or https URL." });
+    return { success: false, error: "Invalid URL. Must be a valid http or https URL." };
   }
 
   return new Promise((resolve) => {
@@ -441,6 +474,13 @@ export const startNetworkRecording = (
       activeRecordings.set(tab.id, state);
       recordingEntries.set(tab.id, []);
       tabService.setData(tab.id, TAB_SERVICE_DATA.NETWORK_RECORDING, { active: true });
+
+      // Max-duration auto-stop. The keepalive ping keeps the SW alive so this timer fires; the
+      // inline isOverMaxDuration check in onCompleted is the fast path on a busy page. (See the
+      // sleep/wake caveat in the keepalive comment — the only case this timer can be late.)
+      if (config.maxDuration !== undefined) {
+        state.maxDurationTimer = setTimeout(() => stopNetworkRecording(tab.id!, "max-duration"), config.maxDuration);
+      }
 
       addWebRequestListeners();
       startKeepalive();
@@ -523,6 +563,7 @@ export const stopNetworkRecording = (
 
   const entries = recordingEntries.get(targetTabId) || [];
 
+  if (recording.maxDurationTimer !== undefined) clearTimeout(recording.maxDurationTimer);
   cancelDisconnectGrace(targetTabId);
 
   // Stop returns { success } only. Whoever holds the stream (LTS) learns of the end via the
@@ -607,6 +648,7 @@ const cleanupRecording = (tabId: number) => {
   cancelDisconnectGrace(tabId);
   const recording = activeRecordings.get(tabId);
   if (recording) {
+    if (recording.maxDurationTimer !== undefined) clearTimeout(recording.maxDurationTimer);
     retainSummary(buildSummary(recording, recordingEntries.get(tabId)?.length ?? 0));
   }
   streamCompleteToPorts(tabId);
