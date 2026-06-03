@@ -613,7 +613,13 @@ export const stopNetworkRecording = (
   stopKeepaliveIfIdle();
 
   // Leave the panel open showing the stopped state + reason banner; the user closes it.
-  returnFocusToSender(recording);
+  // Return focus to the LTS context ONLY when the user themselves ended the recording (clicked
+  // Stop). Every other reason — max-duration, connection-lost, extension-disabled — is a
+  // background/system event, not an action on this recording; yanking the user's focus on top of
+  // the banner that already explains what happened would be surprising.
+  if (reason === "user") {
+    returnFocusToSender(recording);
+  }
 
   return { success: true };
 };
