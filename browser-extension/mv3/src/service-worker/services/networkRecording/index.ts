@@ -439,10 +439,12 @@ const firefoxSidebar = (globalThis as any).browser?.sidebarAction as { open?: ()
 
 const openPanel = (tabId: number) => {
   if (sidePanelApi) {
-    // Chrome / Edge: per-tab side panel.
+    // Chrome / Edge: per-tab side panel. Pass targetTabId in the path so the panel binds to THIS
+    // recording deterministically — it must not infer its tab from tabs.query({active:true}),
+    // which mis-binds when multiple tabs are recording concurrently.
     sidePanelApi.setOptions({
       tabId,
-      path: "sidepanel/network-recording/index.html",
+      path: `sidepanel/network-recording/index.html?tabId=${tabId}`,
       enabled: true,
     });
     sidePanelApi.open({ tabId }).catch(() => {});
@@ -658,7 +660,7 @@ export const getNetworkRecordingSummary = (
 
 export const getNetworkRecordingState = (
   tabId: number
-): { active: boolean; entries: NetworkHarEntry[]; startTime: number } | null => {
+): { active: boolean; entries: NetworkHarEntry[]; startTime: number; url: string } | null => {
   const recording = activeRecordings.get(tabId);
   if (!recording) return null;
 
@@ -666,6 +668,7 @@ export const getNetworkRecordingState = (
     active: true,
     entries: recordingEntries.get(tabId) || [],
     startTime: recording.startTime,
+    url: recording.url,
   };
 };
 

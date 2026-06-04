@@ -58,6 +58,15 @@ const applyCaps = (data, cfg) => {
 };
 
 (() => {
+  // Idempotency guard across re-injections into the SAME document. The SW re-injects this script
+  // on every webNavigation.onCommitted of the recorded tab, which also fires for same-document
+  // (history.pushState / hash) navigations — where the previous injection's IIFE and its
+  // Requestly.Network.intercept registration are still live. Without this, a second interceptor
+  // would register and every XHR/Fetch would be captured (and streamed) twice. The flag lives on
+  // window so it survives across separate injected-script scopes in the same document.
+  if (window.__rqNetworkBodyRecorderInstalled) return;
+  window.__rqNetworkBodyRecorderInstalled = true;
+
   let enabled = false;
   let registered = false;
   let cfg = { maxPayloadSize: 100 * 1024, ignoreMediaResponse: true };

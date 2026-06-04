@@ -66,20 +66,31 @@ const NetworkRecordingPanel: React.FC = () => {
 
   useEffect(() => {
     const init = async () => {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.id) return;
-      currentTabIdRef.current = tab.id;
-      try {
-        setTargetUrl(new URL(tab.url).hostname);
-      } catch {
-        setTargetUrl(tab.url || "");
+      // Bind to the recording this panel is for. On Chrome/Edge the SW opens the per-tab panel
+      // with ?tabId=<targetTabId>, so we read it from our own URL — deterministic even when
+      // multiple tabs are recording at once. Firefox has a single global sidebar (no per-tab URL),
+      // so fall back to the active tab; the sidebar then shows whichever recorded tab is active.
+      const tabIdParam = new URLSearchParams(window.location.search).get("tabId");
+      let tabId = tabIdParam ? Number(tabIdParam) : null;
+      if (tabId === null) {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        tabId = tab?.id ?? null;
       }
+      if (tabId === null) return;
+      currentTabIdRef.current = tabId;
 
-      chrome.runtime.sendMessage({ action: "getNetworkRecordingState", tabId: tab.id }, (response) => {
+      chrome.runtime.sendMessage({ action: "getNetworkRecordingState", tabId }, (response) => {
         if (response?.active) {
           setEntries(response.entries || []);
           setRecordingStartTime(response.startTime);
           setIsRecording(true);
+          // Header host comes from the recording's own URL (the SW's source of truth), not the
+          // active tab — important on Firefox where the active tab may not be the recorded one.
+          try {
+            setTargetUrl(new URL(response.url).hostname);
+          } catch {
+            setTargetUrl(response.url || "");
+          }
         }
       });
     };
