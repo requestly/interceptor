@@ -8,7 +8,7 @@ const ConfigureAndroidApps = () => {
           <List itemLayout="horizontal">
             <List.Item>
               <List.Item.Meta
-                title="You will need to make a custom build where you allow Requestly to read your newtwork traffic"
+                title="You will need to make a custom build where you allow Requestly to read your network traffic"
                 description="make sure to remove this from production builds"
               />
             </List.Item>
