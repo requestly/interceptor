@@ -47,11 +47,6 @@
   }
 }
 
-.label {
-  font-weight: 600;
-  flex: none;
-}
-
 .reopen {
   cursor: pointer;
   color: #4caf50;

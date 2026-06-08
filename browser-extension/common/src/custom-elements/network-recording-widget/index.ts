@@ -48,8 +48,7 @@ class RQNetworkRecordingWidget extends RQDraggableWidget {
     return `
       <style>${styles}</style>
       <div id="container">
-        <span class="recording-dot"></span>
-        <span class="label">Recording</span>
+        <span class="recording-dot" title="Recording"></span>
         <span class="reopen" title="Reopen the recording panel">Open panel</span>
       </div>
     `;
