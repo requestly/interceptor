@@ -70,16 +70,51 @@ const NETWORK_RECORDING_PORT = "network-recording";
 const nextRequestId = (): string => crypto.randomUUID();
 
 // Accessed dynamically so the Firefox build (which has no sidePanel) lints clean —
-// the chrome.sidePanel API surface is Chrome/Edge only.
+// the chrome.sidePanel API surface is Chrome/Edge only. onClosed/onOpened are Chrome 142+/141+,
+// so they're optional and feature-detected before use.
+type PanelInfo = { path: string; tabId?: number; windowId: number };
 const sidePanelApi = (chrome as any).sidePanel as
   | {
       setOptions: (opts: { tabId?: number; path?: string; enabled: boolean }) => Promise<void>;
       open: (opts: { tabId: number }) => Promise<void>;
+      onClosed?: { addListener: (cb: (info: PanelInfo) => void) => void };
+      onOpened?: { addListener: (cb: (info: PanelInfo) => void) => void };
     }
   | undefined;
 
 if (sidePanelApi) {
   sidePanelApi.setOptions({ enabled: false }).catch(() => {});
+
+  // When the recorded tab's panel is closed, show the floating reopen widget on that tab; hide it
+  // again when the panel reopens. Feature-detected (Chrome 142+/141+); older Chrome just won't get
+  // the widget.
+  //
+  // Resolve which recorded tab a panel open/close refers to. Chrome gives info.tabId only for
+  // tab-specific panels; if it's absent, fall back to an active recording.
+  const resolveRecordedTab = (info: PanelInfo): number | undefined => {
+    if (info.tabId !== undefined && activeRecordings.has(info.tabId)) return info.tabId;
+    if (info.tabId !== undefined) return undefined; // a different (non-recorded) panel
+    // No tabId: pick an active recording whose tab is in this window.
+    for (const [tabId] of activeRecordings) {
+      // best-effort; we don't store windowId, so just take the first active recording
+      return tabId;
+    }
+    return undefined;
+  };
+
+  sidePanelApi.onClosed?.addListener((info) => {
+    const tabId = resolveRecordedTab(info);
+    if (tabId !== undefined) {
+      chrome.tabs.sendMessage(tabId, { action: CLIENT_MESSAGES.SHOW_NETWORK_RECORDING_WIDGET }).catch(() => {});
+    }
+  });
+
+  sidePanelApi.onOpened?.addListener((info) => {
+    const tabId = resolveRecordedTab(info);
+    if (tabId !== undefined) {
+      chrome.tabs.sendMessage(tabId, { action: CLIENT_MESSAGES.HIDE_NETWORK_RECORDING_WIDGET }).catch(() => {});
+    }
+  });
 }
 
 // --- Service-worker keepalive ----------------------------------------------------------------
@@ -456,6 +491,17 @@ const openPanel = (tabId: number) => {
     firefoxSidebar.open().catch(() => {});
   }
   // Safari / other: no panel API → no-op (capture + streaming still work).
+};
+
+/**
+ * Reopen the panel for a recorded tab on request from the floating widget (the panel was closed).
+ * NOTE: sidePanel.open() requires a live user gesture; the widget-click → content-script →
+ * runtime.sendMessage → here hop loses it, so Chrome may reject this open(). First-pass to verify
+ * empirically — if it doesn't open, the reopen path needs a different mechanism.
+ */
+export const reopenNetworkRecordingPanel = (tabId: number | undefined) => {
+  if (tabId === undefined || !activeRecordings.has(tabId)) return;
+  openPanel(tabId);
 };
 
 export const startNetworkRecording = (

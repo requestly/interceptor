@@ -40,6 +40,7 @@ import {
   getNetworkRecordingSummary,
   handleNetworkRecordingOnClientPageLoad,
   onNetworkBodyCaptured,
+  reopenNetworkRecordingPanel,
 } from "../networkRecording";
 
 export const initExternalMessageListener = () => {
@@ -107,6 +108,11 @@ export const initMessageHandler = () => {
       case CLIENT_MESSAGES.NETWORK_BODY_CAPTURED:
         // Network Interceptor v2: an XHR/Fetch body+headers captured by the SDK page script.
         onNetworkBodyCaptured(sender.tab?.id, message.payload);
+        break;
+
+      case EXTENSION_MESSAGES.REOPEN_NETWORK_RECORDING_PANEL:
+        // Floating widget asked to reopen the closed side panel for this tab.
+        reopenNetworkRecordingPanel(sender.tab?.id);
         break;
 
       case EXTENSION_MESSAGES.START_RECORDING_EXPLICITLY:

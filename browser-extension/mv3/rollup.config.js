@@ -52,7 +52,10 @@ const processManifest = (content) => {
     };
 
     if (manifestJson.externally_connectable?.matches) {
+      // Dev/beta-only LTS test origins — never shipped to production (this whole block is gated on
+      // !isProductionBuildMode). The local harness and the local LTS page connect over http.
       manifestJson.externally_connectable.matches.push("http://localhost:3099/*");
+      manifestJson.externally_connectable.matches.push("http://load-local.bsstag.com/*");
     }
   }
 

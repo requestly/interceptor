@@ -48,6 +48,8 @@ export const EXTENSION_MESSAGES = {
   // v2 body capture: SW → client content script → page script (networkBodyRecorder) start/stop.
   START_NETWORK_BODY_CAPTURE: "startNetworkBodyCapture",
   STOP_NETWORK_BODY_CAPTURE: "stopNetworkBodyCapture",
+  // Floating widget: content script → SW request to reopen the closed side panel.
+  REOPEN_NETWORK_RECORDING_PANEL: "reopenNetworkRecordingPanel",
 };
 
 export const EXTENSION_EXTERNAL_MESSAGES = {
@@ -83,6 +85,9 @@ export const CLIENT_MESSAGES = {
   NETWORK_EVENT_CAPTURED: "networkEventCaptured",
   NETWORK_RECORDING_ENDED: "networkRecordingEnded",
   NETWORK_BODY_CAPTURED: "networkBodyCaptured",
+  // Floating widget: SW → content script to show/hide the on-page reopen widget.
+  SHOW_NETWORK_RECORDING_WIDGET: "showNetworkRecordingWidget",
+  HIDE_NETWORK_RECORDING_WIDGET: "hideNetworkRecordingWidget",
 };
 
 export const STORAGE_TYPE = "local";
