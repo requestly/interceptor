@@ -17,9 +17,12 @@ import {
 // - maxDuration: time cap (no cap when omitted; see isOverMaxDuration).
 // - maxPayloadSize: per-body cap (bytes) applied to SDK-captured request/response bodies (v2);
 //   defaults to DEFAULT_MAX_PAYLOAD_SIZE when omitted.
+// - fallbackUrl: where to send the user on stop if the originating LTS tab+window are both gone;
+//   defaults to DEFAULT_FALLBACK_URL when omitted.
 export interface NetworkRecordingConfig {
   maxDuration?: number;
   maxPayloadSize?: number;
+  fallbackUrl?: string;
 }
 
 const DEFAULT_MAX_PAYLOAD_SIZE = 100 * 1024; // 100 KB, matches the web-sdk SessionRecorder default
@@ -37,10 +40,10 @@ interface NetworkRecordingState {
   maxDurationTimer?: ReturnType<typeof setTimeout>;
 }
 
-// TODO(before-merge): replace with the real LTS fallback URL provided by the LTS team.
-// Used only when the originating LTS tab AND its window are both gone at stop time —
-// we open this so the user always lands back in an LTS context. Placeholder for now.
-const LTS_FALLBACK_URL = "https://www.browserstack.com";
+// Opened only when the originating LTS tab AND its window are both gone at stop time, so the user
+// lands back in an LTS context. LTS can override per-recording via config.fallbackUrl (e.g. a
+// session-specific deep link); this is the default when it doesn't.
+const DEFAULT_FALLBACK_URL = "https://www.browserstack.com";
 
 const activeRecordings = new Map<number, NetworkRecordingState>();
 const recordingEntries = new Map<number, NetworkHarEntry[]>();
@@ -551,7 +554,7 @@ const returnFocusToSender = (recording: NetworkRecordingState) => {
   const { senderTabId, senderWindowId } = recording;
 
   const openFallback = () => {
-    chrome.tabs.create({ url: LTS_FALLBACK_URL }).catch(() => {});
+    chrome.tabs.create({ url: recording.config.fallbackUrl || DEFAULT_FALLBACK_URL }).catch(() => {});
   };
 
   const tryWindowThenFallback = () => {
