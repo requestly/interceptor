@@ -69,7 +69,9 @@ const applyCaps = (data, cfg) => {
 
   let enabled = false;
   let registered = false;
-  let cfg = { maxPayloadSize: 100 * 1024, ignoreMediaResponse: true };
+  // Init default; overwritten by the SW's resolved value on the START signal (keep in sync with
+  // DEFAULT_MAX_PAYLOAD_SIZE in networkRecording/index.ts).
+  let cfg = { maxPayloadSize: 200 * 1024, ignoreMediaResponse: true };
 
   const postToExtension = (action, payload) => {
     window.postMessage({ source: "requestly:client", action, payload }, window.location.href);

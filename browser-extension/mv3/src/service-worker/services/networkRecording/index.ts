@@ -25,7 +25,7 @@ export interface NetworkRecordingConfig {
   fallbackUrl?: string;
 }
 
-const DEFAULT_MAX_PAYLOAD_SIZE = 100 * 1024; // 100 KB, matches the web-sdk SessionRecorder default
+const DEFAULT_MAX_PAYLOAD_SIZE = 200 * 1024; // 200 KB per-body cap (LTS-overridable via config.maxPayloadSize)
 
 interface NetworkRecordingState {
   targetTabId: number;
