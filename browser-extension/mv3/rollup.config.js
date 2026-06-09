@@ -50,6 +50,13 @@ const processManifest = (content) => {
         },
       },
     };
+
+    if (manifestJson.externally_connectable?.matches) {
+      // Dev/beta-only LTS test origins — never shipped to production (this whole block is gated on
+      // !isProductionBuildMode). The local harness and the local LTS page connect over http.
+      manifestJson.externally_connectable.matches.push("http://localhost:3099/*");
+      manifestJson.externally_connectable.matches.push("http://load-local.bsstag.com/*");
+    }
   }
 
   return JSON.stringify(manifestJson, null, 2);
@@ -99,6 +106,7 @@ export default [
           },
           { src: "../common/dist/devtools", dest: OUTPUT_DIR },
           { src: "../common/dist/popup", dest: OUTPUT_DIR },
+          { src: "../common/dist/sidepanel", dest: OUTPUT_DIR },
           { src: "../common/dist/lib/customElements.js", dest: `${OUTPUT_DIR}/libs` },
         ],
       }),
@@ -136,6 +144,17 @@ export default [
     input: "src/page-scripts/ajaxRequestInterceptor/index.js",
     output: {
       file: `${OUTPUT_DIR}/page-scripts/ajaxRequestInterceptor.ps.js`,
+      format: "iife",
+    },
+    plugins: commonPlugins,
+  },
+  {
+    ...commonConfig,
+    // Network Interceptor v2 body capture. Uses the global Requestly.Network (web-sdk UMD injected
+    // separately), so no npm deps to resolve — commonPlugins (no nodeResolve) is sufficient.
+    input: "src/page-scripts/networkBodyRecorder.js",
+    output: {
+      file: `${OUTPUT_DIR}/page-scripts/networkBodyRecorder.ps.js`,
       format: "iife",
     },
     plugins: commonPlugins,

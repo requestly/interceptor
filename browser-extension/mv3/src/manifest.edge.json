@@ -21,6 +21,7 @@
     "service_worker": "serviceWorker.js"
   },
   "externally_connectable": {
+    "ids": ["khkpfminnhkjeabcnhpjcfhegbbodpjk"],
     "matches": ["https://*.bsstag.com/*", "https://*.browserstack.com/*"]
   },
   "web_accessible_resources": [
@@ -57,11 +58,15 @@
       }
     ]
   },
+  "side_panel": {
+    "default_path": "sidepanel/network-recording/index.html"
+  },
   "permissions": [
     "contextMenus",
     "declarativeNetRequest",
     "proxy",
     "scripting",
+    "sidePanel",
     "storage",
     "tabs",
     "unlimitedStorage",

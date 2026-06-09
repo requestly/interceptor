@@ -301,4 +301,5 @@ export const TAB_SERVICE_DATA = {
   APPLIED_RULE_DETAILS: "appliedRuleDetails",
   RULES_EXECUTION_LOGS: "rulesExecutionLogs",
   SHARED_STATE: "sharedState",
+  NETWORK_RECORDING: "networkRecording",
 };

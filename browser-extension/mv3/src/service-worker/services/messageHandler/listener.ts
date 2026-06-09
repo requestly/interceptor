@@ -33,15 +33,42 @@ import {
 import { sendMessageToApp } from "./sender";
 import { triggerOpenCurlModalMessage, updateExtensionStatus } from "../utils";
 import extensionIconManager from "../extensionIconManager";
+import {
+  startNetworkRecording,
+  stopNetworkRecording,
+  getNetworkRecordingState,
+  getNetworkRecordingSummary,
+  handleNetworkRecordingOnClientPageLoad,
+  onNetworkBodyCaptured,
+  reopenNetworkRecordingPanel,
+} from "../networkRecording";
 
 export const initExternalMessageListener = () => {
   chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
     switch (message.action) {
       case EXTENSION_EXTERNAL_MESSAGES.GET_EXTENSION_METADATA:
-        sendResponse({
-          name: chrome.runtime.getManifest().name,
-          version: chrome.runtime.getManifest().version,
+        isExtensionEnabled().then((enabled) => {
+          sendResponse({
+            name: chrome.runtime.getManifest().name,
+            version: chrome.runtime.getManifest().version,
+            isExtensionEnabled: enabled,
+          });
         });
+        return true;
+
+      case EXTENSION_EXTERNAL_MESSAGES.START_NETWORK_RECORDING:
+        startNetworkRecording(message.payload?.url, message.payload?.config || {}, {
+          tabId: sender.tab?.id,
+          windowId: sender.tab?.windowId,
+        }).then(sendResponse);
+        return true;
+
+      case EXTENSION_EXTERNAL_MESSAGES.STOP_NETWORK_RECORDING:
+        sendResponse(stopNetworkRecording(message.payload?.targetTabId));
+        break;
+
+      case EXTENSION_EXTERNAL_MESSAGES.GET_NETWORK_RECORDING_SUMMARY:
+        sendResponse(getNetworkRecordingSummary(message.payload?.targetTabId));
         break;
     }
   });
@@ -63,6 +90,7 @@ export const initMessageHandler = () => {
         ruleExecutionHandler.processTabCachedRulesExecutions(sender.tab.id);
         handleTestRuleOnClientPageLoad(sender.tab);
         handleSessionRecordingOnClientPageLoad(sender.tab, sender.frameId);
+        handleNetworkRecordingOnClientPageLoad(sender.tab);
         break;
 
       case EXTENSION_MESSAGES.INIT_SESSION_RECORDER:
@@ -75,6 +103,16 @@ export const initMessageHandler = () => {
 
       case CLIENT_MESSAGES.NOTIFY_SESSION_RECORDING_STOPPED:
         onSessionRecordingStoppedNotification(sender.tab.id);
+        break;
+
+      case CLIENT_MESSAGES.NETWORK_BODY_CAPTURED:
+        // Network Interceptor v2: an XHR/Fetch body+headers captured by the SDK page script.
+        onNetworkBodyCaptured(sender.tab?.id, message.payload);
+        break;
+
+      case EXTENSION_MESSAGES.REOPEN_NETWORK_RECORDING_PANEL:
+        // Floating widget asked to reopen the closed side panel for this tab.
+        reopenNetworkRecordingPanel(sender.tab?.id);
         break;
 
       case EXTENSION_MESSAGES.START_RECORDING_EXPLICITLY:
@@ -227,6 +265,14 @@ export const initMessageHandler = () => {
       case EXTENSION_MESSAGES.TRIGGER_OPEN_CURL_MODAL:
         triggerOpenCurlModalMessage({}, message.source);
         break;
+
+      case EXTENSION_MESSAGES.STOP_NETWORK_RECORDING:
+        stopNetworkRecording(message.targetTabId || sender.tab?.id);
+        break;
+
+      case EXTENSION_MESSAGES.GET_NETWORK_RECORDING_STATE:
+        sendResponse(getNetworkRecordingState(message.tabId || sender.tab?.id));
+        return true;
     }
 
     return false;
