@@ -9,6 +9,10 @@ const changeLogs: VersionedChangeLogs[] = [
     logs: [],
   },
   {
+    version: "26.6.9",
+    logs: ["feat(extension): Network Interceptor v1+v2 — HAR streaming for LT"],
+  },
+  {
     version: "25.9.24",
     logs: [
       "fix: extension rule application popup not closing",
