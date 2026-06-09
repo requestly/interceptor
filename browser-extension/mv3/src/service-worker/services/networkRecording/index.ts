@@ -19,10 +19,38 @@ import {
 //   defaults to DEFAULT_MAX_PAYLOAD_SIZE when omitted.
 // - fallbackUrl: where to send the user on stop if the originating LTS tab+window are both gone;
 //   defaults to DEFAULT_FALLBACK_URL when omitted.
+// --- Advanced settings (Chrome/Edge only; mirror the classic LTS recorder's advanced options) ---
+// - disableCache: when true, wipe the HTTP cache at record start so the first load is cold and
+//   requests actually hit the network (no 304/from-cache skeleton entries). The exact equivalent of
+//   the browser's "Disable cache" — HTTP cache only, no Cache-Control header injection (which would
+//   alter the recorded on-the-wire traffic). Start-time only. Chrome/Edge only (browsingData
+//   feature-guarded; Firefox/Safari no-op). Default false.
+// - wipeServiceWorkers: when true, unregister the target origin's service workers AND clear the
+//   Cache API (cacheStorage) they serve from at record start, so SW-cached responses don't bypass
+//   capture. Shares the single browsingData.remove call with disableCache. Default false.
+// - recordAjax: when true (default) XHR/Fetch are recorded with full request + response bodies and
+//   headers via the web-sdk page script (the sole source for them, v2). When false, XHR/Fetch are
+//   NOT recorded at all — suppressed from both sources (the page script isn't injected AND the
+//   webRequest path drops "xmlhttprequest"). A yes/no on recording ajax, not a bodies toggle.
+//   Non-ajax resources (document, image, css, js, font, media) are unaffected either way.
+// - requestScope: which requests to record on the webRequest path — RequestScope.ALL (default,
+//   includes iframe-originated) or RequestScope.TOP_LEVEL (only main-frame requests, frameId === 0).
+
+// String-valued so the wire contract with LTS is just "all" / "top-level" (sent as JSON over the
+// external start message). Default is ALL when omitted/unrecognized.
+export enum RequestScope {
+  ALL = "all",
+  TOP_LEVEL = "top-level",
+}
+
 export interface NetworkRecordingConfig {
   maxDuration?: number;
   maxPayloadSize?: number;
   fallbackUrl?: string;
+  disableCache?: boolean;
+  wipeServiceWorkers?: boolean;
+  recordAjax?: boolean;
+  requestScope?: RequestScope;
 }
 
 const DEFAULT_MAX_PAYLOAD_SIZE = 200 * 1024; // 200 KB per-body cap (LTS-overridable via config.maxPayloadSize)
@@ -174,14 +202,28 @@ const stopKeepaliveIfIdle = () => {
 //   4. Orphans (started, never completed/errored — cancelled, navigated away) are swept by the
 //      CORRELATION_TTL_MS pass in the keepalive ping.
 //
-// v2: XHR/Fetch are captured solely by the web-sdk Network interceptor (page script) — it carries
-// headers AND bodies. We hard-suppress the webRequest path for "xmlhttprequest" (the resource type
-// for both XHR and fetch) so there's exactly one source and no correlation needed for them.
-const isSdkOwnedRequest = (type: chrome.webRequest.ResourceType): boolean => type === "xmlhttprequest";
+// XHR/Fetch ("xmlhttprequest" is the resource type for both) are NEVER recorded via the webRequest
+// path — this guard always suppresses them there:
+//   - recordAjax !== false (default): they're captured by the web-sdk Network interceptor (page
+//     script) instead, which carries headers AND bodies. Single source, no correlation needed.
+//   - recordAjax === false: the SDK page script is NOT injected (see injectBodyRecorder), and we
+//     still suppress them here — so xhr/fetch are not recorded AT ALL. "Record Ajax Requests" is a
+//     yes/no on recording them, not a bodies-vs-no-bodies toggle.
+// Either way, webRequest must not emit an xhr/fetch entry, so this predicate ignores recordAjax.
+const isAjaxRequest = (type: chrome.webRequest.ResourceType): boolean => type === "xmlhttprequest";
+
+// requestScope "top-level": drop sub-frame (iframe-originated) requests on the webRequest path.
+// frameId 0 is the main frame. The SDK (xhr/fetch) path needs no equivalent guard: injectBodyRecorder
+// is only ever invoked with frameId 0 (the webNavigation.onCommitted re-inject early-returns on
+// frameId !== 0), so SDK-sourced entries are inherently top-level-only.
+const isExcludedByScope = (recording: NetworkRecordingState, frameId: number): boolean =>
+  recording.config.requestScope === RequestScope.TOP_LEVEL && frameId !== 0;
 
 const onBeforeSendHeaders = (details: chrome.webRequest.WebRequestHeadersDetails) => {
-  if (!activeRecordings.has(details.tabId)) return;
-  if (isSdkOwnedRequest(details.type)) return; // SDK owns xhr/fetch; don't populate correlationMap for them
+  const recording = activeRecordings.get(details.tabId);
+  if (!recording) return;
+  if (isAjaxRequest(details.type)) return; // xhr/fetch never recorded via webRequest (SDK source, or recordAjax off)
+  if (isExcludedByScope(recording, details.frameId)) return; // top-level scope: skip sub-frame requests
   correlationMap.set(details.requestId, {
     startTime: details.timeStamp,
     requestHeaders: details.requestHeaders,
@@ -203,7 +245,11 @@ const onRequestCompleted = (details: chrome.webRequest.WebResponseCacheDetails) 
     return;
   }
 
-  if (isSdkOwnedRequest(details.type)) return; // xhr/fetch come from the SDK page script, not webRequest
+  if (isAjaxRequest(details.type)) return; // xhr/fetch never recorded via webRequest (SDK source, or recordAjax off)
+  if (isExcludedByScope(recording, details.frameId)) {
+    correlationMap.delete(details.requestId); // top-level scope: drop sub-frame request, clear any correlation
+    return;
+  }
 
   const correlation = correlationMap.get(details.requestId);
   correlationMap.delete(details.requestId);
@@ -219,7 +265,11 @@ const onRequestError = (details: chrome.webRequest.WebResponseErrorDetails) => {
   const recording = activeRecordings.get(details.tabId);
   if (!recording) return;
 
-  if (isSdkOwnedRequest(details.type)) return; // xhr/fetch come from the SDK page script, not webRequest
+  if (isAjaxRequest(details.type)) return; // xhr/fetch never recorded via webRequest (SDK source, or recordAjax off)
+  if (isExcludedByScope(recording, details.frameId)) {
+    correlationMap.delete(details.requestId); // top-level scope: drop sub-frame request, clear any correlation
+    return;
+  }
 
   const correlation = correlationMap.get(details.requestId);
   correlationMap.delete(details.requestId);
@@ -331,6 +381,40 @@ const isValidUrl = (url: string): boolean => {
   }
 };
 
+// Advanced settings: clear cache / service workers for the recorded origin at record start, so the
+// load is cold and SW-cached responses don't bypass capture. Chrome/Edge only — Firefox/Safari lack
+// chrome.browsingData, so the feature-detect early-return makes this a clean no-op there.
+//
+// Coalesces both flags into ONE browsingData.remove call:
+//   disableCache       → { cache }                       (HTTP cache only — the "Disable cache" equivalent)
+//   wipeServiceWorkers → { serviceWorkers, cacheStorage } (the SW and the Cache API it serves from)
+//
+// CRITICAL: fire-and-forget — NEVER awaited. startNetworkRecording must stay synchronous up to
+// chrome.tabs.create so chrome.sidePanel.open() keeps its user gesture; an await here would break it.
+// Start-time only (no teardown — the browser owns this state). Failures are swallowed (best-effort,
+// like injectBodyRecorder); a cache wipe that doesn't land just means a few warm-cache entries.
+const wipeOriginBrowsingData = (url: string, config: NetworkRecordingConfig) => {
+  const remove = (chrome as any).browsingData?.remove;
+  if (typeof remove !== "function") return; // Firefox/Safari: no browsingData → no-op
+
+  const dataToRemove: chrome.browsingData.DataTypeSet = {};
+  if (config.disableCache) dataToRemove.cache = true;
+  if (config.wipeServiceWorkers) {
+    dataToRemove.serviceWorkers = true;
+    dataToRemove.cacheStorage = true;
+  }
+  if (Object.keys(dataToRemove).length === 0) return; // neither flag set → nothing to wipe
+
+  let origin: string;
+  try {
+    origin = new URL(url).origin; // url already passed isValidUrl (http/https), so this won't throw
+  } catch {
+    return;
+  }
+
+  Promise.resolve(remove.call((chrome as any).browsingData, { origins: [origin] }, dataToRemove)).catch(() => {});
+};
+
 const cancelDisconnectGrace = (tabId: number) => {
   const timer = disconnectGraceTimers.get(tabId);
   if (timer !== undefined) {
@@ -413,6 +497,10 @@ export const initNetworkRecordingPort = () => {
 
 const injectBodyRecorder = async (tabId: number, frameId = 0) => {
   try {
+    // recordAjax === false: the SDK is never the xhr/fetch source — skip injection entirely so
+    // those requests fall to the webRequest skeleton path (and there's no duplicate-source bug).
+    // A missing recording must NOT skip (recordAjax defaults to true).
+    if (activeRecordings.get(tabId)?.config.recordAjax === false) return;
     // 1) web-sdk UMD lib (exposes global Requestly.Network)
     await injectWebAccessibleScript("libs/requestly-web-sdk.js", { tabId, frameIds: [frameId] });
     // 2) our page script that registers the interceptor
@@ -545,6 +633,11 @@ export const startNetworkRecording = (
       activeRecordings.set(tab.id, state);
       recordingEntries.set(tab.id, []);
       tabService.setData(tab.id, TAB_SERVICE_DATA.NETWORK_RECORDING, { active: true });
+
+      // Advanced settings: start-time cache / service-worker wipe for the recorded origin (Chrome/
+      // Edge only; feature-guarded no-op elsewhere). Fire-and-forget — NOT awaited — so the
+      // synchronous gesture path to openPanel() below is preserved.
+      wipeOriginBrowsingData(url, config);
 
       // Max-duration auto-stop. The keepalive ping keeps the SW alive so this timer fires; the
       // inline isOverMaxDuration check in onCompleted is the fast path on a busy page. (See the
