@@ -23,8 +23,10 @@ import {
 // - disableCache: when true, wipe the HTTP cache at record start so the first load is cold and
 //   requests actually hit the network (no 304/from-cache skeleton entries). The exact equivalent of
 //   the browser's "Disable cache" — HTTP cache only, no Cache-Control header injection (which would
-//   alter the recorded on-the-wire traffic). Start-time only. Chrome/Edge only (browsingData
-//   feature-guarded; Firefox/Safari no-op). Default false.
+//   alter the recorded on-the-wire traffic). Start-time only. NOTE: clears the ENTIRE browser HTTP
+//   cache (all sites), not just the recorded origin — Chrome ignores the origins filter for the
+//   `cache` data type (see wipeOriginBrowsingData). Chrome/Edge only (browsingData feature-guarded;
+//   Firefox/Safari no-op). Default false.
 // - wipeServiceWorkers: when true, unregister the target origin's service workers AND clear the
 //   Cache API (cacheStorage) they serve from at record start, so SW-cached responses don't bypass
 //   capture. Shares the single browsingData.remove call with disableCache. Default false.
@@ -389,6 +391,12 @@ const isValidUrl = (url: string): boolean => {
 //   disableCache       → { cache }                       (HTTP cache only — the "Disable cache" equivalent)
 //   wipeServiceWorkers → { serviceWorkers, cacheStorage } (the SW and the Cache API it serves from)
 //
+// SCOPE CAVEAT: we pass origins:[origin], but Chrome applies that filter ONLY to serviceWorkers /
+// cacheStorage — it IGNORES origins for the `cache` data type. So disableCache clears the ENTIRE
+// browser HTTP cache (all sites), not just the recorded origin. Origin-only HTTP-cache clearing is
+// not achievable via the browsingData API. Acceptable here: it's opt-in, a momentary record-start
+// action, and reachable only from trusted first-party BrowserStack/LTS pages.
+//
 // CRITICAL: fire-and-forget — NEVER awaited. startNetworkRecording must stay synchronous up to
 // chrome.tabs.create so chrome.sidePanel.open() keeps its user gesture; an await here would break it.
 // Start-time only (no teardown — the browser owns this state). Failures are swallowed (best-effort,
@@ -497,8 +505,8 @@ export const initNetworkRecordingPort = () => {
 
 const injectBodyRecorder = async (tabId: number, frameId = 0) => {
   try {
-    // recordAjax === false: the SDK is never the xhr/fetch source — skip injection entirely so
-    // those requests fall to the webRequest skeleton path (and there's no duplicate-source bug).
+    // recordAjax === false: skip SDK injection so xhr/fetch have no SDK source; the webRequest path
+    // also drops them (isAjaxRequest is recordAjax-agnostic), so ajax is not recorded at all.
     // A missing recording must NOT skip (recordAjax defaults to true).
     if (activeRecordings.get(tabId)?.config.recordAjax === false) return;
     // 1) web-sdk UMD lib (exposes global Requestly.Network)
