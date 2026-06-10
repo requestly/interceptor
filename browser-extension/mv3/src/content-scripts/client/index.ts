@@ -3,6 +3,7 @@ import { initSessionRecording } from "../common/sessionRecorder";
 import { getVariable, Variable } from "../../service-worker/variable";
 import { initPageScriptMessageListener } from "./pageScriptMessageListener";
 import { initTestRuleHandler } from "./testRuleHandler";
+import { initNetworkRecordingWidgetHandler } from "./networkRecordingWidgetHandler";
 import { initExtensionMessageListener } from "../common/extensionMessageListener";
 
 if (document.doctype?.name === "html" || document.contentType?.includes("html")) {
@@ -13,6 +14,7 @@ if (document.doctype?.name === "html" || document.contentType?.includes("html"))
       initSessionRecording();
       initPageScriptMessageListener();
       initTestRuleHandler();
+      initNetworkRecordingWidgetHandler();
     }
   });
 }

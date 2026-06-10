@@ -41,6 +41,12 @@
     "default_title": "__MSG_extIconTitle__",
     "default_popup": "popup/popup.html"
   },
+  "sidebar_action": {
+    "default_title": "Network Recording",
+    "default_panel": "sidepanel/network-recording/index.html",
+    "default_icon": "resources/images/128x128.png",
+    "open_at_install": false
+  },
   "devtools_page": "devtools/devtools.html",
   "icons": {
     "16": "resources/images/16x16.png",

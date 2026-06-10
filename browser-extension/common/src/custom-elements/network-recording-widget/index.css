@@ -1,0 +1,62 @@
+:host {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  /* Shrink-wrap to content so the pill keeps its shape at the viewport edge instead of being
+     squeezed by the fixed-position box (which caused the label/button to wrap). */
+  width: max-content !important;
+  max-width: max-content !important;
+}
+
+#container {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: #212121;
+  color: #fff;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  user-select: none;
+}
+
+#container.visible {
+  display: flex;
+}
+
+.recording-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e43434;
+  flex: none;
+  animation: rq-nr-blink 1s cubic-bezier(0.5, 0, 1, 1) infinite alternate;
+}
+
+@keyframes rq-nr-blink {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.3;
+  }
+}
+
+.reopen {
+  cursor: pointer;
+  color: #4caf50;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex: none;
+  white-space: nowrap;
+}
+
+.reopen:hover {
+  background: rgba(76, 175, 80, 0.15);
+}

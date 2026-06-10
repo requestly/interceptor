@@ -129,6 +129,36 @@ export default [
   },
   {
     ...commonConfig,
+    input: "src/sidepanel/network-recording/index.tsx",
+    output: {
+      file: `${OUTPUT_DIR}/sidepanel/network-recording/index.js`,
+      format: "iife",
+    },
+    context: "window",
+    plugins: [
+      copy({
+        targets: [
+          {
+            src: "src/sidepanel/network-recording/index.html",
+            dest: `${OUTPUT_DIR}/sidepanel/network-recording`,
+          },
+        ],
+      }),
+      nodeResolve(),
+      replace({
+        preventAssignment: true,
+        "process.env.NODE_ENV": JSON.stringify("production"),
+      }),
+      ...commonPlugins,
+      commonjs(),
+      postcss({
+        extract: true,
+      }),
+      svgr(),
+    ],
+  },
+  {
+    ...commonConfig,
     input: "src/custom-elements/index.ts",
     output: {
       file: `${OUTPUT_DIR}/lib/customElements.js`,
