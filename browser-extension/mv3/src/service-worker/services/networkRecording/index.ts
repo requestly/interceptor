@@ -775,7 +775,9 @@ export const startNetworkRecording = async (
       // Now register the body-recorder scripts, THEN navigate the blank tab to the real URL. The
       // await is AFTER openPanel/resolve, so it costs neither the gesture nor the LTS response.
       // Skipped when recordAjax === false (just navigate).
-      const navigate = () => chrome.tabs.update(tabId, { url }).catch(() => {});
+      // active:true re-asserts the tab as focused as it navigates — nudges Chrome to put focus on
+      // the page rather than leaving it in the omnibox (the blank tab held no focus). Best-effort.
+      const navigate = () => chrome.tabs.update(tabId, { url, active: true }).catch(() => {});
       if (config.recordAjax !== false) {
         registerBodyRecorderScripts().then(navigate, navigate);
       } else {

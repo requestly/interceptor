@@ -71,14 +71,26 @@ const applyCaps = (data, cfg) => {
   //   "buffering" — interceptor is armed and captures, but we hold events in `buffer` until START
   //                 arrives with the resolved caps. This is the state at injection time.
   //   "live"      — START received; flush the buffer and stream every capture immediately.
-  //   "stopped"   — STOP received; drop captures (do NOT clearInterceptors — that nukes other SDK
-  //                 consumers like session recording).
+  //   "stopped"   — STOP received, OR the READY handshake gave up with no START (this tab is not
+  //                 being recorded). Drop captures and free the buffer. We do NOT call
+  //                 clearInterceptors — that would nuke other SDK consumers (e.g. session recording).
   let state = "buffering";
   let registered = false;
   let buffer = [];
   // Init default; overwritten by the SW's resolved value on the START signal (keep in sync with
   // DEFAULT_MAX_PAYLOAD_SIZE in networkRecording/index.ts).
   let cfg = { maxPayloadSize: 10 * 1024 * 1024, ignoreMediaResponse: true };
+
+  // The body recorder is registered broadly (every http(s) tab) for the recording's duration, but
+  // only the recorded tab ever receives START. On every OTHER tab the interceptor sits in
+  // "buffering" until the READY handshake gives up. Two guards bound memory there (and on a
+  // slow-to-START recorded tab):
+  //   1. the pre-START buffer is hard-capped to MAX_BUFFERED_ENTRIES (drop-oldest), so it can't grow
+  //      without bound while waiting;
+  //   2. when the READY handshake gives up with no START, the interceptor transitions to "stopped"
+  //      and frees the buffer (see startReadyHandshake's give-up branch).
+  // START normally arrives in ms, so the cap is only ever exercised on non-recorded tabs.
+  const MAX_BUFFERED_ENTRIES = 100;
 
   const postToExtension = (action, payload) => {
     window.postMessage({ source: "requestly:client", action, payload }, window.location.href);
@@ -111,7 +123,13 @@ const applyCaps = (data, cfg) => {
       (data) => {
         if (state === "stopped") return;
         if (state === "buffering") {
-          buffer.push(data); // hold until START resolves the caps, then flush in order
+          // Hold until START resolves the caps, then flush in order. Hard-cap the buffer so a tab
+          // that is slow to START — or never will (a non-recorded tab the broad registration landed
+          // in, before the give-up below terminates it) — cannot grow memory without bound. Keep the
+          // most recent MAX_BUFFERED_ENTRIES; drop the oldest. (Kept raw, not pre-capped, so the
+          // flush applies the START-resolved maxPayloadSize — capping here would use the default.)
+          buffer.push(data);
+          if (buffer.length > MAX_BUFFERED_ENTRIES) buffer.shift();
           return;
         }
         emit(data); // live
@@ -149,8 +167,18 @@ const applyCaps = (data, cfg) => {
     announceReady();
     readyAttempts = 1;
     readyTimer = setInterval(() => {
-      if (state !== "buffering" || readyAttempts >= READY_MAX_ATTEMPTS) {
+      if (state !== "buffering") {
+        stopReadyHandshake(); // START (or STOP) already moved us out of buffering
+        return;
+      }
+      if (readyAttempts >= READY_MAX_ATTEMPTS) {
+        // Gave up: no START ever arrived (this tab is not being recorded, or its relay never
+        // attached). Terminate capture so the interceptor stops accumulating — go "stopped" (the
+        // callback early-returns on it) and free the buffered entries. Without this the buffer would
+        // be retained, and keep growing up to MAX_BUFFERED_ENTRIES, for the page's whole lifetime.
         stopReadyHandshake();
+        state = "stopped";
+        buffer = [];
         return;
       }
       readyAttempts += 1;
@@ -174,7 +202,10 @@ const applyCaps = (data, cfg) => {
       const incoming = event.data.payload || {};
       if (typeof incoming.maxPayloadSize === "number") cfg.maxPayloadSize = incoming.maxPayloadSize;
       if (typeof incoming.ignoreMediaResponse === "boolean") cfg.ignoreMediaResponse = incoming.ignoreMediaResponse;
-      if (state !== "buffering") return; // already live/stopped — ignore duplicate START (handshake retried)
+      // Only the first START matters. "live" = already started (ignore the handshake's retried
+      // READYs' duplicate STARTs); "stopped" = STOPped, or the handshake gave up before START
+      // arrived (>6s, effectively never for a recorded tab) — don't resurrect either.
+      if (state !== "buffering") return;
       registerInterceptorOnce(); // belt-and-suspenders: ensure armed even if the eager attempts raced the UMD
       stopReadyHandshake(); // got START — stop re-posting READY
       // Flush everything captured before START (the bootstrap requests), in arrival order, with the
