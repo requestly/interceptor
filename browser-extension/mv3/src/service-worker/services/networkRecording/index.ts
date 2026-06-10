@@ -404,7 +404,7 @@ const isValidUrl = (url: string): boolean => {
 // CRITICAL: fire-and-forget — NEVER awaited. startNetworkRecording must stay synchronous up to
 // chrome.tabs.create so chrome.sidePanel.open() keeps its user gesture; an await here would break it.
 // Start-time only (no teardown — the browser owns this state). Failures are swallowed (best-effort,
-// like injectBodyRecorder); a cache wipe that doesn't land just means a few warm-cache entries.
+// like the body-recorder script registration); a cache wipe that doesn't land just means a few warm-cache entries.
 const wipeOriginBrowsingData = (url: string, config: NetworkRecordingConfig) => {
   const remove = (chrome as any).browsingData?.remove;
   if (typeof remove !== "function") return; // Firefox/Safari: no browsingData → no-op
@@ -752,7 +752,8 @@ export const startNetworkRecording = async (
       tabService.setData(tabId, TAB_SERVICE_DATA.NETWORK_RECORDING, { active: true });
 
       // Advanced settings: start-time cache / service-worker wipe for the recorded origin (Chrome/
-      // Edge only; feature-guarded no-op elsewhere). Fire-and-forget.
+      // Edge only; feature-guarded no-op elsewhere). Fire-and-forget — NOT awaited — so the
+      // synchronous gesture path to openPanel() below is preserved.
       wipeOriginBrowsingData(url, config);
 
       // Max-duration auto-stop. The keepalive ping keeps the SW alive so this timer fires; the
