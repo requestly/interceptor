@@ -9,6 +9,13 @@ const changeLogs: VersionedChangeLogs[] = [
     logs: [],
   },
   {
+    version: "26.6.10",
+    logs: [
+      "feat(extension): advanced recording settings for Network Interceptor (#66)",
+      "fix(extension): capture initial-page-load XHR/fetch bodies (injection-timing race) (#67)",
+    ],
+  },
+  {
     version: "26.6.9",
     logs: ["feat(extension): Network Interceptor v1+v2 — HAR streaming for LT"],
   },
