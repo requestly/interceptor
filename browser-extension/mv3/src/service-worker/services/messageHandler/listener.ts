@@ -40,6 +40,7 @@ import {
   getNetworkRecordingSummary,
   handleNetworkRecordingOnClientPageLoad,
   onNetworkBodyCaptured,
+  onBodyRecorderReady,
   reopenNetworkRecordingPanel,
 } from "../networkRecording";
 
@@ -108,6 +109,11 @@ export const initMessageHandler = () => {
       case CLIENT_MESSAGES.NETWORK_BODY_CAPTURED:
         // Network Interceptor v2: an XHR/Fetch body+headers captured by the SDK page script.
         onNetworkBodyCaptured(sender.tab?.id, message.payload);
+        break;
+
+      case CLIENT_MESSAGES.NETWORK_BODY_RECORDER_READY:
+        // Network Interceptor v2: the page body-recorder is armed — reply with START (resolved caps).
+        onBodyRecorderReady(sender.tab?.id);
         break;
 
       case EXTENSION_MESSAGES.REOPEN_NETWORK_RECORDING_PANEL:

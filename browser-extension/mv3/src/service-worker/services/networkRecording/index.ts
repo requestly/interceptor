@@ -1,7 +1,6 @@
 import { tabService, TAB_SERVICE_DATA } from "../tabService";
 import { CLIENT_MESSAGES, EXTENSION_MESSAGES } from "common/constants";
 import { ChangeType } from "common/storage";
-import { injectWebAccessibleScript } from "../utils";
 import { isExtensionEnabled } from "../../../utils";
 import { onVariableChange, Variable } from "../../variable";
 import {
@@ -55,7 +54,11 @@ export interface NetworkRecordingConfig {
   requestScope?: RequestScope;
 }
 
-const DEFAULT_MAX_PAYLOAD_SIZE = 200 * 1024; // 200 KB per-body cap (LTS-overridable via config.maxPayloadSize)
+// 10 MB per-body cap (bytes), LTS-overridable via config.maxPayloadSize. Sized as a "safe maximum":
+// large enough that realistic API/JSON bodies are never truncated, while staying well under Chrome's
+// ~32 MB chrome.runtime.sendMessage ceiling (bodies stream one-per-message) so an oversized body
+// truncates gracefully (RESPONSE_TOO_LARGE flag) instead of throwing and losing the whole entry.
+const DEFAULT_MAX_PAYLOAD_SIZE = 10 * 1024 * 1024;
 
 interface NetworkRecordingState {
   targetTabId: number;
@@ -206,18 +209,19 @@ const stopKeepaliveIfIdle = () => {
 //
 // XHR/Fetch ("xmlhttprequest" is the resource type for both) are NEVER recorded via the webRequest
 // path — this guard always suppresses them there:
-//   - recordAjax !== false (default): they're captured by the web-sdk Network interceptor (page
-//     script) instead, which carries headers AND bodies. Single source, no correlation needed.
-//   - recordAjax === false: the SDK page script is NOT injected (see injectBodyRecorder), and we
-//     still suppress them here — so xhr/fetch are not recorded AT ALL. "Record Ajax Requests" is a
-//     yes/no on recording them, not a bodies-vs-no-bodies toggle.
+//   - recordAjax !== false (default): they're captured by the web-sdk Network interceptor (the
+//     document_start MAIN-world body-recorder content scripts), which carries headers AND bodies.
+//     Single source, no correlation needed.
+//   - recordAjax === false: the SDK body-recorder scripts are NOT registered (see
+//     registerBodyRecorderScripts), and we still suppress them here — so xhr/fetch are not recorded
+//     AT ALL. "Record Ajax Requests" is a yes/no on recording them, not a bodies-vs-no toggle.
 // Either way, webRequest must not emit an xhr/fetch entry, so this predicate ignores recordAjax.
 const isAjaxRequest = (type: chrome.webRequest.ResourceType): boolean => type === "xmlhttprequest";
 
 // requestScope "top-level": drop sub-frame (iframe-originated) requests on the webRequest path.
-// frameId 0 is the main frame. The SDK (xhr/fetch) path needs no equivalent guard: injectBodyRecorder
-// is only ever invoked with frameId 0 (the webNavigation.onCommitted re-inject early-returns on
-// frameId !== 0), so SDK-sourced entries are inherently top-level-only.
+// frameId 0 is the main frame. The SDK (xhr/fetch) path needs no equivalent guard: the body-recorder
+// content scripts register without allFrames (main frame only), so SDK-sourced entries are inherently
+// top-level-only.
 const isExcludedByScope = (recording: NetworkRecordingState, frameId: number): boolean =>
   recording.config.requestScope === RequestScope.TOP_LEVEL && frameId !== 0;
 
@@ -456,6 +460,12 @@ const removePortFromAllSubscriptions = (port: chrome.runtime.Port) => {
  * onCompleted can interleave, so there is no gap or duplicate.
  */
 export const initNetworkRecordingPort = () => {
+  // Defensive: on SW startup activeRecordings is always empty (no rehydration), so any body-recorder
+  // content scripts still registered from a prior SW session that died without teardown are orphans
+  // injecting into every browsed tab. Clear them. A live recording re-registers via
+  // registerBodyRecorderScripts on its next start.
+  unregisterBodyRecorderScripts();
+
   chrome.runtime.onConnectExternal.addListener((port) => {
     if (port.name !== NETWORK_RECORDING_PORT) return;
 
@@ -499,25 +509,60 @@ export const initNetworkRecordingPort = () => {
 
 // --- v2 body capture: inject the web-sdk Network interceptor into the recorded tab ----------
 // The web-sdk UMD exposes the global `Requestly` (incl. Network); networkBodyRecorder.ps.js uses
-// it. Both are MAIN-world. executeScript is one-shot, so we re-inject on each navigation of the
-// recorded tab (handled by chrome.webNavigation.onCommitted below). The content-script relay
-// forwards the start/stop control signals to the page script.
+// it. Both run MAIN-world at document_start.
+//
+// Injection-timing-race fix: previously we injected imperatively via executeScript from
+// webNavigation.onCommitted, which fires AFTER the document commits and its early scripts run — so
+// an SPA's bootstrap requests fired before the interceptor was armed and their bodies were lost
+// (breaking LTS auto-correlation, which needs those bootstrap response IDs). We now register both
+// scripts as document_start MAIN-world CONTENT SCRIPTS (registerContentScripts) for the duration of
+// the recording, mirroring the always-on ajaxRequestInterceptor (clientHandler.ts). That guarantees
+// they load before the page's own scripts on every navigation. The page script arms the interceptor
+// synchronously and buffers captures from t=0 (see networkBodyRecorder.js); the START signal only
+// delivers the resolved caps and flushes the buffer to live.
+//
+// registerContentScripts is URL-pattern scoped (no tabId), so while registered the scripts inject
+// into every browsed tab. That's harmless: a non-recorded tab buffers and never flushes (no START),
+// and the SW's onNetworkBodyCaptured drops captures whose tabId isn't an active recording. The
+// scripts are unregistered once the last recording stops.
 
-const injectBodyRecorder = async (tabId: number, frameId = 0) => {
+// One registered content script bundling the UMD + recorder (ordered js array), so the UMD is
+// guaranteed evaluated before the recorder reads the global `Requestly`.
+const BODY_RECORDER_SCRIPT_ID = "network-recording-body-recorder";
+
+// Registered while ≥1 recording with recordAjax !== false is active. Idempotent: getRegistered →
+// register only the missing ids, so a second concurrent recording doesn't double-register.
+const registerBodyRecorderScripts = async () => {
   try {
-    // recordAjax === false: skip SDK injection so xhr/fetch have no SDK source; the webRequest path
-    // also drops them (isAjaxRequest is recordAjax-agnostic), so ajax is not recorded at all.
-    // A missing recording must NOT skip (recordAjax defaults to true).
-    if (activeRecordings.get(tabId)?.config.recordAjax === false) return;
-    // 1) web-sdk UMD lib (exposes global Requestly.Network)
-    await injectWebAccessibleScript("libs/requestly-web-sdk.js", { tabId, frameIds: [frameId] });
-    // 2) our page script that registers the interceptor
-    await injectWebAccessibleScript("page-scripts/networkBodyRecorder.ps.js", { tabId, frameIds: [frameId] });
-    // 3) start signal with the resolved caps (relayed by the content script to the page)
-    sendBodyCaptureSignal(tabId, EXTENSION_MESSAGES.START_NETWORK_BODY_CAPTURE);
+    const existing = await chrome.scripting.getRegisteredContentScripts({ ids: [BODY_RECORDER_SCRIPT_ID] });
+    if (existing.length) return; // already registered (another concurrent recording)
+    // ONE registration with both files in order: the UMD MUST evaluate before the recorder reads the
+    // global `Requestly`. Multiple files in a single RegisteredContentScript.js array run in array
+    // order, in the same injection — so this guarantees Requestly is defined when the recorder runs.
+    // (Two separate registrations did NOT guarantee cross-script order, which left `Requestly
+    // present? false` and forced a late retry that missed early requests.)
+    await chrome.scripting.registerContentScripts([
+      {
+        id: BODY_RECORDER_SCRIPT_ID,
+        js: ["libs/requestly-web-sdk.js", "page-scripts/networkBodyRecorder.ps.js"],
+        world: "MAIN",
+        runAt: "document_start",
+        matches: ["http://*/*", "https://*/*"],
+        // No rehydration of recordings across SW restarts, so don't persist; cleaned up on SW init.
+        persistAcrossSessions: false,
+      },
+    ]);
   } catch {
-    // Injection can fail on restricted pages (e.g. chrome://, strict CSP) — body capture is
-    // best-effort; webRequest still covers non-xhr/fetch. Don't break the recording.
+    // Best-effort: if registration fails (e.g. id already present from a race), body capture
+    // degrades but the recording continues. webRequest still covers non-xhr/fetch.
+  }
+};
+
+const unregisterBodyRecorderScripts = async () => {
+  try {
+    await chrome.scripting.unregisterContentScripts({ ids: [BODY_RECORDER_SCRIPT_ID] });
+  } catch {
+    // Already unregistered / never registered — ignore.
   }
 };
 
@@ -531,13 +576,35 @@ const sendBodyCaptureSignal = (tabId: number, action: string) => {
   chrome.tabs.sendMessage(tabId, { action, payload }).catch(() => {});
 };
 
-// Re-inject on navigation of a recorded tab (executeScript is one-shot). Single-tab scoped,
-// matching v1's model. Gated to active recordings; main frame only.
-chrome.webNavigation.onCommitted.addListener((details) => {
-  if (details.frameId !== 0) return;
-  if (!activeRecordings.has(details.tabId)) return;
-  injectBodyRecorder(details.tabId, 0);
-});
+/**
+ * Pull-based START handshake. The page body-recorder posts NETWORK_BODY_RECORDER_READY once it has
+ * armed the interceptor and attached its message listener; this replies with START (resolved caps),
+ * which flushes the page's pre-START buffer (the bootstrap requests) and flips it to live.
+ *
+ * Why pull, not push: previously START was sent on chrome.webNavigation.onCommitted, which fires
+ * before the content-script relay is guaranteed to be listening — so START was dropped and the
+ * buffer never flushed (0 entries reached the panel). The page asking for START when it's actually
+ * ready removes that race entirely (and is the same "START only after the recorder is set up"
+ * guarantee the original post-injection sendBodyCaptureSignal had).
+ *
+ * DELIVERY DEPENDENCY (known limitation): READY (page→here) and START (here→page) both ride the
+ * client content-script relay (content-scripts/client/index.ts → initPageScriptMessageListener),
+ * which attaches only on HTML top documents and only while the extension is enabled. For a recorded
+ * tab whose top document is NOT HTML (a raw JSON/XML/no-doctype URL), the relay never attaches:
+ * READY is never delivered, START never arrives, and xhr/fetch BODIES are not captured for that tab
+ * (the page buffers and gives up after its ~6s READY-retry window). webRequest still captures
+ * non-xhr/fetch skeletons. This is acceptable because LTS records web applications (HTML pages), not
+ * raw non-HTML endpoints. If that assumption ever changes, add an SW-side arming watchdog (expect a
+ * READY within ~8s of navigating; if none, surface a degraded state to the panel) — deliberately
+ * NOT added now to avoid machinery for a case real LTS targets don't hit.
+ */
+export const onBodyRecorderReady = (tabId: number | undefined) => {
+  if (tabId === undefined) return;
+  const recording = activeRecordings.get(tabId);
+  if (!recording) return; // not a recorded tab (scripts inject broadly; only recorded tabs get START)
+  if (recording.config.recordAjax === false) return; // ajax recording off → never arm emission
+  sendBodyCaptureSignal(tabId, EXTENSION_MESSAGES.START_NETWORK_BODY_CAPTURE);
+};
 
 // Synchronously-readable copy of IS_EXTENSION_ENABLED, so startNetworkRecording can reject a start
 // while the extension is off WITHOUT an async storage read — an await there would push
@@ -600,35 +667,77 @@ export const reopenNetworkRecordingPanel = (tabId: number | undefined) => {
   openPanel(tabId);
 };
 
-export const startNetworkRecording = (
+/**
+ * Start a network recording in a fresh tab.
+ *
+ * THE about:blank HACK — read before changing the tab-creation order. Two hard constraints collide:
+ *
+ *   (A) chrome.sidePanel.open() requires a live USER GESTURE and must be called synchronously within
+ *       the gesture's call stack. The gesture comes from the LTS chrome.runtime.sendMessage and
+ *       survives exactly ONE async hop — the chrome.tabs.create callback — as long as nothing is
+ *       `await`ed before openPanel(). Any await before it forfeits the gesture and the panel never
+ *       opens (verified: the CLIENT_PAGE_LOADED backstop can't open it either, since that's a
+ *       gesture-less programmatic message).
+ *
+ *   (B) The v2 body-recorder content scripts (web-sdk UMD + networkBodyRecorder) must be REGISTERED
+ *       (chrome.scripting.registerContentScripts, an async call we must await) BEFORE the recorded
+ *       URL starts loading — otherwise the SPA's bootstrap requests fire before the fetch/XHR
+ *       interceptor is armed and their response bodies are lost (the injection-timing race; LTS
+ *       auto-correlation then chains 0 rows because the IDs live in those missed responses).
+ *
+ * (A) needs NO await before the open; (B) needs an await before the load. Mutually exclusive on one
+ * tab created directly at the URL. The resolution: create the tab at **about:blank** first.
+ *   1. about:blank loads instantly and does NOT consume the gesture, so openPanel() in the
+ *      tabs.create callback still succeeds (constraint A satisfied).
+ *   2. The real URL has NOT started loading, so we can await registerBodyRecorderScripts() AFTER
+ *      openPanel/resolve, then chrome.tabs.update(tabId, {url}) to navigate — the scripts are now in
+ *      place for that navigation's document_start (constraint B satisfied).
+ *   3. Because the recorded URL only ever loads ONCE (the post-registration navigation), nothing is
+ *      captured twice — no webRequest/SDK double-send. (A reload-after-load approach would have
+ *      double-counted the webRequest-sourced doc/js/css/img entries; about:blank avoids that.)
+ *
+ * COST / SUPPRESSION: the about:blank commit fires the SW's various webNavigation.onCommitted /
+ * page-load handlers against a URL the extension has no host access to ("about:blank"), which would
+ * otherwise log "Cannot access contents of url about:blank" / "Receiving end does not exist" noise.
+ * Those handlers are guarded to skip non-http(s) URLs (see clientHandler.ts and below). Our own
+ * networkRecording onCommitted/CLIENT_PAGE_LOADED paths are inert on about:blank too: the body
+ * recorder isn't registered for it (registered after), and capture is no-op until the page posts
+ * READY (which the about:blank document never does).
+ */
+export const startNetworkRecording = async (
   url: string,
   config: NetworkRecordingConfig = {},
   sender?: { tabId?: number; windowId?: number }
 ): Promise<{ success: boolean; targetTabId?: number; error?: string }> => {
-  // NOTE: kept synchronous up to chrome.tabs.create (no await) so the LTS sendMessage user gesture
-  // survives to the openPanel() call — chrome.sidePanel.open() requires an in-gesture call stack.
   // Reject a start while the extension is off, so the UI never says "disabled" with a live
-  // recording. Read from the in-memory cache (NOT an await) to keep that path synchronous.
+  // recording. Read from the in-memory cache (NOT an await).
   if (!isExtensionEnabledCache) {
-    return Promise.resolve({
+    return {
       success: false,
       error: "Requestly extension is disabled. Enable it to start a recording.",
-    });
+    };
   }
 
   if (!url || !isValidUrl(url)) {
-    return Promise.resolve({ success: false, error: "Invalid URL. Must be a valid http or https URL." });
+    return { success: false, error: "Invalid URL. Must be a valid http or https URL." };
   }
 
   return new Promise((resolve) => {
-    chrome.tabs.create({ url }, (tab) => {
+    // Create the tab at about:blank FIRST. This keeps the synchronous gesture path to
+    // sidePanel.open() intact (about:blank loads instantly and does NOT consume the gesture) AND
+    // means the recorded URL hasn't started loading yet — so we can register the document_start
+    // body-recorder scripts and ONLY THEN navigate to the URL, guaranteeing the interceptor arms
+    // before the recorded page's first request (the injection-timing-race fix). Because the real
+    // URL never loads pre-registration, nothing is captured twice (no double-send on reload).
+    chrome.tabs.create({ url: "about:blank" }, (tab) => {
       if (chrome.runtime.lastError || !tab?.id) {
         resolve({ success: false, error: chrome.runtime.lastError?.message || "Failed to create tab" });
         return;
       }
+      const tabId = tab.id;
 
       const state: NetworkRecordingState = {
-        targetTabId: tab.id,
+        targetTabId: tabId,
         url,
         startTime: Date.now(),
         // Resolve maxPayloadSize to its default now so the body page script (v2) can read a
@@ -638,35 +747,39 @@ export const startNetworkRecording = (
         senderWindowId: sender?.windowId,
       };
 
-      activeRecordings.set(tab.id, state);
-      recordingEntries.set(tab.id, []);
-      tabService.setData(tab.id, TAB_SERVICE_DATA.NETWORK_RECORDING, { active: true });
+      activeRecordings.set(tabId, state);
+      recordingEntries.set(tabId, []);
+      tabService.setData(tabId, TAB_SERVICE_DATA.NETWORK_RECORDING, { active: true });
 
       // Advanced settings: start-time cache / service-worker wipe for the recorded origin (Chrome/
-      // Edge only; feature-guarded no-op elsewhere). Fire-and-forget — NOT awaited — so the
-      // synchronous gesture path to openPanel() below is preserved.
+      // Edge only; feature-guarded no-op elsewhere). Fire-and-forget.
       wipeOriginBrowsingData(url, config);
 
       // Max-duration auto-stop. The keepalive ping keeps the SW alive so this timer fires; the
       // inline isOverMaxDuration check in onCompleted is the fast path on a busy page. (See the
       // sleep/wake caveat in the keepalive comment — the only case this timer can be late.)
       if (config.maxDuration !== undefined) {
-        state.maxDurationTimer = setTimeout(() => stopNetworkRecording(tab.id!, "max-duration"), config.maxDuration);
+        state.maxDurationTimer = setTimeout(() => stopNetworkRecording(tabId, "max-duration"), config.maxDuration);
       }
 
       addWebRequestListeners();
       startKeepalive();
-      // Open the panel here, synchronously on the external-message path. chrome.sidePanel.open()
-      // requires a user gesture and must run within its call stack — the LTS sendMessage provides
-      // that gesture, but only as long as nothing awaits before this point (hence no async
-      // isExtensionEnabled check above). handleNetworkRecordingOnClientPageLoad re-opens it on
-      // later navigations of the recorded tab as a backstop.
-      openPanel(tab.id);
-      // v2: the body recorder is injected via webNavigation.onCommitted, which fires for this new
-      // tab's initial navigation (and every later one). No explicit inject here — it would be too
-      // early (the document isn't committed yet).
+      // Open the panel synchronously in this callback — the LTS sendMessage gesture survives the
+      // single tabs.create hop (no await before here), so sidePanel.open() succeeds. The tab is on
+      // about:blank, so nothing is loading yet.
+      openPanel(tabId);
 
-      resolve({ success: true, targetTabId: tab.id });
+      resolve({ success: true, targetTabId: tabId });
+
+      // Now register the body-recorder scripts, THEN navigate the blank tab to the real URL. The
+      // await is AFTER openPanel/resolve, so it costs neither the gesture nor the LTS response.
+      // Skipped when recordAjax === false (just navigate).
+      const navigate = () => chrome.tabs.update(tabId, { url }).catch(() => {});
+      if (config.recordAjax !== false) {
+        registerBodyRecorderScripts().then(navigate, navigate);
+      } else {
+        navigate();
+      }
     });
   });
 };
@@ -761,6 +874,8 @@ export const stopNetworkRecording = (
 
   if (activeRecordings.size === 0) {
     removeWebRequestListeners();
+    // v2: no recordings left — stop injecting the body-recorder content scripts into every browsed tab.
+    unregisterBodyRecorderScripts();
   }
   stopKeepaliveIfIdle();
 
@@ -842,6 +957,7 @@ const cleanupRecording = (tabId: number) => {
   recordingEntries.delete(tabId);
   if (activeRecordings.size === 0) {
     removeWebRequestListeners();
+    unregisterBodyRecorderScripts(); // no recordings left — stop injecting the body-recorder scripts
   }
   stopKeepaliveIfIdle();
 };

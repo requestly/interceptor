@@ -85,6 +85,9 @@ export const CLIENT_MESSAGES = {
   NETWORK_EVENT_CAPTURED: "networkEventCaptured",
   NETWORK_RECORDING_ENDED: "networkRecordingEnded",
   NETWORK_BODY_CAPTURED: "networkBodyCaptured",
+  // Page body-recorder → SW: "I'm armed and buffering, send me START (with caps) now." Pull-based
+  // handshake so START isn't sent before the page (and the content-script relay) is listening.
+  NETWORK_BODY_RECORDER_READY: "networkBodyRecorderReady",
   // Floating widget: SW → content script to show/hide the on-page reopen widget.
   SHOW_NETWORK_RECORDING_WIDGET: "showNetworkRecordingWidget",
   HIDE_NETWORK_RECORDING_WIDGET: "hideNetworkRecordingWidget",
