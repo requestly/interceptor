@@ -237,7 +237,7 @@ export const DesktopSettings = () => {
             </Row>
           </>
         ) : null}
-        <InsecureCerts />
+        {isFeatureCompatible(FEATURES.ALLOW_INSECURE_SSL) && <InsecureCerts />}
         <LocalLogFile />
       </div>
     </div>
