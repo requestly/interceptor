@@ -61,3 +61,9 @@ For Requestly Interceptor to intercept HTTPS traffic, you need to install Reques
 ### **Check your Firewall**
 
 Check if you are using any Firewall software like Sophos. Firewalls generally block web proxies for security reasons and mistake Requestly Interceptor as a web proxy but Requestly Interceptor only runs on yourlocal device. Sending them an email will get Requestly Interceptor unblocked for you.
+
+### **The destination site's own certificate can't be verified**
+
+The `RQProxyCA` certificate above is what your browser uses to trust Requestly. Separately, Requestly verifies the **destination server's** TLS certificate when it forwards your request. If that certificate is expired, self-signed, or issued by an untrusted authority, Requestly shows an SSL error page (for example `ERR_CERT_DATE_INVALID` or `ERR_CERT_AUTHORITY_INVALID`) instead of letting the request through.
+
+If you trust the host, you can turn off upstream certificate verification — see [Allow Insecure SSL](/interceptor/desktop-app/allow-insecure-ssl).

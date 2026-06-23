@@ -246,6 +246,12 @@ export const FEATURE_COMPATIBLE_VERSION = {
     [GLOBAL_CONSTANTS.APP_MODES.DESKTOP]: "26.2.19",
     [GLOBAL_CONSTANTS.APP_MODES.EXTENSION]: "0.0.0",
   },
+  // RQ-2425: the "Allow insecure SSL" toggle needs the desktop user-preference
+  // + proxy support shipping in 26.6.22, so older desktops never render it.
+  [FEATURES.ALLOW_INSECURE_SSL]: {
+    [GLOBAL_CONSTANTS.APP_MODES.DESKTOP]: "26.6.22",
+    [GLOBAL_CONSTANTS.APP_MODES.EXTENSION]: null,
+  },
   [FEATURES.SECRETS_MANAGER]: {
     [GLOBAL_CONSTANTS.APP_MODES.DESKTOP]: "26.3.19",
     [GLOBAL_CONSTANTS.APP_MODES.EXTENSION]: null,

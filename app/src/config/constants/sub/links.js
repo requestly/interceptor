@@ -115,7 +115,7 @@ const LINKS = {
   /** SUPPORT */
 
   //Github Issues
-  REQUESTLY_GITHUB_ISSUES: "https://github.com/requestly/customer-support/issues",
+  REQUESTLY_GITHUB_ISSUES: "https://github.com/requestly/interceptor/issues",
   FEEDBACK: "https://feedback.requestly.io/",
 
   /** EXTENSIONS */

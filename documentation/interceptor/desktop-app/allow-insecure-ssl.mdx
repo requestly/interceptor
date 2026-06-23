@@ -1,0 +1,39 @@
+---
+title: "Allow Insecure SSL"
+slug: "allow-insecure-ssl"
+path: "/http-interceptor/desktop-app/allow-insecure-ssl"
+visibility: "PUBLIC"
+format: "MDX"
+---
+
+When Requestly intercepts HTTPS traffic, it connects to the destination website on your behalf. By default it **verifies the website's TLS certificate**, just like a browser does, and refuses to connect when the certificate is expired, self-signed, or issued by an untrusted authority.
+
+Sometimes you need to intercept traffic to such a site anyway — for example a local development server, a staging environment, or an internal service that uses a self-signed certificate. For these cases you can turn off certificate verification.
+
+## Enabling the setting
+
+Open settings from the icon on the top right and, under `Desktop Settings`, turn on **Allow insecure SSL in proxy interceptor**.
+
+<img src="/images/allow-insecure-ssl/desktop-settings-toggle.png" align="center" fullwidth="false" />
+
+<Warning>
+  While this is on, Requestly accepts certificates from every site you intercept. Turn it on only for hosts you trust, and turn it off again when you're done.
+</Warning>
+
+## What you'll see when it's off
+
+This setting is **off by default** so that interception stays secure. When it is off and a site's certificate can't be verified, Requestly shows an error page that names the reason instead of loading the page:
+
+<img src="/images/allow-insecure-ssl/ssl-error-page.png" align="center" fullwidth="false" />
+
+| You'll see | It usually means |
+| --- | --- |
+| `ERR_CERT_DATE_INVALID` | The certificate is expired or not yet valid |
+| `ERR_CERT_AUTHORITY_INVALID` | The certificate is self-signed or from an untrusted authority |
+| `ERR_CERT_COMMON_NAME_INVALID` | The certificate doesn't match the site's address |
+
+If you trust the site, turn on **Allow insecure SSL in proxy interceptor** and reload.
+
+<Tip>
+  Leave this off for normal browsing so that certificate problems on real sites are still caught. Turn it on only for the sites you're actively debugging.
+</Tip>
