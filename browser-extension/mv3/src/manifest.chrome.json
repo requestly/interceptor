@@ -61,6 +61,7 @@
     "default_path": "sidepanel/network-recording/index.html"
   },
   "permissions": [
+    "browsingData",
     "contextMenus",
     "declarativeNetRequest",
     "proxy",

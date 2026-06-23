@@ -51,7 +51,19 @@
       </div>
       <button class="btn-start" id="btnStart" onclick="startRecording()">Start Recording</button>
     </div>
-    <p>Status: <span class="status status-idle" id="status">Idle</span></p>
+
+    <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #333;">
+      <label style="margin-bottom: 8px;">Advanced Options (Chrome/Edge)</label>
+      <p style="margin-bottom: 6px;"><label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;"><input type="checkbox" id="disableCache" style="width:auto;margin:0;" /> Disable browser cache (wipe HTTP cache at start)</label></p>
+      <p style="margin-bottom: 6px;"><label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;"><input type="checkbox" id="wipeServiceWorkers" style="width:auto;margin:0;" /> Wipe service workers (+ Cache API) at start</label></p>
+      <p style="margin-bottom: 6px;"><label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;"><input type="checkbox" id="recordAjax" checked style="width:auto;margin:0;" /> Record Ajax (XHR/fetch) request &amp; response bodies</label></p>
+      <p style="margin-bottom: 0;">
+        <label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;margin-right:16px;"><input type="radio" name="requestScope" value="all" checked style="width:auto;margin:0;" /> All requests</label>
+        <label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;"><input type="radio" name="requestScope" value="top-level" style="width:auto;margin:0;" /> Top-level only</label>
+      </p>
+    </div>
+
+    <p style="margin-top: 12px;">Status: <span class="status status-idle" id="status">Idle</span></p>
     <p style="margin-top: 8px; color: #9e9e9e; font-size: 12px;">Target Tab ID: <span id="targetTabId">—</span></p>
   </div>
 
@@ -109,6 +121,11 @@
         return;
       }
 
+      const disableCache = document.getElementById('disableCache').checked;
+      const wipeServiceWorkers = document.getElementById('wipeServiceWorkers').checked;
+      const recordAjax = document.getElementById('recordAjax').checked;
+      const requestScope = document.querySelector('input[name="requestScope"]:checked')?.value || 'all';
+
       log(`Sending startNetworkRecording for: ${url}`);
 
       chrome.runtime.sendMessage(
@@ -117,7 +134,7 @@
           action: "startNetworkRecording",
           payload: {
             url: url,
-            config: { maxDuration: 15 * 60 * 1000 },
+            config: { maxDuration: 15 * 60 * 1000, disableCache, wipeServiceWorkers, recordAjax, requestScope },
           },
         },
         (response) => {

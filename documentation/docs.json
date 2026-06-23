@@ -49,7 +49,8 @@
                   "interceptor/desktop-app/browser-interception",
                   "interceptor/desktop-app/desktop-app-interception",
                   "interceptor/desktop-app/network-table",
-                  "interceptor/desktop-app/saving-logs-to-local-file"
+                  "interceptor/desktop-app/saving-logs-to-local-file",
+                  "interceptor/desktop-app/allow-insecure-ssl"
                 ]
               },
               {

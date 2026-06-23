@@ -164,6 +164,11 @@ export const initClientSideCaching = async () => {
   });
 
   chrome.webNavigation.onCommitted.addListener(async (navigatedTabData) => {
+    // Skip non-http(s) commits (e.g. about:blank, chrome://). The extension has no host access to
+    // them, so executeScript/messaging would throw "Cannot access contents of url ...". This also
+    // covers the about:blank tab the network recorder briefly creates before navigating to the
+    // recorded URL (see startNetworkRecording's about:blank hack).
+    if (navigatedTabData.url && !/^https?:\/\//.test(navigatedTabData.url)) return;
     if (isExtensionStatusEnabled) {
       updateTabRuleCache(navigatedTabData.tabId, navigatedTabData.frameId);
       globalStateManager.initSharedStateCaching(navigatedTabData.tabId);

@@ -74,6 +74,11 @@ class TabService {
     });
 
     chrome.webNavigation.onDOMContentLoaded.addListener((navigatedTabData) => {
+      // Skip non-http(s) documents (e.g. about:blank, chrome://) — they have no client content
+      // script, so sendMessage would fail with "Receiving end does not exist". This covers the
+      // about:blank tab the network recorder briefly opens before navigating (see
+      // startNetworkRecording's about:blank hack).
+      if (navigatedTabData.url && !/^https?:\/\//.test(navigatedTabData.url)) return;
       if (navigatedTabData.frameId === 0) {
         const tab = this.getTab(navigatedTabData.tabId);
 

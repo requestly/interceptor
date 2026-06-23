@@ -63,6 +63,11 @@ export const initPageScriptMessageListener = () => {
           payload: event.data.payload,
         });
         break;
+      case CLIENT_MESSAGES.NETWORK_BODY_RECORDER_READY:
+        // Network Interceptor v2: the page body-recorder is armed and listening — forward to the SW
+        // so it replies with START (resolved caps) now. Pull-based handshake; tabId added in the SW.
+        chrome.runtime.sendMessage({ action: CLIENT_MESSAGES.NETWORK_BODY_RECORDER_READY });
+        break;
     }
   });
 };
