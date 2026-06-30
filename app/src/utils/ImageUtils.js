@@ -16,17 +16,32 @@ export const generateGravatarURL = (email = "sagar@requestly.io") => {
 };
 
 /**
+ * True when `url`'s host is Gravatar. Parses the URL and matches on the hostname
+ * rather than a substring — `url.includes("gravatar.com")` would also match
+ * unrelated hosts such as `gravatar.com.evil.com` or `host/path?ref=gravatar.com`.
+ * Unparseable values return false (treated as "not a Gravatar URL").
+ */
+const isGravatarUrl = (url) => {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === "gravatar.com" || host.endsWith(".gravatar.com");
+  } catch {
+    return false;
+  }
+};
+
+/**
  * Resolves the avatar to display for a user.
  *
  * Precedence: the auth provider's photo (e.g. Google) when we have a real one,
  * otherwise a Gravatar resolved live from the current login email — so changes a
  * user makes on Gravatar are reflected here. For email/password accounts we persist
- * a synthetic gravatar.com URL as `photoURL`, so any gravatar.com value is treated
+ * a synthetic gravatar.com URL as `photoURL`, so any Gravatar-hosted value is treated
  * as "no provider photo" and re-resolved live from the email. `d=mp` is Gravatar's
  * deterministic fallback, shown when the email has no Gravatar image.
  */
 export const getUserAvatarUrl = (email = "", providerPhotoURL = "") => {
-  if (providerPhotoURL && !providerPhotoURL.includes("gravatar.com")) {
+  if (providerPhotoURL && !isGravatarUrl(providerPhotoURL)) {
     return providerPhotoURL;
   }
   return `https://www.gravatar.com/avatar/${md5(email)}?s=200&d=mp`;
