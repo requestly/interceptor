@@ -5,6 +5,7 @@ import { Button as AntButton } from "antd";
 import UserInfo from "./UserInfo";
 //UTILS
 import { getUserAuthDetails } from "store/slices/global/user/selectors";
+import { getUserAvatarUrl } from "utils/ImageUtils";
 import { redirectToDeleteAccount, redirectToSignDPA } from "../../../../utils/RedirectionUtils";
 // ACTIONS
 import { handleForgotPasswordButtonOnClick } from "features/onboarding/components/auth/components/Form/actions";
@@ -21,9 +22,7 @@ const ManageAccount = () => {
 
   //Component State
   const [isChangePasswordLoading, setIsChangePasswordLoading] = useState(false);
-  // Fallback image
-  const defaultImageSrc = "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y";
-  let userImageSrc = user.details.profile.photoURL ? user.details.profile.photoURL : defaultImageSrc;
+  let userImageSrc = getUserAvatarUrl(user.details.profile.email, user.details.profile.photoURL);
 
   const userDisplayName = user.details.profile.displayName ? user.details.profile.displayName : "User";
 
