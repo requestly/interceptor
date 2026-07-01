@@ -4,6 +4,19 @@
   padding: var(--space-15, 80px) 10px;
 }
 
+.block-screen-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8, 24px);
+  width: 100%;
+  max-width: 500px;
+
+  .block-screen-signout-btn {
+    margin-top: var(--space-2, 4px);
+  }
+}
+
 .block-screen-message-container {
   display: flex;
   flex-direction: column;
@@ -11,12 +24,18 @@
   gap: var(--space-8, 24px);
   border-radius: 8px;
   width: 100%;
-  max-width: 600px;
+  max-width: 500px;
 
   .block-screen-message-icon img {
     width: 56px;
     height: 56px;
     aspect-ratio: 1/1;
+  }
+
+  .block-screen-message-icon img.block-screen-illustration {
+    width: auto;
+    height: 72px;
+    aspect-ratio: auto;
   }
 
   .block-screen-content {
