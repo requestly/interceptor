@@ -25,7 +25,6 @@ const useRootPathRedirector = () => {
   }, [searchParams, isAuthSkipped]);
 
   const LAST_KNOWN_PATHS = new Set([
-    PATHS.API_CLIENT.INDEX,
     PATHS.RULES.INDEX,
     PATHS.MOCK_SERVER.INDEX,
     PATHS.NETWORK_INSPECTOR.INDEX,

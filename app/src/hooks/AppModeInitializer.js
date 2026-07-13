@@ -45,7 +45,6 @@ import FEATURES from "config/constants/sub/features";
 import { trackHarFileOpened } from "modules/analytics/events/features/sessionRecording/networkSessions";
 import { trackLocalSessionRecordingOpened } from "modules/analytics/events/features/sessionRecording";
 import { getActiveWorkspaceId } from "store/slices/workspaces/selectors";
-import { ApiClientImporterType } from "features/apiClient/types";
 import { clientStorageService } from "services/clientStorageService";
 import { initAndSubscribeSecretsManager } from "features/apiClient/slices/secrets-manager";
 import { secretsManagerService } from "services/secretsManagerService";
@@ -395,23 +394,6 @@ const AppModeInitializer = () => {
         };
       });
 
-      PSMH.addMessageListener(GLOBAL_CONSTANTS.EXTENSION_MESSAGES.OPEN_CURL_IMPORT_MODAL, (message) => {
-        const { payload } = message;
-
-        // Navigate to API Client with cURL import modal state
-        const navigationState = {
-          modal: ApiClientImporterType.CURL,
-          curlCommand: payload.curlCommand,
-          pageURL: payload.pageURL,
-          source: payload.source,
-        };
-
-        navigate(PATHS.API_CLIENT.ABSOLUTE, { state: navigationState });
-
-        return {
-          received: true,
-        };
-      });
     }
   }, [appMode, activeWorkspaceId, dispatch, user?.details?.isSyncEnabled, user?.details?.profile?.uid, navigate]);
 

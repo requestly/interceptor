@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { globalActions } from "store/slices/global/slice";
 import { getIsTrafficTableTourCompleted, getIsConnectedAppsTourCompleted } from "store/selectors";
@@ -9,14 +9,12 @@ import AppliedRules from "../../Tables/columns/AppliedRules";
 import { ProductWalkthrough } from "components/misc/ProductWalkthrough";
 import FEATURES from "config/constants/sub/features";
 import VirtualTableV2 from "./VirtualTableV2";
-import { APIClientRequest } from "features/apiClient/components/common/APIClient";
 import { RQNetworkLog } from "../../../TrafficExporter/harLogs/types";
 import { Checkbox, Typography } from "antd";
 import { trackMockResponsesRequestsSelected } from "modules/analytics/events/features/sessionRecording/mockResponseFromSession";
 import { REQUEST_METHOD_COLORS, RequestMethod } from "../../../../../../../../constants/requestMethodColors";
 import "./index.scss";
 import { TOUR_TYPES } from "components/misc/ProductWalkthrough/types";
-import { APIClientModal } from "features/apiClient/components/common/APIClient";
 
 export const ITEM_SIZE = 32;
 
@@ -38,29 +36,9 @@ const NetworkTable: React.FC<Props> = ({
   selectedMockRequests,
 }) => {
   const [selectedRowData, setSelectedRowData] = useState<RQNetworkLog | null>(null);
-  const [isReplayRequestModalOpen, setIsReplayRequestModalOpen] = useState(false);
   const dispatch = useDispatch();
   const isTrafficTableTourCompleted = useSelector(getIsTrafficTableTourCompleted);
   const isConnectedAppsTourCompleted = useSelector(getIsConnectedAppsTourCompleted);
-  const apiClientRequestForSelectedRowRef = useRef<APIClientRequest | null>(null);
-
-  const onReplayRequest = useCallback(() => {
-    if (!selectedRowData) {
-      return;
-    }
-    apiClientRequestForSelectedRowRef.current = {
-      url: selectedRowData.url,
-      headers: selectedRowData.request.headers,
-      method: selectedRowData.request.method,
-      body: selectedRowData.request.body,
-    };
-    setIsReplayRequestModalOpen(true);
-  }, [selectedRowData]);
-
-  const onReplayRequestModalClose = useCallback(() => {
-    apiClientRequestForSelectedRowRef.current = null;
-    setIsReplayRequestModalOpen(false);
-  }, []);
 
   const columns = useMemo(
     () => [
@@ -270,16 +248,8 @@ const NetworkTable: React.FC<Props> = ({
           renderLogRow={renderLogRow}
           logs={logs}
           selectedRowData={selectedRowData}
-          onReplayRequest={onReplayRequest}
         />
       </div>
-      {isReplayRequestModalOpen ? (
-        <APIClientModal
-          request={apiClientRequestForSelectedRowRef.current}
-          isModalOpen
-          onModalClose={onReplayRequestModalClose}
-        />
-      ) : null}
     </>
   );
 };

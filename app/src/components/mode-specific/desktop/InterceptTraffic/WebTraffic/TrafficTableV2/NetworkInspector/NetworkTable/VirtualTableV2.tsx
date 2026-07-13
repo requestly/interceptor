@@ -14,10 +14,9 @@ interface Props {
   header: React.ReactNode;
   renderLogRow: any;
   selectedRowData: RQNetworkLog | null;
-  onReplayRequest: () => void;
 }
 
-const VirtualTableV2: React.FC<Props> = ({ logs = [], header, renderLogRow, selectedRowData, onReplayRequest }) => {
+const VirtualTableV2: React.FC<Props> = ({ logs = [], header, renderLogRow, selectedRowData }) => {
   const [selected, setSelected] = useState<string | null>(null);
   const [lastKnownBottomIndex, setLastKnownBottomIndex] = useState<number | null>(null);
   const [isScrollToBottomEnabled, setIsScrollToBottomEnabled] = useState(true);
@@ -155,7 +154,7 @@ const VirtualTableV2: React.FC<Props> = ({ logs = [], header, renderLogRow, sele
           onContextMenu={(e: any) => setSelected(e.target?.parentElement.id)}
         >
           {header}
-          <ContextMenu log={selectedRowData ?? ({} as RQNetworkLog)} onReplayRequest={onReplayRequest}>
+          <ContextMenu log={selectedRowData ?? ({} as RQNetworkLog)}>
             <Table.Body id="vtbody">
               {/* Hack to fix alternate colors flickering due to virtualization*/}
               {items[0]?.index % 2 === 0 ? null : <tr></tr>}

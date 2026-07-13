@@ -8,21 +8,16 @@ import { MockEditorHeader } from "./Header";
 import { Tabs } from "antd";
 import APP_CONSTANTS from "config/constants";
 import React, { ReactNode, useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { getUserAuthDetails } from "store/slices/global/user/selectors";
+import { useDispatch } from "react-redux";
 import { toast } from "utils/Toast";
 import { FileType, MockType, RQMockCollection } from "../../types";
 import type { TabsProps } from "antd";
-import { generateFinalUrl } from "../../utils";
 import { requestMethodDropdownOptions } from "../constants";
 import { MockEditorDataSchema, RequestMethod, ValidationErrors } from "../types";
 import { cleanupEndpoint, getEditorLanguage, validateEndpoint, validateHeaders, validateStatusCode } from "../utils";
 import "./index.css";
-import { trackMockEditorOpened, trackTestMockClicked } from "modules/analytics/events/features/mocksV2";
-import { APIClientModal, APIClientRequest } from "features/apiClient/components/common/APIClient";
+import { trackMockEditorOpened } from "modules/analytics/events/features/mocksV2";
 import MockEditorEndpoint from "./Endpoint";
-import { trackRQDesktopLastActivity, trackRQLastActivity } from "utils/AnalyticsUtils";
-import { MOCKSV2 } from "modules/analytics/events/features/constants";
 import { EditorLanguage } from "componentsV2/CodeEditor";
 import { BottomSheetLayout, BottomSheetProvider } from "componentsV2/BottomSheet";
 import MockLogs from "./BottomSheet/MockLogs";
@@ -30,7 +25,6 @@ import { BottomSheetFeatureContext, SheetLayout } from "componentsV2/BottomSheet
 import { useFeatureValue } from "@growthbook/growthbook-react";
 import { ExportMocksModalWrapper } from "features/mocks/modals";
 import { globalActions } from "store/slices/global/slice";
-import { getActiveWorkspaceId } from "store/slices/workspaces/selectors";
 import Editor from "componentsV2/CodeEditor";
 
 interface Props {
@@ -59,10 +53,6 @@ const MockEditor: React.FC<Props> = ({
   mockType,
 }) => {
   const dispatch = useDispatch();
-  const user = useSelector(getUserAuthDetails);
-  const username = user?.details?.username;
-
-  const activeWorkspaceId = useSelector(getActiveWorkspaceId);
 
   const areLogsVisible = useFeatureValue("mock_logs", false);
 
@@ -87,29 +77,7 @@ const MockEditor: React.FC<Props> = ({
     headers: null,
   });
 
-  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
-
   const collectionPath = mockCollectionData?.path ?? "";
-
-  const finalUrl = useMemo(
-    () =>
-      generateFinalUrl({
-        endpoint,
-        uid: user?.details?.profile?.uid,
-        username,
-        teamId: activeWorkspaceId,
-        password,
-        collectionPath,
-      }),
-    [endpoint, activeWorkspaceId, user?.details?.profile?.uid, username, password, collectionPath]
-  );
-
-  const apiRequest = useMemo<APIClientRequest>(() => {
-    return {
-      url: finalUrl,
-      method,
-    };
-  }, [finalUrl, method]);
 
   //editor fields ref
   const endpointRef = useRef(null);
@@ -235,13 +203,6 @@ const MockEditor: React.FC<Props> = ({
       }
     }
   }, [onSave, errors, createMockEditorData, validateMockEditorData, id, dispatch]);
-
-  const handleTest = useCallback(() => {
-    setIsTestModalOpen(true);
-    trackTestMockClicked();
-    trackRQLastActivity(MOCKSV2.TEST_MOCK_CLICKED);
-    trackRQDesktopLastActivity(MOCKSV2.TEST_MOCK_CLICKED);
-  }, []);
 
   const onNameChange = (name: string) => {
     setName(name);
@@ -458,7 +419,6 @@ const MockEditor: React.FC<Props> = ({
               savingInProgress={savingInProgress}
               handleClose={onClose}
               handleSave={handleOnSave}
-              handleTest={handleTest}
               setPassword={setPassword}
               password={password}
               isEditorReadOnly={isEditorReadOnly}
@@ -491,14 +451,6 @@ const MockEditor: React.FC<Props> = ({
                 </div>
               </div>
             </BottomSheetLayout>
-            {!isNew ? (
-              <APIClientModal
-                request={apiRequest}
-                modalTitle="Test mock endpoint"
-                isModalOpen={isTestModalOpen}
-                onModalClose={() => setIsTestModalOpen(false)}
-              />
-            ) : null}
           </BottomSheetProvider>
         </div>
       ) : (
@@ -509,7 +461,6 @@ const MockEditor: React.FC<Props> = ({
             savingInProgress={savingInProgress}
             handleClose={onClose}
             handleSave={handleOnSave}
-            handleTest={handleTest}
             setPassword={setPassword}
             password={password}
             isEditorReadOnly={isEditorReadOnly}
@@ -536,14 +487,6 @@ const MockEditor: React.FC<Props> = ({
               </Row>
             </div>
           </div>
-          {!isNew ? (
-            <APIClientModal
-              request={apiRequest}
-              modalTitle="Test mock endpoint"
-              isModalOpen={isTestModalOpen}
-              onModalClose={() => setIsTestModalOpen(false)}
-            />
-          ) : null}
         </div>
       )}
     </>
