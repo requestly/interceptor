@@ -56,8 +56,8 @@ const DevScriptMode: React.FC = () => {
       <Col span={22}>
         <div className="title">Developer script mode</div>
         <p className="setting-item-caption">
-          Runs "code" rules with full system access instead of the secure sandbox. Enable only for scripts you fully
-          trust — a shared or imported rule could run arbitrary code on your machine.
+          Runs Dynamic (JavaScript) request/response rules with full system access instead of the secure sandbox.
+          Enable only for scripts you fully trust — a shared or imported rule could run arbitrary code on your machine.
         </p>
       </Col>
       <Col span={2} className="text-right">
