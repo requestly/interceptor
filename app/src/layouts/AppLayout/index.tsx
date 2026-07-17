@@ -23,6 +23,7 @@ import AutomationNotAllowedNotice from "components/misc/notices/AutomationNotAll
 import { useIsExtensionEnabled } from "hooks";
 import { LazyMotion, domMax } from "framer-motion";
 import { useBillingTeamsListener } from "backend/billing/hooks/useBillingTeamsListener";
+import { useBrowserstackGroupId } from "hooks/useBrowserstackGroupId";
 import ThemeProvider from "lib/design-system-v2/helpers/ThemeProvider";
 import { InitImplicitWidgetConfigHandler } from "components/features/rules/TestThisRule";
 import APP_CONSTANTS from "config/constants";
@@ -45,6 +46,7 @@ const App: React.FC = () => {
   useGeoLocation();
   useIsExtensionEnabled();
   useBillingTeamsListener();
+  useBrowserstackGroupId();
   useAppLanguageObserver();
   // useInitializeNewUserSessionRecordingConfig();
 
