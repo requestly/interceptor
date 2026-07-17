@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, Modal } from "antd";
 import { AuthCard } from "./components/AuthCard/AuthCard";
-import { WelcomeCard } from "./components/WelcomeCard/WelcomeCard";
 import { useDispatch, useSelector } from "react-redux";
 import { globalActions } from "store/slices/global/slice";
 import { getUserAuthDetails } from "store/slices/global/user/selectors";
@@ -16,7 +15,10 @@ export const DesktopOnboardingCard = ({ children, className }: { children: React
 export const DesktopOnboardingModal = () => {
   const dispatch = useDispatch();
   const user = useSelector(getUserAuthDetails);
-  const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>(OnboardingStep.FEATURE_SELECTION);
+  // First-run onboarding is now a single step: sign-in/sign-up. The feature-selection
+  // screen (WelcomeCard) and the local-workspace folder-selection step were removed
+  // with the API Client (RQ-4695), so the step machine starts — and stays — at AUTH.
+  const [onboardingStep] = useState<OnboardingStep>(OnboardingStep.AUTH);
 
   useEffect(() => {
     if (user.loggedIn) {
@@ -36,27 +38,19 @@ export const DesktopOnboardingModal = () => {
       className="rq-desktop-onboarding-modal"
     >
       <div className="rq-desktop-onboarding-modal-content">
-        {onboardingStep === OnboardingStep.FEATURE_SELECTION ? (
-          <DesktopOnboardingCard className="welcome-card">
-            <WelcomeCard onFeatureClick={(step: OnboardingStep) => setOnboardingStep(step)} />
-          </DesktopOnboardingCard>
-        ) : onboardingStep === OnboardingStep.AUTH ? (
-          <>
-            <DesktopOnboardingCard className="auth-card">
-              <AuthCard onBackClick={() => setOnboardingStep(OnboardingStep.FEATURE_SELECTION)} />
-            </DesktopOnboardingCard>
-            <Button
-              type="link"
-              className="skip-desktop-onboarding"
-              onClick={() => {
-                trackDesktopOnboardingStepSkipped(OnboardingStep.AUTH);
-                dispatch(globalActions.updateIsOnboardingCompleted(true));
-              }}
-            >
-              Continue without sign in
-            </Button>
-          </>
-        ) : null}
+        <DesktopOnboardingCard className="auth-card">
+          <AuthCard />
+        </DesktopOnboardingCard>
+        <Button
+          type="link"
+          className="skip-desktop-onboarding"
+          onClick={() => {
+            trackDesktopOnboardingStepSkipped(onboardingStep);
+            dispatch(globalActions.updateIsOnboardingCompleted(true));
+          }}
+        >
+          Continue without sign in
+        </Button>
       </div>
     </Modal>
   );
