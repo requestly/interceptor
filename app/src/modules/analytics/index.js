@@ -46,13 +46,6 @@ export const trackEvent = (name, params, config) => {
   newParams.workspace = getWorkspaceType();
   newParams.workspaceId = window.currentlyActiveWorkspaceTeamId ? window.currentlyActiveWorkspaceTeamId : null;
   newParams.workspaceMembersCount = window.workspaceMembersCount ?? null;
-  // BrowserStack Usage Reports group attribution (RQ-4675). group_id is the
-  // signed-in user's BrowserStack group — a property of the USER (sourced from
-  // their BS-linked billing team), NOT the workspace — kept on window by
-  // useBrowserstackGroupId. null when the user has no BS-linked billing team.
-  // NOTE: sub_group_id is intentionally omitted — Interceptor has no sub-group
-  // source today; revisit if Team-level (sub_group) reports are ever needed.
-  newParams.group_id = window.currentlyActiveBrowserstackGroupId ?? null;
 
   Logger.log(`[analytics.trackEvent] name=${name}`, { params, config });
   posthogIntegration.trackEvent(name, newParams);
