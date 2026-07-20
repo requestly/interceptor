@@ -24,6 +24,7 @@ import { RQTooltip } from "lib/design-system-v2/components";
 import HomeIcon from "/assets/media/common/feature_home.svg";
 import NetworkIcon from "/assets/media/common/feature_network.svg";
 import RulesIcon from "/assets/media/common/feature_rules.svg";
+import ApiIcon from "/assets/media/common/feature_apis.svg";
 import FilesIcon from "/assets/media/common/feature_files.svg";
 import SessionsIcon from "/assets/media/common/feature_sessions.svg";
 
@@ -34,6 +35,7 @@ enum SidebarItemKey {
   NETWORK = "network",
   NETWORK_INSPECTOR = "network_inspector",
   RULES = "rules",
+  APIs = "apis",
   FILES = "files",
   SESSIONS = "sessions",
 }
@@ -41,6 +43,7 @@ enum SidebarItemKey {
 const LocalWorkspaceSidebarOrder = [
   SidebarItemKey.HOME,
   SidebarItemKey.NETWORK,
+  SidebarItemKey.APIs,
   SidebarItemKey.SESSIONS,
   SidebarItemKey.RULES,
   SidebarItemKey.FILES,
@@ -51,6 +54,7 @@ const defaultSidebarOrder = [
   SidebarItemKey.NETWORK,
   SidebarItemKey.NETWORK_INSPECTOR,
   SidebarItemKey.RULES,
+  SidebarItemKey.APIs,
   SidebarItemKey.FILES,
   SidebarItemKey.SESSIONS,
 ];
@@ -117,6 +121,13 @@ export const PrimarySidebar: React.FC = () => {
           </>
         ),
         disabled: isLocalSyncEnabled,
+      },
+      [SidebarItemKey.APIs]: {
+        id: 4,
+        title: "APIs",
+        path: PATHS.API_CLIENT.INDEX,
+        icon: <img src={ApiIcon} alt="apis" />,
+        display: true,
       },
       [SidebarItemKey.FILES]: {
         id: 5,

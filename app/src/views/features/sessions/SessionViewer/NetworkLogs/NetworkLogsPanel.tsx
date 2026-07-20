@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Empty, Typography, Row } from "antd";
 import { getIncludeNetworkLogs } from "store/features/session-recording/selectors";
@@ -6,6 +6,7 @@ import { globalActions } from "store/slices/global/slice";
 import { getActiveModals } from "store/slices/global/modals/selectors";
 import { RQNetworkLog } from "lib/design-system/components/RQNetworkTable/types";
 import { RQNetworkTable, RQNetworkTableProps } from "lib/design-system/components/RQNetworkTable";
+import { APIClientModal, APIClientRequest } from "features/apiClient/components/common/APIClient";
 import RuleEditorModal from "components/common/RuleEditorModal";
 import { copyToClipBoard } from "utils/Misc";
 import { snakeCase } from "lodash";
@@ -28,6 +29,8 @@ interface Props {
 const NetworkLogsPanel: React.FC<Props> = ({ startTime, networkLogs, playerTimeOffset, disableFilters = false }) => {
   const dispatch = useDispatch();
   const { ruleEditorModal } = useSelector(getActiveModals);
+  const [isApiClientModalOpen, setIsApiClientModalOpen] = useState(false);
+  const [selectedRequestData, setSelectedRequestData] = useState<APIClientRequest>(null);
   const isLocalSyncEnabled = useCheckLocalSyncSupport();
 
   const includeNetworkLogs = useSelector(getIncludeNetworkLogs);
@@ -73,6 +76,27 @@ const NetworkLogsPanel: React.FC<Props> = ({ startTime, networkLogs, playerTimeO
           onSelect: (key, log) => {
             copyToClipBoard(log.entry.request.url, "URL copied to clipboard");
             trackSessionRecordingNetworkLogContextMenuOptionClicked(key);
+          },
+        },
+        {
+          type: "divider",
+        },
+        {
+          key: "replay_request",
+          label: "Replay Request",
+          disabled: isLocalSyncEnabled,
+          onSelect: (key, log) => {
+            const { url, method, headers, postData } = log.entry.request ?? {};
+
+            setSelectedRequestData({
+              url,
+              method,
+              body: postData.text,
+              headers: headers.reduce((result, header) => ({ ...result, [header.name]: header.value }), {}),
+            });
+
+            trackSessionRecordingNetworkLogContextMenuOptionClicked(key);
+            setIsApiClientModalOpen(true);
           },
         },
         {
@@ -143,6 +167,11 @@ const NetworkLogsPanel: React.FC<Props> = ({ startTime, networkLogs, playerTimeO
     [handleContextMenuRuleOptionSelect, isLocalSyncEnabled]
   );
 
+  const handleCloseApiClientModal = useCallback(() => {
+    setIsApiClientModalOpen(false);
+    setSelectedRequestData(null);
+  }, []);
+
   const emptyTableView = (
     <Row className="empty-table-view subtitle" align="middle" justify="center">
       No request matches the search query!
@@ -165,6 +194,15 @@ const NetworkLogsPanel: React.FC<Props> = ({ startTime, networkLogs, playerTimeO
             autoScroll
             disableFilters={disableFilters}
           />
+
+          {isApiClientModalOpen && (
+            <APIClientModal
+              modalTitle="Replay request"
+              request={selectedRequestData}
+              isModalOpen={isApiClientModalOpen}
+              onModalClose={handleCloseApiClientModal}
+            />
+          )}
 
           {ruleEditorModal.isActive && (
             <RuleEditorModal

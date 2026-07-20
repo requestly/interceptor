@@ -12,6 +12,7 @@ import {
 } from "modules/analytics/events/desktopApp";
 import { trackWalkthroughCompleted } from "modules/analytics/events/misc/productWalkthrough";
 import FEATURES from "config/constants/sub/features";
+import { isFeatureCompatible } from "utils/CompatibilityUtils";
 import { getLogResponseById } from "store/features/desktop-traffic-table/selectors";
 import "./index.css";
 import { trackRQDesktopLastActivity } from "utils/AnalyticsUtils";
@@ -25,9 +26,10 @@ import { RQNetworkLog } from "../../../TrafficExporter/harLogs/types";
 interface ContextMenuProps {
   log: RQNetworkLog;
   children: ReactNode;
+  onReplayRequest: () => void;
 }
 
-export const ContextMenu: React.FC<ContextMenuProps> = ({ children, log }) => {
+export const ContextMenu: React.FC<ContextMenuProps> = ({ children, log, onReplayRequest }) => {
   const dispatch = useDispatch();
   const isTrafficTableTourCompleted = useSelector(getIsTrafficTableTourCompleted);
   const selectedRequestResponse = useSelector(getLogResponseById(log?.id)) || log?.response?.body;
@@ -147,12 +149,24 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ children, log }) => {
       },
     ];
 
+    if (isFeatureCompatible(FEATURES.API_CLIENT)) {
+      menuItems.splice(2, 0, {
+        key: "replay_request",
+        label: "Edit and Replay",
+        onClick: () => {
+          trackTrafficTableDropdownClicked("replay_request");
+          trackRQDesktopLastActivity(TRAFFIC_TABLE.TRAFFIC_TABLE_REQUEST_DROPDOWN_CLICKED);
+          onReplayRequest();
+        },
+      });
+    }
+
     if (!log.requestShellCurl) {
       menuItems.splice(0, 1);
     }
 
     return menuItems;
-  }, [log, handleOnClick, isLocalSyncEnabled]);
+  }, [log, onReplayRequest, handleOnClick, isLocalSyncEnabled]);
 
   const handleDropdownOpenChange = (open: boolean) => {
     if (open) {

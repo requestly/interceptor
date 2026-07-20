@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { Row, Layout, Col, Tooltip, Dropdown, Menu, Button } from "antd";
-import { LockOutlined, UnlockOutlined } from "@ant-design/icons";
+import { ExperimentOutlined, LockOutlined, UnlockOutlined } from "@ant-design/icons";
 import { RQBreadcrumb, RQButton } from "lib/design-system-v2/components";
 import { MockType } from "components/features/mocksV2/types";
 import "./index.css";
 import { trackMockEditorClosed, trackMockPasswordGenerateClicked } from "modules/analytics/events/features/mocksV2";
+import { isFeatureCompatible } from "utils/CompatibilityUtils";
+import FEATURES from "config/constants/sub/features";
 import { useLocation } from "react-router-dom";
 import PasswordPopup from "./PasswordPopup/PasswordPopup";
 import { Conditional } from "components/common/Conditional";
@@ -18,6 +20,7 @@ interface HeaderProps {
   savingInProgress: boolean;
   handleClose: Function;
   handleSave: () => void;
+  handleTest: () => void;
   setPassword: (password: string) => void;
   password: string;
   isEditorReadOnly: boolean;
@@ -29,6 +32,7 @@ export const MockEditorHeader: React.FC<HeaderProps> = ({
   savingInProgress,
   handleClose,
   handleSave,
+  handleTest,
   setPassword,
   password,
   isEditorReadOnly,
@@ -112,6 +116,15 @@ export const MockEditorHeader: React.FC<HeaderProps> = ({
             </div>
           </Conditional>
 
+          {!isNewMock && isFeatureCompatible(FEATURES.API_CLIENT) && (
+            <RQButton
+              icon={<ExperimentOutlined />}
+              onClick={handleTest}
+              type={isEditorReadOnly ? "primary" : "secondary"}
+            >
+              Test
+            </RQButton>
+          )}
           <RQButton
             type="secondary"
             onClick={() => {

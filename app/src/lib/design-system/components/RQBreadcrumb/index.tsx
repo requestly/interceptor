@@ -13,6 +13,10 @@ export const RQBreadcrumb: React.FC<BreadcrumbProps> = (props) => {
       return "Files";
     }
 
+    if (path === "api-client") {
+      return "API Client";
+    }
+
     // TODO: rather derive from the list used in Sidebar
     return capitalize(path.includes("-") ? path.split("-").join(" ") : path);
   }, []);
