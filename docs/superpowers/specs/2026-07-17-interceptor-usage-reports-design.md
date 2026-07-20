@@ -28,12 +28,17 @@ Interceptor has no `/me` and no `user_mappings` table (it runs on requestly-clou
 
 ## 3.1 (RQ-4675) — plumb `group_id` onto every event
 
-1. **Selector** `getUserBrowserstackGroupId` (new, in `store/features/billing/selectors.ts`): from `getAvailableBillingTeams` + the signed-in `uid`, pick the team where `uid ∈ members` **and** `browserstackGroupId` is set (prefer member-of over domain-matched teams). Return that `browserstackGroupId` or `null`. Consolidates the `uid in team.members` filter currently copy-pasted in ~6 components.
-2. **Global setter**: set `window.currentlyActiveBrowserstackGroupId` from that selector when billing teams / user settle (mirrors the existing `window.currentlyActive*` globals that `trackEvent` reads).
-3. **Choke-point** (`app/src/modules/analytics/index.js`, the `trackEvent` enrichment block): `newParams.group_id = window.currentlyActiveBrowserstackGroupId ?? null;`
-4. **`sub_group_id`**: intentionally **not** emitted — no sub-group source in Interceptor billing. Leave a comment marking it future-consumable if Team-level (sub_group) reports are ever needed.
+**The patch model is the key constraint.** The production web app = this interceptor base + the `requestly-cloud` `webapp` overlay patched on top, and `patch.sh` **overwrites** `modules/analytics/` wholesale (`cp -r webapp/src/modules/analytics/. → build/app/...`). The real EDS emission lives in the overlay (`webapp/src/modules/analytics/integrations/eds.ts`), which builds a `POST /send_event` envelope with `browserstack_user_id` as a **top-level `data.*` field** (not inside `event_details`). So `group_id` must flow the **same way as `browserstack_user_id`** — a top-level `data.group_id` field emitted in `eds.ts`, in `requestly-cloud`, not this repo. This repo only exposes the value.
 
-**Field name:** `group_id` (snake_case) — matches the BigQuery sink and the API Client envelope, so the cross-product query (`JSON_VALUE(event_details,'$.group_id')`) is uniform. RQ stores the id as a string; the API Client emits a number; `JSON_VALUE` stringifies both identically, so emitting the string as-is is warehouse-uniform.
+Split across the two repos:
+
+1. **Interceptor (this repo — survives the patch):**
+   - **Selector** `getUserBrowserstackGroupId` (new, `store/features/billing/selectors.ts`): from `getAvailableBillingTeams` + the signed-in `uid`, pick the team where `uid ∈ members` **and** `browserstackGroupId` is set (prefer member-of over domain-matched teams); return that `browserstackGroupId` or `null`. Consolidates the `uid in team.members` filter copy-pasted in ~6 components.
+   - **Hook** `useBrowserstackGroupId` (mounted in `AppLayout`): sets `window.currentlyActiveBrowserstackGroupId` from that selector — the interceptor-side source, analogous to how the auth handler exposes `browserstackId`. Does **not** touch `modules/analytics/`.
+2. **requestly-cloud (`webapp` overlay):** in `integrations/eds.ts`, add `group_id: window.currentlyActiveBrowserstackGroupId ?? null` to the `data` object, a sibling of `browserstack_user_id`.
+3. **`sub_group_id`**: intentionally **not** emitted — no sub-group source in Interceptor billing. Commented in `eds.ts` as future-consumable if Team-level (sub_group) reports are ever needed.
+
+**Field name / shape:** `group_id` (snake_case), a **top-level `data.*` field** (queried like `browserstack_user_id`, i.e. `e.group_id`, not `JSON_VALUE(event_details,'$.group_id')`). RQ stores the id as a string; the API Client emits a number — for BigQuery this is uniform.
 
 **Null behavior:** users with no BS-linked billing team (email/Firebase-only, or unlinked) → `group_id = null`, matching the canonical `/me` behavior. Personal-workspace events still carry the user's `group_id` (the group is user-linked, not workspace-linked) — the personal-workspace *reporting* decision is 3.8.
 
@@ -54,4 +59,4 @@ Replicate the API Client's `_qa` marker rig (RQ-4684 / PR #3482 in `requestly-ap
 | 3.7 | RQ-4681 | `browserstack_user_id` coverage (Firebase-uid → BS-user fallback) |
 | 3.8 | RQ-4682 | personal-workspace (`workspaceId=null`) attribution decision |
 
-3.1/3.3/3.5 all edit the `analytics/index.js` enrichment block, so subtasks stack **linearly** (each branches off the previous, merges down into this base in turn) to avoid conflicts.
+Interceptor-side subtasks stack **linearly** on this base (each branches off the previous, merges down in turn). Note the emission half of 3.1/3.3 (`group_id`, `product_name`) and 3.5 (`super_user_id`) lands in the `requestly-cloud` `webapp` overlay (`eds.ts`), **not** this repo's `analytics/index.js` — those touch the same overlay file, so their `requestly-cloud` PRs must be coordinated there too. 3.1's emission half = `requestly-cloud` PR #861.
