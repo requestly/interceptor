@@ -29,3 +29,34 @@
     border-color: rgba(250, 140, 22, 0.7);
   }
 }
+
+// Hover popover content (rendered in a portal, so styled as top-level classes).
+.dev-script-mode-badge__popover {
+  max-width: 260px;
+
+  &-title {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: #fa8c16;
+  }
+
+  &-desc {
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 8px;
+    color: var(--requestly-color-text-subtle, #9b9b9b);
+  }
+
+  &-link {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--requestly-color-primary, #3b82f6);
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}

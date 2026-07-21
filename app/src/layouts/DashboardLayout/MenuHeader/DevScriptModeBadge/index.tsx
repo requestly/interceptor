@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { Tooltip } from "antd";
+import { Popover } from "antd";
 import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import { getAppMode } from "store/selectors";
 import { isFeatureCompatible } from "utils/CompatibilityUtils";
 import FEATURES from "config/constants/sub/features";
-import { redirectToSettings } from "utils/RedirectionUtils";
+import { redirectToDesktopSettings } from "utils/RedirectionUtils";
 import "./devScriptModeBadge.scss";
 
 const GET_ACTION = "USER_PREFERENCE:GET_DEV_SCRIPT_MODE";
@@ -57,17 +57,39 @@ const DevScriptModeBadge: React.FC = () => {
     return null;
   }
 
+  const popoverContent = (
+    <div className="dev-script-mode-badge__popover">
+      <div className="dev-script-mode-badge__popover-title">Developer Mode is on</div>
+      <div className="dev-script-mode-badge__popover-desc">
+        Dynamic (JavaScript) rule scripts run with full system access instead of the secure sandbox. Only keep this on
+        for scripts you fully trust.
+      </div>
+      <a
+        className="dev-script-mode-badge__popover-link"
+        onClick={() => redirectToDesktopSettings(navigate, window.location.pathname, "dev_mode_badge_popover")}
+      >
+        Manage in Desktop Settings →
+      </a>
+    </div>
+  );
+
   return (
-    <Tooltip title="Rule scripts run with FULL system access (no sandbox). Click to manage in Desktop Settings.">
+    <Popover
+      content={popoverContent}
+      trigger="hover"
+      placement="bottomRight"
+      mouseLeaveDelay={0.3}
+      overlayClassName="dev-script-mode-badge__popover-overlay"
+    >
       <div
         className="dev-script-mode-badge no-drag"
         role="button"
-        onClick={() => redirectToSettings(navigate, window.location.pathname, "dev_script_mode_badge")}
+        onClick={() => redirectToDesktopSettings(navigate, window.location.pathname, "dev_mode_badge")}
       >
         <span className="dev-script-mode-badge__dot" />
-        Dev script mode
+        Dev Mode
       </div>
-    </Tooltip>
+    </Popover>
   );
 };
 
