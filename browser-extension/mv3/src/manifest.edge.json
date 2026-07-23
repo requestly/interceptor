@@ -3,6 +3,7 @@
   "description": "__MSG_extDesc__",
   "default_locale": "en",
   "manifest_version": 3,
+  "incognito": "spanning",
   "update_URL": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
   "content_scripts": [
     {

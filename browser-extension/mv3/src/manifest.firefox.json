@@ -3,6 +3,7 @@
   "description": "__MSG_extDesc__",
   "default_locale": "en",
   "manifest_version": 3,
+  "incognito": "spanning",
   "browser_specific_settings": {
     "gecko": {
       "id": "extension@requestly.in",

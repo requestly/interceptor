@@ -44,6 +44,17 @@ export enum RequestScope {
   TOP_LEVEL = "top-level",
 }
 
+// Where the recording opens. LTS-selected; sent as a string over the external start message.
+//  - TAB (default): the existing behaviour — a new tab in the current (last-focused) window.
+//  - WINDOW: a dedicated new normal window.
+//  - INCOGNITO: a dedicated new incognito window (requires the user to have granted the extension
+//    "Allow in Incognito" — see isIncognitoAllowedCache; NOT programmatically settable).
+export enum OpenMode {
+  TAB = "tab",
+  WINDOW = "window",
+  INCOGNITO = "incognito",
+}
+
 export interface NetworkRecordingConfig {
   maxDuration?: number;
   maxPayloadSize?: number;
@@ -52,6 +63,12 @@ export interface NetworkRecordingConfig {
   wipeServiceWorkers?: boolean;
   recordAjax?: boolean;
   requestScope?: RequestScope;
+  // Where the recording opens (default TAB = existing behaviour).
+  openMode?: OpenMode;
+  // When true, a user-initiated stop closes the recording surface: the TAB in tab mode, the WINDOW
+  // in window/incognito modes. Default false (extension default OFF; LTS sends true). Applied only
+  // on reason "user".
+  closeOnStop?: boolean;
 }
 
 // 10 MB per-body cap (bytes), LTS-overridable via config.maxPayloadSize. Sized as a "safe maximum":
@@ -71,6 +88,12 @@ interface NetworkRecordingState {
   senderWindowId?: number;
   // Per-recording max-duration auto-stop timer (only set when config.maxDuration is given).
   maxDurationTimer?: ReturnType<typeof setTimeout>;
+  // The window the extension CREATED for this recording (window/incognito open modes only);
+  // undefined in tab mode (the tab lands in a pre-existing window we do not own). On a user-stop
+  // with closeOnStop we remove this window; tab mode removes only the tab.
+  createdWindowId?: number;
+  // Resolved open mode, mirrored from config so the stop-time close branch is self-contained.
+  openMode?: OpenMode;
 }
 
 // Opened only when the originating LTS tab AND its window are both gone at stop time, so the user
@@ -315,9 +338,21 @@ const deliverEntry = (tabId: number, entry: NetworkHarEntry) => {
  * hard-suppressed for them), so we just build the HAR entry and feed the same buffer + stream
  * path as v1 — no correlation. `tabId` comes from the message sender.
  */
-export const onNetworkBodyCaptured = (tabId: number | undefined, payload: SdkNetworkPayload | undefined) => {
+export const onNetworkBodyCaptured = (
+  tabId: number | undefined,
+  payload: SdkNetworkPayload | undefined,
+  frameId?: number
+) => {
   if (tabId === undefined || !payload) return;
-  if (!activeRecordings.has(tabId)) return; // not recording this tab (stale page script / race)
+  const recording = activeRecordings.get(tabId);
+  if (!recording) return; // not recording this tab (stale page script / race)
+
+  // Defensive record-scope guard. The body-recorder is registered main-frame-only, so SDK entries
+  // are inherently top-level today — but if allFrames is ever added to registerBodyRecorderScripts,
+  // this keeps requestScope "top-level" honest by dropping iframe-originated (frameId !== 0) bodies.
+  if (recording.config.requestScope === RequestScope.TOP_LEVEL && frameId !== undefined && frameId !== 0) {
+    return;
+  }
 
   const entry = buildSdkEntry(payload, nextRequestId());
   recordingEntries.get(tabId)?.push(entry);
@@ -635,6 +670,34 @@ export const initNetworkRecordingExtensionToggleListener = async () => {
   );
 };
 
+// Synchronously-readable copy of chrome.extension.isAllowedIncognitoAccess(), needed because
+// startNetworkRecording must reject an incognito start WITHOUT an await (an await forfeits the
+// sidePanel.open() user gesture, same constraint as isExtensionEnabledCache). There is no change
+// event for incognito access, so we (re)seed this at SW init AND on every getExtensionMetadata
+// external call (LTS's pre-flight), which keeps it fresh right before a start.
+let isIncognitoAllowedCache = false;
+
+/**
+ * Seed/refresh the incognito-allowed cache. Called at SW init and on each metadata pre-flight.
+ * Best-effort: on any error the cache stays false, so incognito is treated as NOT allowed — we
+ * never silently open a normal window when the user asked for incognito.
+ */
+export const refreshIncognitoAllowedCache = async (): Promise<boolean> => {
+  isIncognitoAllowedCache = await new Promise<boolean>((resolve) => {
+    try {
+      const api = (chrome as any).extension?.isAllowedIncognitoAccess;
+      if (typeof api !== "function") {
+        resolve(false);
+        return;
+      }
+      api((allowed: boolean) => resolve(!!allowed));
+    } catch {
+      resolve(false);
+    }
+  });
+  return isIncognitoAllowedCache;
+};
+
 // Firefox exposes sidebarAction only on the `browser.*` namespace, not the `chrome` alias.
 const firefoxSidebar = (globalThis as any).browser?.sidebarAction as { open?: () => Promise<void> } | undefined;
 
@@ -704,11 +767,44 @@ export const reopenNetworkRecordingPanel = (tabId: number | undefined) => {
  * recorder isn't registered for it (registered after), and capture is no-op until the page posts
  * READY (which the about:blank document never does).
  */
+// Create the about:blank recording surface for the given open mode and hand back its tab (and, for
+// window/incognito modes, its window id) in a single async hop — so the caller's openPanel() runs
+// inside that one callback with the sidePanel.open() user gesture still intact. chrome.windows.create
+// is a single async hop just like chrome.tabs.create, so the gesture SHOULD survive identically
+// (verify on a real build; if the panel fails to open the capture still runs — incognito degrades
+// gracefully via the injected floating widget / LTS-driven stop).
+const createRecordingSurface = (
+  openMode: OpenMode,
+  onCreated: (created: { tabId: number; windowId?: number } | null, error?: string) => void
+) => {
+  if (openMode === OpenMode.WINDOW || openMode === OpenMode.INCOGNITO) {
+    chrome.windows.create(
+      { url: "about:blank", focused: true, incognito: openMode === OpenMode.INCOGNITO },
+      (win) => {
+        const tab = win?.tabs?.[0];
+        if (chrome.runtime.lastError || !win?.id || !tab?.id) {
+          onCreated(null, chrome.runtime.lastError?.message || "Failed to create window");
+          return;
+        }
+        onCreated({ tabId: tab.id, windowId: win.id });
+      }
+    );
+    return;
+  }
+  chrome.tabs.create({ url: "about:blank" }, (tab) => {
+    if (chrome.runtime.lastError || !tab?.id) {
+      onCreated(null, chrome.runtime.lastError?.message || "Failed to create tab");
+      return;
+    }
+    onCreated({ tabId: tab.id });
+  });
+};
+
 export const startNetworkRecording = async (
   url: string,
   config: NetworkRecordingConfig = {},
   sender?: { tabId?: number; windowId?: number }
-): Promise<{ success: boolean; targetTabId?: number; error?: string }> => {
+): Promise<{ success: boolean; targetTabId?: number; error?: string; code?: string; openedMode?: OpenMode }> => {
   // Reject a start while the extension is off, so the UI never says "disabled" with a live
   // recording. Read from the in-memory cache (NOT an await).
   if (!isExtensionEnabledCache) {
@@ -722,19 +818,40 @@ export const startNetworkRecording = async (
     return { success: false, error: "Invalid URL. Must be a valid http or https URL." };
   }
 
+  const openMode = config.openMode ?? OpenMode.TAB;
+
+  // Incognito is gated by the user's "Allow in Incognito" toggle (chrome://extensions), which is
+  // NOT programmatically settable. Reject synchronously (NO await — it would forfeit the
+  // sidePanel.open() gesture) from the seeded cache; NEVER silently fall back to a normal window.
+  if (openMode === OpenMode.INCOGNITO && !isIncognitoAllowedCache) {
+    return {
+      success: false,
+      code: "INCOGNITO_NOT_ALLOWED",
+      error:
+        'Requestly is not allowed in Incognito. Open chrome://extensions, enable "Allow in Incognito" for Requestly, then start the recording again.',
+    };
+  }
+
   return new Promise((resolve) => {
-    // Create the tab at about:blank FIRST. This keeps the synchronous gesture path to
-    // sidePanel.open() intact (about:blank loads instantly and does NOT consume the gesture) AND
-    // means the recorded URL hasn't started loading yet — so we can register the document_start
-    // body-recorder scripts and ONLY THEN navigate to the URL, guaranteeing the interceptor arms
-    // before the recorded page's first request (the injection-timing-race fix). Because the real
-    // URL never loads pre-registration, nothing is captured twice (no double-send on reload).
-    chrome.tabs.create({ url: "about:blank" }, (tab) => {
-      if (chrome.runtime.lastError || !tab?.id) {
-        resolve({ success: false, error: chrome.runtime.lastError?.message || "Failed to create tab" });
+    // Create the recording surface at about:blank FIRST (tab, or window/incognito window per
+    // openMode). about:blank keeps the synchronous gesture path to sidePanel.open() intact (it
+    // loads instantly and does NOT consume the gesture) AND means the recorded URL hasn't started
+    // loading yet — so we register the document_start body-recorder scripts and ONLY THEN navigate,
+    // guaranteeing the interceptor arms before the page's first request. Because the real URL never
+    // loads pre-registration, nothing is captured twice (no double-send on reload).
+    createRecordingSurface(openMode, (created, surfaceError) => {
+      if (!created) {
+        // windows.create({incognito:true}) can still fail at create time under an enterprise policy
+        // that disables incognito, even when isAllowedIncognitoAccess() is true.
+        const code = openMode === OpenMode.INCOGNITO ? "INCOGNITO_DISABLED_BY_POLICY" : undefined;
+        resolve({
+          success: false,
+          error: surfaceError || "Failed to create recording surface",
+          ...(code ? { code } : {}),
+        });
         return;
       }
-      const tabId = tab.id;
+      const tabId = created.tabId;
 
       const state: NetworkRecordingState = {
         targetTabId: tabId,
@@ -745,6 +862,8 @@ export const startNetworkRecording = async (
         config: { ...config, maxPayloadSize: config.maxPayloadSize ?? DEFAULT_MAX_PAYLOAD_SIZE },
         senderTabId: sender?.tabId,
         senderWindowId: sender?.windowId,
+        createdWindowId: created.windowId,
+        openMode,
       };
 
       activeRecordings.set(tabId, state);
@@ -770,7 +889,7 @@ export const startNetworkRecording = async (
       // about:blank, so nothing is loading yet.
       openPanel(tabId);
 
-      resolve({ success: true, targetTabId: tabId });
+      resolve({ success: true, targetTabId: tabId, openedMode: openMode });
 
       // Now register the body-recorder scripts, THEN navigate the blank tab to the real URL. The
       // await is AFTER openPanel/resolve, so it costs neither the gesture nor the LTS response.
@@ -845,6 +964,36 @@ const returnFocusToSender = (recording: NetworkRecordingState) => {
     );
 };
 
+// Close the recording surface on a user-stop with config.closeOnStop, THEN return focus to the LTS
+// context. ORDER MATTERS: removing a window makes Chrome shuffle OS focus to some other window (with
+// multiple profiles open it can even land on a DIFFERENT profile's window), so we refocus LTS AFTER
+// the removal resolves — our focus() must be the last word. Window/incognito modes remove the WINDOW
+// only if it still holds just our tab (don't nuke tabs the user added or a sibling recording), else
+// just our tab. Issued AFTER activeRecordings.delete in stopNetworkRecording so chrome.tabs.onRemoved
+// -> cleanupRecording short-circuits (no double "complete").
+const closeRecordingSurface = (recording: NetworkRecordingState) => {
+  const { openMode, createdWindowId, targetTabId } = recording;
+  const refocusLts = () => returnFocusToSender(recording);
+  const removeTabThenRefocus = () => chrome.tabs.remove(targetTabId).then(refocusLts, refocusLts);
+
+  if ((openMode === OpenMode.WINDOW || openMode === OpenMode.INCOGNITO) && createdWindowId !== undefined) {
+    chrome.windows.get(createdWindowId, { populate: true }, (win) => {
+      if (chrome.runtime.lastError || !win) {
+        removeTabThenRefocus();
+        return;
+      }
+      if ((win.tabs?.length ?? 0) <= 1) {
+        chrome.windows.remove(createdWindowId).then(refocusLts, refocusLts);
+      } else {
+        // Window has other tabs (user added some / dragged ours out) — close only our tab.
+        removeTabThenRefocus();
+      }
+    });
+    return;
+  }
+  removeTabThenRefocus();
+};
+
 export const stopNetworkRecording = (
   targetTabId: number,
   reason: StopReason = "user"
@@ -888,7 +1037,13 @@ export const stopNetworkRecording = (
   // background/system event, not an action on this recording; yanking the user's focus on top of
   // the banner that already explains what happened would be surprising.
   if (reason === "user") {
-    returnFocusToSender(recording);
+    if (recording.config.closeOnStop) {
+      // closeRecordingSurface removes the surface and THEN refocuses LTS (focus must be the last
+      // action so it wins Chrome's post-close focus shuffle — see the ordering note there).
+      closeRecordingSurface(recording);
+    } else {
+      returnFocusToSender(recording);
+    }
   }
 
   return { success: true };
@@ -968,4 +1123,13 @@ const cleanupRecording = (tabId: number) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   if (!activeRecordings.has(tabId)) return;
   cleanupRecording(tabId);
+});
+
+// Chromium 1393762: after the extension is toggled off->on, dynamically-registered content scripts
+// silently stop injecting into incognito windows until a full reload (getRegisteredContentScripts
+// still lists them). Re-assert the body-recorder registration (idempotent) whenever a new window
+// opens while an ajax-recording is active, so a mid-session incognito window still captures bodies.
+chrome.windows.onCreated.addListener(() => {
+  const anyAjaxRecording = Array.from(activeRecordings.values()).some((r) => r.config.recordAjax !== false);
+  if (anyAjaxRecording) registerBodyRecorderScripts();
 });
