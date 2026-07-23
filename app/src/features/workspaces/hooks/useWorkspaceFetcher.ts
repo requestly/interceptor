@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { useFetchLocalWorkspaces } from "./useFetchLocalWorkspaces";
 import { useFetchTeamWorkspaces } from "./useFetchTeamWorkspaces";
 import { useDispatch, useSelector } from "react-redux";
 import { workspaceActions } from "store/slices/workspaces/slice";
@@ -17,20 +16,21 @@ export const useWorkspaceFetcher = () => {
   const activeWorkspace = useSelector(getActiveWorkspace);
   const appMode = useSelector(getAppMode);
 
-  const { fetchLocalWorkspaces } = useFetchLocalWorkspaces();
   const { sharedWorkspaces } = useFetchTeamWorkspaces();
   useActiveWorkspacesMembersListener();
 
   useEffect(() => {
-    (async () => {
-      try {
-        const allLocalWorkspaces = await fetchLocalWorkspaces();
-        dispatch(workspaceActions.setAllWorkspaces([...allLocalWorkspaces, ...sharedWorkspaces]));
-      } catch (e) {
-        captureException(e);
-      }
-    })();
-  }, [dispatch, fetchLocalWorkspaces, sharedWorkspaces]);
+    // LOCAL (file-system) workspaces are hidden from the UI (RQ-4696): they only
+    // ever backed the API Client, which has been removed. We no longer fetch or
+    // inject them, so nothing that reads `allWorkspaces` (dropdown, overlay,
+    // settings) surfaces a LOCAL workspace. On-disk data is untouched, and
+    // LOCAL_STORAGE (logged-out) is unaffected — it flows through its own path.
+    try {
+      dispatch(workspaceActions.setAllWorkspaces([...sharedWorkspaces]));
+    } catch (e) {
+      captureException(e);
+    }
+  }, [dispatch, sharedWorkspaces]);
 
   useEffect(() => {
     if (!user.loggedIn) {
