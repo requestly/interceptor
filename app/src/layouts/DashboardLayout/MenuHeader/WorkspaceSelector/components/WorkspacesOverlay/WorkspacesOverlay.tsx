@@ -11,7 +11,6 @@ import { MdOutlineGroups } from "@react-icons/all-files/md/MdOutlineGroups";
 import { globalActions } from "store/slices/global/slice";
 import { trackWorkspaceJoiningModalOpened } from "modules/analytics/events/features/teams";
 import LoadingModal from "../LoadingModal";
-import { useCheckLocalSyncSupport } from "features/apiClient/helpers/modules/sync/useCheckLocalSyncSupport";
 import { EmptyWorkspaceListView } from "./components/EmptyWorkspaceListView/EmptyWorkspaceListView";
 import { CommonEmptyView } from "./components/CommonEmptyView/CommonEmptyView";
 import { useWorkspaceSwitcher } from "features/apiClient/screens/apiClient/components/sidebar/MultiWorkspaceSidebar/WorkspaceProvider/useWorkspaceSwitcher";
@@ -72,8 +71,6 @@ export const WorkspacesOverlay: React.FC<WorkspacesOverlayProps> = ({ toggleDrop
   const user = useSelector(getUserAuthDetails);
   const availableWorkspaces = useSelector(getAllWorkspaces);
 
-  const isLocalSyncEnabled = useCheckLocalSyncSupport({ skipWorkspaceCheck: true });
-
   const {
     handleWorkspaceSwitch,
     confirmWorkspaceSwitch,
@@ -109,7 +106,6 @@ export const WorkspacesOverlay: React.FC<WorkspacesOverlayProps> = ({ toggleDrop
     }, map);
   }, [sortedAvailableWorkspaces]);
 
-  const hasLocalWorkspaces = workspaceMap[WorkspaceType.LOCAL].length > 0;
   const hasSharedWorkspaces = workspaceMap[WorkspaceType.SHARED].length;
 
   const handleJoinWorkspaceMenuItemClick = () => {
@@ -143,31 +139,18 @@ export const WorkspacesOverlay: React.FC<WorkspacesOverlayProps> = ({ toggleDrop
           </>
         )}
 
-        {!hasLocalWorkspaces && !hasSharedWorkspaces ? (
+        {!hasSharedWorkspaces ? (
           <>
             {user.loggedIn ? <Divider /> : null}
             <CommonEmptyView toggleDropdown={toggleDropdown} />
           </>
         ) : (
-          <div style={{ display: "flex", flexDirection: !hasLocalWorkspaces ? "column-reverse" : "column" }}>
-            {isLocalSyncEnabled ? (
-              <WorkspaceListSection
-                workspaces={workspaceMap[WorkspaceType.LOCAL]}
-                workspaceType={WorkspaceType.LOCAL}
-                toggleDropdown={toggleDropdown}
-                onItemClick={(workspace, addWorkspaceToView) =>
-                  confirmWorkspaceSwitch(() => handleWorkspaceSwitch(workspace, addWorkspaceToView))
-                }
-              />
-            ) : null}
-
-            <WorkspaceListSection
-              workspaces={workspaceMap[WorkspaceType.SHARED]}
-              workspaceType={WorkspaceType.SHARED}
-              toggleDropdown={toggleDropdown}
-              onItemClick={(workspace) => confirmWorkspaceSwitch(() => handleWorkspaceSwitch(workspace))}
-            />
-          </div>
+          <WorkspaceListSection
+            workspaces={workspaceMap[WorkspaceType.SHARED]}
+            workspaceType={WorkspaceType.SHARED}
+            toggleDropdown={toggleDropdown}
+            onItemClick={(workspace) => confirmWorkspaceSwitch(() => handleWorkspaceSwitch(workspace))}
+          />
         )}
 
         {user.loggedIn ? (
