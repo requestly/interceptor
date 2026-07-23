@@ -1,22 +1,16 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { DownOutlined } from "@ant-design/icons";
-import { MdOutlineRefresh } from "@react-icons/all-files/md/MdOutlineRefresh";
 import { getAppMode } from "store/selectors";
 import { Dropdown, Tooltip } from "antd";
-import FEATURES from "config/constants/sub/features";
 import WorkspaceAvatar from "features/workspaces/components/WorkspaceAvatar";
-import { RQButton } from "lib/design-system-v2/components";
 import { trackTopbarClicked } from "modules/analytics/events/common/onboarding/header";
 import { getActiveWorkspace } from "store/slices/workspaces/selectors";
 import { Invite } from "types";
-import { isFeatureCompatible } from "utils/CompatibilityUtils";
 import { WorkspacesOverlay } from "./WorkspacesOverlay/WorkspacesOverlay";
 import { MultiWorkspaceAvatarGroup } from "../MultiWorkspaceAvatarGroup";
-import LocalWorkspaceAvatar from "features/workspaces/components/LocalWorkspaceAvatar";
 import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import { getUserAuthDetails } from "store/slices/global/user/selectors";
-import { WorkspaceType } from "features/workspaces/types";
 import { ApiClientViewMode, useViewMode } from "features/apiClient/slices";
 
 const prettifyWorkspaceName = (workspaceName: string) => {
@@ -50,23 +44,12 @@ const WorkSpaceDropDown = ({ teamInvites }: { teamInvites: Invite[] }) => {
     }
   };
 
-  const handleLocalSyncRefresh = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    window.dispatchEvent(new Event("local-sync-refresh"));
-  };
-
   const toggleDropdown = () => {
     setIsDropdownOpen((prev) => !prev);
   };
 
   const tooltipTitle =
-    activeWorkspace?.workspaceType === WorkspaceType.LOCAL
-      ? viewMode === ApiClientViewMode.SINGLE
-        ? activeWorkspace.rootPath
-        : null
-      : viewMode === ApiClientViewMode.MULTI
-      ? null
-      : prettifyWorkspaceName(activeWorkspaceName);
+    viewMode === ApiClientViewMode.MULTI ? null : prettifyWorkspaceName(activeWorkspaceName);
 
   return (
     <>
@@ -94,29 +77,14 @@ const WorkSpaceDropDown = ({ teamInvites }: { teamInvites: Invite[] }) => {
               {viewMode === ApiClientViewMode.MULTI ? (
                 <MultiWorkspaceAvatarGroup />
               ) : (
-                <>
-                  {activeWorkspace?.workspaceType === WorkspaceType.LOCAL ? (
-                    <>
-                      <LocalWorkspaceAvatar
-                        size={20}
-                        workspace={{
-                          ...activeWorkspace,
-                          name: activeWorkspaceName ?? null,
-                          workspaceType: activeWorkspace?.workspaceType ?? null,
-                        }}
-                      />
-                    </>
-                  ) : (
-                    <WorkspaceAvatar
-                      size={20}
-                      workspace={{
-                        ...activeWorkspace,
-                        name: activeWorkspaceName ?? null,
-                        workspaceType: activeWorkspace?.workspaceType ?? null,
-                      }}
-                    />
-                  )}
-                </>
+                <WorkspaceAvatar
+                  size={20}
+                  workspace={{
+                    ...activeWorkspace,
+                    name: activeWorkspaceName ?? null,
+                    workspaceType: activeWorkspace?.workspaceType ?? null,
+                  }}
+                />
               )}
               {viewMode === ApiClientViewMode.SINGLE && (
                 <span className="items-center active-workspace-name">
@@ -128,18 +96,6 @@ const WorkSpaceDropDown = ({ teamInvites }: { teamInvites: Invite[] }) => {
           </Tooltip>
         </div>
       </Dropdown>
-
-      {activeWorkspace?.workspaceType === WorkspaceType.LOCAL &&
-      isFeatureCompatible(FEATURES.LOCAL_WORKSPACE_REFRESH) ? (
-        <Tooltip title="Load latest changes from your local files" placement="bottom" color="#000">
-          <RQButton
-            onClick={handleLocalSyncRefresh}
-            className="local-sync-refresh-btn no-drag"
-            size="small"
-            icon={<MdOutlineRefresh />}
-          />
-        </Tooltip>
-      ) : null}
     </>
   );
 };

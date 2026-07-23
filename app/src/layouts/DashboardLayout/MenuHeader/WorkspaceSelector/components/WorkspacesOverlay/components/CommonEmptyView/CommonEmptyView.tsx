@@ -38,9 +38,7 @@ export const CommonEmptyView: React.FC<CommonEmptyViewProps> = ({ toggleDropdown
       <img src="/assets/media/common/empty-folder.svg" alt="empty folder" />
       <div className="common-workspace-empty-view__title">You don't have any workspaces yet.</div>
       <div className="common-workspace-empty-view__description">
-        {appMode === GLOBAL_CONSTANTS.APP_MODES.DESKTOP
-          ? "Create a local workspace to store files on your device or a team workspace to collaborate with teammates."
-          : "Create a team workspace to collaborate with teammates."}
+        Create a team workspace to collaborate with teammates.
       </div>
       <div className="common-workspace-empty-view__actions">
         <AuthConfirmationPopover
@@ -60,11 +58,6 @@ export const CommonEmptyView: React.FC<CommonEmptyViewProps> = ({ toggleDropdown
             New team workspace
           </RQButton>
         </AuthConfirmationPopover>
-        {appMode === GLOBAL_CONSTANTS.APP_MODES.DESKTOP ? (
-          <RQButton size="small" type="primary" onClick={() => handleCreateWorkspace(WorkspaceType.LOCAL)}>
-            New local workspace
-          </RQButton>
-        ) : null}
       </div>
     </div>
   );

@@ -30,13 +30,18 @@
 
   & .homepage-primary-cards-wrapper {
     gap: 24px;
-    justify-content: center;
+    justify-content: flex-start;
     align-items: flex-start;
     margin-top: 40px;
+    margin-left: 90px;
     padding-bottom: 12px;
 
     & > .ant-col {
       max-width: 49%;
+    }
+
+    > div{
+      width: 460px;
     }
   }
 
@@ -48,7 +53,7 @@
 .homepage-emptycard {
   width: 100%;
   min-width: 325px;
-  max-width: 325px;
+  max-width: 500px;
   padding-top: 20px;
   height: 304px;
   display: flex;
