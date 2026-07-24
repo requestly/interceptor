@@ -42,19 +42,32 @@ import {
   onNetworkBodyCaptured,
   onBodyRecorderReady,
   reopenNetworkRecordingPanel,
+  refreshIncognitoAllowedCache,
 } from "../networkRecording";
 
 export const initExternalMessageListener = () => {
   chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
     switch (message.action) {
       case EXTENSION_EXTERNAL_MESSAGES.GET_EXTENSION_METADATA:
-        isExtensionEnabled().then((enabled) => {
-          sendResponse({
-            name: chrome.runtime.getManifest().name,
-            version: chrome.runtime.getManifest().version,
-            isExtensionEnabled: enabled,
+        // Re-seed the incognito-allowed cache on every pre-flight (no change event exists) and
+        // expose it so LTS can gate the "Incognito window" option before a start.
+        Promise.all([isExtensionEnabled(), refreshIncognitoAllowedCache()])
+          .then(([enabled, incognitoAllowed]) => {
+            sendResponse({
+              name: chrome.runtime.getManifest().name,
+              version: chrome.runtime.getManifest().version,
+              isExtensionEnabled: enabled,
+              incognitoAllowed,
+            });
+          })
+          .catch(() => {
+            sendResponse({
+              name: chrome.runtime.getManifest().name,
+              version: chrome.runtime.getManifest().version,
+              isExtensionEnabled: false,
+              incognitoAllowed: false,
+            });
           });
-        });
         return true;
 
       case EXTENSION_EXTERNAL_MESSAGES.START_NETWORK_RECORDING:
@@ -108,7 +121,7 @@ export const initMessageHandler = () => {
 
       case CLIENT_MESSAGES.NETWORK_BODY_CAPTURED:
         // Network Interceptor v2: an XHR/Fetch body+headers captured by the SDK page script.
-        onNetworkBodyCaptured(sender.tab?.id, message.payload);
+        onNetworkBodyCaptured(sender.tab?.id, message.payload, sender.frameId);
         break;
 
       case CLIENT_MESSAGES.NETWORK_BODY_RECORDER_READY:
