@@ -51,14 +51,23 @@ export const initExternalMessageListener = () => {
       case EXTENSION_EXTERNAL_MESSAGES.GET_EXTENSION_METADATA:
         // Re-seed the incognito-allowed cache on every pre-flight (no change event exists) and
         // expose it so LTS can gate the "Incognito window" option before a start.
-        Promise.all([isExtensionEnabled(), refreshIncognitoAllowedCache()]).then(([enabled, incognitoAllowed]) => {
-          sendResponse({
-            name: chrome.runtime.getManifest().name,
-            version: chrome.runtime.getManifest().version,
-            isExtensionEnabled: enabled,
-            incognitoAllowed,
+        Promise.all([isExtensionEnabled(), refreshIncognitoAllowedCache()])
+          .then(([enabled, incognitoAllowed]) => {
+            sendResponse({
+              name: chrome.runtime.getManifest().name,
+              version: chrome.runtime.getManifest().version,
+              isExtensionEnabled: enabled,
+              incognitoAllowed,
+            });
+          })
+          .catch(() => {
+            sendResponse({
+              name: chrome.runtime.getManifest().name,
+              version: chrome.runtime.getManifest().version,
+              isExtensionEnabled: false,
+              incognitoAllowed: false,
+            });
           });
-        });
         return true;
 
       case EXTENSION_EXTERNAL_MESSAGES.START_NETWORK_RECORDING:
