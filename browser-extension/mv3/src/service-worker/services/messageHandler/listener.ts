@@ -57,10 +57,6 @@ export const initExternalMessageListener = () => {
             version: chrome.runtime.getManifest().version,
             isExtensionEnabled: enabled,
             incognitoAllowed,
-            // Capability flag: this build honours config.openMode (tab/window/incognito). LTS
-            // gates New window / New incognito on this instead of a version check, so an older
-            // build that omits it stays on "New tab" (no silent downgrade).
-            supportsOpenModes: true,
           });
         });
         return true;
