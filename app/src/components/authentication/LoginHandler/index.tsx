@@ -69,7 +69,8 @@ const LoginHandler: React.FC = () => {
           const navigateParams = urlObj.pathname + urlObj.search;
           navigate(navigateParams);
         } else {
-          window.open(url, "_self");
+          // Never redirect to a different origin (open-redirect / CWE-601).
+          redirectToHome(appMode, navigate);
         }
       } catch (error) {
         Logger.log("[LoginHandler-redirect] catch", { error });
