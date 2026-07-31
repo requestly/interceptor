@@ -2,7 +2,6 @@ import React from "react";
 import { RQButton } from "lib/design-system/components";
 import ReactMarkdown from "react-markdown";
 import { Banner, BANNER_TYPE } from "../banner.types";
-import rehypeRaw from "rehype-raw";
 import { capitalize } from "lodash";
 import { trackAppBannerCtaClicked } from "../analytics";
 import { RequestBillingTeamAccessModal } from "features/settings";
@@ -49,7 +48,7 @@ export const BaseBanner: React.FC<Props> = ({
         )}
 
         <div className="app-banner-text">
-          <ReactMarkdown rehypePlugins={[rehypeRaw]}>{text}</ReactMarkdown>
+          <ReactMarkdown>{text}</ReactMarkdown>
         </div>
 
         {actionsConfig && actionsConfig.length > 0 && (
