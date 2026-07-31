@@ -17,6 +17,7 @@ import { trackLoginSuccessEvent } from "modules/analytics/events/common/auth/log
 import * as Sentry from "@sentry/react";
 import { AUTH_PROVIDERS } from "modules/analytics/constants";
 import { clearRedirectMetadata, getRedirectMetadata } from "features/onboarding/utils";
+import { PRODUCTION_UI_HOSTS } from "utils/AppUtils";
 
 const ARGUMENTS = {
   REDIRECT_URL: "redirectURL",
@@ -65,11 +66,17 @@ const LoginHandler: React.FC = () => {
     (url: string) => {
       try {
         const urlObj = new URL(url);
-        if (window.location.hostname === urlObj.hostname) {
+        if (urlObj.protocol !== "http:" && urlObj.protocol !== "https:") {
+          // Disallow non-http(s) schemes (javascript:, data:, etc.).
+          redirectToHome(appMode, navigate);
+        } else if (window.location.hostname === urlObj.hostname) {
           const navigateParams = urlObj.pathname + urlObj.search;
           navigate(navigateParams);
+        } else if (PRODUCTION_UI_HOSTS.includes(urlObj.hostname)) {
+          // Cross-origin, but a trusted Requestly/SessionBear host — honor the original target.
+          window.open(url, "_self");
         } else {
-          // Never redirect to a different origin (open-redirect / CWE-601).
+          // Untrusted origin — do not follow (open-redirect / CWE-601).
           redirectToHome(appMode, navigate);
         }
       } catch (error) {

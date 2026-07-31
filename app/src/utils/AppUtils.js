@@ -24,12 +24,17 @@ export const getAppDetails = () => {
 export const isDesktopMode = () => {
   return getAppDetails().app_mode === GLOBAL_CONSTANTS.APP_MODES.DESKTOP;
 };
+// Requestly/SessionBear-owned production & beta hosts. Single source of truth for
+// "is this one of our origins" checks (production UI detection, safe redirect targets, etc.).
+export const PRODUCTION_UI_HOSTS = [
+  "app.requestly.io",
+  "beta.requestly.io",
+  "app.sessionbear.com",
+  "beta.sessionbear.com",
+];
+
 export const isProductionUI =
-  (window.location.host.includes("app.requestly.io") ||
-    window.location.host.includes("beta.requestly.io") ||
-    window.location.host.includes("app.sessionbear.com") ||
-    window.location.host.includes("beta.sessionbear.com")) &&
-  !window.testMode;
+  PRODUCTION_UI_HOSTS.some((host) => window.location.host.includes(host)) && !window.testMode;
 
 export const isLocalStoragePresent = (appMode) => {
   return !(appMode === GLOBAL_CONSTANTS.APP_MODES.EXTENSION && !isExtensionInstalled());
