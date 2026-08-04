@@ -113,6 +113,11 @@ export interface SessionRecordingConfig {
   widgetPosition?: { top?: number; bottom?: number; left?: number; right?: number };
   recordingStartTime?: number;
   previousSession?: any;
+  // Per-recording relay auth (RQ-3095 / RQ-3096): a shared secret token and the
+  // top-frame origin, threaded to every frame so cross-origin iframe relay is
+  // authenticated (token) and not broadcast to untrusted frames (trustedOrigin).
+  relayToken?: string;
+  trustedOrigin?: string;
 }
 
 export interface RulePair {

@@ -81,6 +81,8 @@ const sendStartRecordingEvent = async (sessionRecordingConfig: SessionRecordingC
     showWidget,
     widgetPosition,
     previousSession,
+    relayToken,
+    trustedOrigin,
   } = sessionRecordingConfig;
 
   const isIFrame = isIframe();
@@ -95,6 +97,10 @@ const sendStartRecordingEvent = async (sessionRecordingConfig: SessionRecordingC
     maxDuration: (sessionRecordingConfig.maxDuration || 5) * 60 * 1000, // minutes -> milliseconds
     previousSession: !isIFrame ? previousSession : null,
     localStorage: true,
+    // Relay auth: top frame uses relayToken to validate incoming events; iframes use
+    // both to authenticate and to target the relay at the top origin (RQ-3095/RQ-3096).
+    relayToken,
+    trustedOrigin,
   });
 
   sessionRecorderState.isExplicitRecording = explicit;
