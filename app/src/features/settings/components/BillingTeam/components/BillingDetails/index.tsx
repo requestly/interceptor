@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import { getUserAuthDetails } from "store/slices/global/user/selectors";
 import { useParams, useSearchParams } from "react-router-dom";
 import { useCheckCurrentTeamAccess } from "../../hooks/useCheckCurrentTeamAccess";
-import { getAvailableBillingTeams, getBillingTeamMemberById } from "store/features/billing/selectors";
+import { getAvailableBillingTeams } from "store/features/billing/selectors";
 import { Result } from "antd";
 import { MyBillingTeamDetails } from "./MyBillingTeamDetails";
 import { OtherBillingTeamDetails } from "./OtherBillingTeamDetails";
@@ -30,9 +30,16 @@ export const BillingTeamDetails = () => {
     [billingTeams, billingId]
   );
 
-  const userDetailsOfSelectedBillingTeam = useSelector(
-    getBillingTeamMemberById(billingId, user?.details?.profile?.uid)
-  );
+  // Derived from the billing team doc itself, not from the fetched member profiles, so that a
+  // failed `billing-getMembersProfile` call can't drop a licensed member into the read-only view.
+  const isCurrentTeamMember = useMemo(() => {
+    const uid = user?.details?.profile?.uid;
+    if (!uid) {
+      return false;
+    }
+    const currentBillingTeam = billingTeams?.find((billingTeam) => billingTeam?.id === billingId);
+    return Boolean(currentBillingTeam?.members?.[uid]);
+  }, [billingTeams, billingId, user?.details?.profile?.uid]);
 
   useEffect(() => {
     if (user.loggedIn && billingId && joinRequestAction && userId) {
@@ -64,7 +71,7 @@ export const BillingTeamDetails = () => {
         userId={userId}
         requestAction={joinRequestAction}
       />
-      {hasAccessToCurrentTeam || userDetailsOfSelectedBillingTeam ? (
+      {hasAccessToCurrentTeam || isCurrentTeamMember ? (
         <MyBillingTeamDetails />
       ) : (
         <OtherBillingTeamDetails />
