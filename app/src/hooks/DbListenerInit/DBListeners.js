@@ -4,6 +4,7 @@ import { getAppMode, getAuthInitialization } from "../../store/selectors";
 import { getUserAuthDetails } from "store/slices/global/user/selectors";
 import syncingNodeListener from "./syncingNodeListener";
 import userNodeListener from "./userNodeListener";
+import userDocListener from "./userDocListener";
 import { globalActions } from "store/slices/global/slice";
 import { isArray } from "lodash";
 import { useHasChanged } from "hooks/useHasChanged";
@@ -21,6 +22,7 @@ const DBListeners = () => {
   const hasAuthInitialized = useSelector(getAuthInitialization);
 
   let unsubscribeUserNodeRef = useRef(null);
+  let unsubscribeUserDocRef = useRef(null);
   window.unsubscribeSyncingNodeRef = useRef(null);
 
   const hasAuthStateChanged = useHasChanged(user?.loggedIn);
@@ -28,8 +30,10 @@ const DBListeners = () => {
   // Listens to /users/{id} changes
   useEffect(() => {
     if (unsubscribeUserNodeRef.current) unsubscribeUserNodeRef.current(); // Unsubscribe existing user node listener before creating a new one
+    if (unsubscribeUserDocRef.current) unsubscribeUserDocRef.current();
     if (user?.loggedIn) {
       unsubscribeUserNodeRef.current = userNodeListener(dispatch, user?.details?.profile.uid, appMode);
+      unsubscribeUserDocRef.current = userDocListener(user?.details?.profile.uid);
       /* CAN BE MOVED TO SEPARATE USE EFFECT AND SHOULD HAVE AN UNSUBSCRIBER TOO, will be useful when actually implementing premium */
       userSubscriptionDocListener(dispatch, user?.details?.profile.uid);
     }
