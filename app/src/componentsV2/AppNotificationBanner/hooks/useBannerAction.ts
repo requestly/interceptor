@@ -75,7 +75,7 @@ export const useBannerAction = (
         },
       },
       [BANNER_ACTIONS.MERGE_BSTACK_ACCOUNT]: {
-        label: "Link BrowserStack account",
+        label: "Sign in",
         type: "primary",
         onClick: () => {
           // Brings a web user back to the page they started from. LoginHandler reads and clears
