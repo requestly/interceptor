@@ -215,6 +215,12 @@ export const getUserAttributes = (state) => {
   return getGlobalState(state)["userAttributes"];
 };
 
+// Returns a primitive on purpose — consuming the whole `userAttributes` object in a component
+// re-renders on every attribute write, as the getUserRulesCount note below records.
+export const getUserBrowserstackId = (state) => {
+  return getUserAttributes(state)?.browserstack_id;
+};
+
 // Had to make a separate selector, since consuming
 // "userAttributes" directly in <RulesListContainer/> component goes into infinite re-renders
 // TODO: fix above
