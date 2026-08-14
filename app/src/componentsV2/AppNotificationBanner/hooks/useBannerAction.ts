@@ -9,6 +9,10 @@ import { httpsCallable, getFunctions } from "firebase/functions";
 import { toast } from "utils/Toast";
 import { trackCheckoutFailedEvent, trackCheckoutInitiated } from "modules/analytics/events/misc/business/checkout";
 import STORAGE from "config/constants/sub/storage";
+import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
+import { getAppMode } from "store/selectors";
+import { setRedirectMetadata } from "features/onboarding/utils";
+import { SOURCE } from "modules/analytics/events/common/constants";
 
 export const useBannerAction = (
   actions: BANNER_ACTIONS[],
@@ -16,6 +20,7 @@ export const useBannerAction = (
 ): BannerActionConfig[] => {
   const dispatch = useDispatch();
   const user = useSelector(getUserAuthDetails);
+  const appMode = useSelector(getAppMode);
   const firebaseFunction = getFunctions();
 
   const actionMap: Record<BANNER_ACTIONS, BannerActionConfig> = useMemo(
@@ -69,6 +74,30 @@ export const useBannerAction = (
           redirectToUrl(LINKS.NOTION_PAGE_FOR_PROMOTION, true);
         },
       },
+      [BANNER_ACTIONS.MERGE_BSTACK_ACCOUNT]: {
+        label: "Link BrowserStack account",
+        type: "primary",
+        onClick: () => {
+          // Brings a web user back to the page they started from. LoginHandler reads and clears
+          // this after the token exchange. Harmless on desktop, where the OAuth flow runs in a
+          // different browser and nothing reads it back.
+          setRedirectMetadata({
+            source: SOURCE.AUTH_MIGRATION_BANNER,
+            redirectURL: window.location.href,
+          });
+
+          if (appMode === GLOBAL_CONSTANTS.APP_MODES.DESKTOP) {
+            // redirectToUrl is window.open(url, "_self"), which would navigate the whole Electron
+            // window away from the app. Hand the URL to the system browser instead.
+            window.RQ?.DESKTOP?.SERVICES?.IPC?.invokeEventInBG("open-external-link", {
+              link: LINKS.OAUTH_REDIRECT_URL,
+            });
+            return;
+          }
+
+          redirectToUrl(LINKS.OAUTH_REDIRECT_URL);
+        },
+      },
       [BANNER_ACTIONS.REDIRECT_TO_LINKEDIN_FORM]: {
         label: "Share Now",
         type: "primary",
@@ -120,7 +149,7 @@ export const useBannerAction = (
         },
       },
     }),
-    [dispatch, firebaseFunction, user?.details?.planDetails, setIsRequestAccessModalOpen]
+    [dispatch, firebaseFunction, user?.details?.planDetails, setIsRequestAccessModalOpen, appMode]
   );
 
   return actions.map((action) => actionMap[action]).filter(Boolean);

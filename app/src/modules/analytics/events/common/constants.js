@@ -135,6 +135,7 @@ export const SOURCE = {
   SHARED_LIST_SCREEN: "shared_list_screen",
   EXTENSION_ONBOARDING: "extension_onboarding",
   DESKTOP_ONBOARDING: "desktop_onboarding",
+  AUTH_MIGRATION_BANNER: "auth_migration_banner",
   PRICING_TABLE: "pricing_table",
   TEAM_WORKSPACE_BAD_INVITE_SCREEN: "team_workspace_bad_invite_screen",
   WORKSPACE_DROPDOWN: "workspace_dropdown",
