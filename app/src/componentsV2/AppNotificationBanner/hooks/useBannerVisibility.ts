@@ -6,12 +6,13 @@ import { PRICING } from "features/pricing/constants/pricing";
 import { getUserAuthDetails } from "store/slices/global/user/selectors";
 import { getAvailableBillingTeams } from "store/features/billing/selectors";
 import { useFeatureValue } from "@growthbook/growthbook-react";
-import { getAppNotificationBannerDismissTs } from "store/selectors";
+import { getAppNotificationBannerDismissTs, getUserBrowserstackId } from "store/selectors";
 
 export const useBannerVisibility = (bannerId: string): boolean => {
   const user = useSelector(getUserAuthDetails);
   const billingTeams = useSelector(getAvailableBillingTeams);
   const lastDismissTs = useSelector(getAppNotificationBannerDismissTs);
+  const browserstackId = useSelector(getUserBrowserstackId);
   const allBanners = useFeatureValue("app_banner", []);
   const newBanners = useMemo(() => allBanners.filter((banner: any) => banner.createdTs > (lastDismissTs || 0)), [
     allBanners,
@@ -63,8 +64,14 @@ export const useBannerVisibility = (bannerId: string): boolean => {
         return isTeamOwner;
       }
 
+      case BANNER_ID.LOGIN_MIGRATION:
+        // `undefined` means the user doc has not been read yet, `null` means it was read and the
+        // user has no BrowserStack account. Only the second should show the banner, otherwise an
+        // already-merged user sees it flash at every cold start.
+        return Boolean(user?.loggedIn) && browserstackId === null;
+
       default:
         return true;
     }
-  }, [bannerId, user, billingTeams, newBanners]);
+  }, [bannerId, user, billingTeams, newBanners, browserstackId]);
 };
