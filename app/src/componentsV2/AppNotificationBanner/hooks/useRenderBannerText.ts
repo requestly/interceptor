@@ -4,6 +4,7 @@ import { getCompanyNameFromEmail, getPrettyPlanName } from "utils/FormattingHelp
 import { isCompanyEmail } from "utils/mailCheckerUtils";
 import { Banner, BANNER_ID } from "../banner.types";
 import { getUserAuthDetails } from "store/slices/global/user/selectors";
+import { interpolateBannerText } from "../utils/interpolateBannerText";
 
 export const useRenderBannerText = (banner: Banner): string => {
   const user = useSelector(getUserAuthDetails);
@@ -15,6 +16,8 @@ export const useRenderBannerText = (banner: Banner): string => {
   const planName = useMemo(() => getPrettyPlanName(user?.details?.planDetails?.planName), [
     user?.details?.planDetails?.planName,
   ]);
+
+  const email = user?.details?.profile?.email || "";
 
   switch (banner.id) {
     case BANNER_ID.COMMERCIAL_LICENSE:
@@ -30,6 +33,6 @@ export const useRenderBannerText = (banner: Banner): string => {
       return `You're on the ${planName} Monthly plan. Switch to the annual plan and save over 40% on your annual spends with our New Year Deal.`;
 
     default:
-      return banner.text;
+      return interpolateBannerText(banner.text, { email });
   }
 };
