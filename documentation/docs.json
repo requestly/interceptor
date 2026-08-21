@@ -351,14 +351,12 @@
     ]
   },
   "integrations": {
-    "ga4": {
-      "measurementId": "G-7FZEBFLWK0"
-    },
-    "amplitude": {
-      "apiKey": "6d37003f0cdb1921422bc474c634c135"
-    },
     "telemetry": {
       "enabled": true
+    },
+    "cookies": {
+      "key": "rq_consent_tracking",
+      "value": "granted"
     }
   },
   "errors": {
