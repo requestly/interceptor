@@ -41,17 +41,16 @@ export const AppMembersDrawer: React.FC<AppMembersDrawerProps> = ({ isOpen, onCl
       3. Pending members
     */
 
-    const externalDomainMembers =
-      Object.values(billingTeamMembers)
-        .filter((member) => {
-          return !billingTeamDetails?.ownerDomains?.includes(getDomainFromEmail(member.email));
-        })
-        .map((member) => {
-          return {
-            email: member.email,
-            domain: member.domain,
-          };
-        }) || [];
+    const externalDomainMembers = Object.values(billingTeamMembers ?? {})
+      .filter((member) => {
+        return !billingTeamDetails?.ownerDomains?.includes(getDomainFromEmail(member.email));
+      })
+      .map((member) => {
+        return {
+          email: member.email,
+          domain: member.domain,
+        };
+      });
 
     const orgMembers = organizationMembers || [];
 
