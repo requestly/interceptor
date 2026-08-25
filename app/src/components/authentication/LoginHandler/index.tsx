@@ -24,6 +24,25 @@ const ARGUMENTS = {
   ACCESS_TOKEN: "accessToken",
 };
 
+/*
+ RQ-3841: remove the token from the visible URL without adding a history entry. Strips
+ the whole fragment (it only ever carries the token) and any legacy accessToken still
+ arriving in the query string, while preserving every other param the flow reads.
+*/
+const clearAccessTokenFromUrl = () => {
+  try {
+    const url = new URL(window.location.href);
+    if (!url.hash && !url.searchParams.has(ARGUMENTS.ACCESS_TOKEN)) {
+      return;
+    }
+    url.hash = "";
+    url.searchParams.delete(ARGUMENTS.ACCESS_TOKEN);
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+  } catch (error) {
+    Logger.log("[LoginHandler-clearAccessTokenFromUrl] catch", { error });
+  }
+};
+
 const LoginHandler: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -36,6 +55,21 @@ const LoginHandler: React.FC = () => {
 
   const params = useMemo(() => new URLSearchParams(window.location.search), []);
   const isNewUser = params.get("isNewUser") === "true";
+
+  /*
+   RQ-3841: the custom token arrives in the URL fragment, which browsers never send to a
+   server -- so it stays out of Referer headers (this page loads Amplitude / Sentry /
+   GrowthBook), out of GCP + CDN access logs, and out of anything else recording URLs.
+   The query-string read is a compatibility fallback: requestly-cloud only moves the
+   token to the fragment in a later deploy, and older/cached callback URLs may still
+   carry it in the query. Safe to drop once that has shipped everywhere.
+   Read once on mount -- the token is consumed immediately below, and clearAccessTokenFromUrl
+   rewrites the address bar afterwards.
+  */
+  const accessToken = useMemo(() => {
+    const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+    return new URLSearchParams(hash).get(ARGUMENTS.ACCESS_TOKEN) ?? params.get(ARGUMENTS.ACCESS_TOKEN);
+  }, [params]);
 
   const postLoginDesktopAppRedirect = useCallback(() => {
     let desktopAuthParams = getDesktopAppAuthParams();
@@ -125,7 +159,6 @@ const LoginHandler: React.FC = () => {
     }
 
     isAuthenticationAttempted.current = true;
-    const accessToken = params.get(ARGUMENTS.ACCESS_TOKEN);
     if (!accessToken) {
       // this route is only meant to be accessed programmatically
       redirectToHome(appMode, navigate);
@@ -144,6 +177,9 @@ const LoginHandler: React.FC = () => {
     }
 
     const redirectMetadata = getRedirectMetadata();
+    // RQ-3841: token is in hand -- drop it from the address bar so it is not left in
+    // the visible URL to be copied, bookmarked, or read by an extension.
+    clearAccessTokenFromUrl();
     const auth = getAuth(firebaseApp);
     signInWithCustomToken(auth, accessToken)
       .then((result) => {
@@ -183,7 +219,7 @@ const LoginHandler: React.FC = () => {
         // todo: setup error monitoring
         setLoginComplete(true);
       });
-  }, [params, user.loggedIn, loginComplete, navigate, appMode, dispatch, isNewUser]);
+  }, [accessToken, params, user.loggedIn, loginComplete, navigate, appMode, dispatch, isNewUser]);
 
   return <PageLoader message="Logging in..." />;
 };
