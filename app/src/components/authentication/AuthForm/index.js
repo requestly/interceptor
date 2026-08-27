@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSelector } from "react-redux";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { RQButton, RQInput } from "lib/design-system/components";
 import { toast } from "utils/Toast";
 import { Typography, Row, Col } from "antd";
@@ -17,7 +17,6 @@ import { getAuthErrorMessage, AuthTypes } from "../utils";
 //CONSTANTS
 import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import APP_CONSTANTS from "../../../config/constants";
-import PATHS from "config/constants/sub/paths";
 
 //ACTIONS
 import {
@@ -54,7 +53,6 @@ const AuthForm = ({
 }) => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
   //LOAD PROPS
   const callbackFromProps = callbacks || {};
   const { onSignInSuccess, onRequestPasswordResetSuccess } = callbackFromProps;
@@ -440,9 +438,7 @@ const AuthForm = ({
 
             <Col span={11} className="signup-modal-section-wrapper signup-form-wrapper">
               <Typography.Text type="primary" className="text-bold w-full header">
-                {location.pathname === PATHS.APPSUMO.RELATIVE
-                  ? "Signup to redeem your AppSumo code"
-                  : "Create your Requestly account"}
+                Create your Requestly account
               </Typography.Text>
 
               <Row align={"middle"} className="mt-1">
