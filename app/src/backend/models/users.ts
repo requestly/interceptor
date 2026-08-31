@@ -16,6 +16,8 @@ export interface User {
   signupTs: number;
   username: string;
   browserstackId?: string;
+  browserstackGroupId?: string;
+  browserstackSubGroupId?: string;
   "block-config"?: BlockConfig;
   metadata?: UserMetadata;
 }
