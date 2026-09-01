@@ -39,5 +39,7 @@ export interface UserAuth {
     };
     organization?: any;
     emailType?: EmailType;
+    browserstackGroupId?: string | null;
+    browserstackSubGroupId?: string | null;
   };
 }
