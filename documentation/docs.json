@@ -50,7 +50,8 @@
                   "interceptor/desktop-app/desktop-app-interception",
                   "interceptor/desktop-app/network-table",
                   "interceptor/desktop-app/saving-logs-to-local-file",
-                  "interceptor/desktop-app/allow-insecure-ssl"
+                  "interceptor/desktop-app/allow-insecure-ssl",
+                  "interceptor/desktop-app/developer-script-mode"
                 ]
               },
               {
@@ -199,9 +200,7 @@
               },
               {
                 "group": "Other",
-                "pages": [
-                  "guides/other/claim-your-requestly-github-student-pack-benefit"
-                ]
+                "pages": ["guides/other/claim-your-requestly-github-student-pack-benefit"]
               }
             ]
           },
@@ -343,12 +342,7 @@
     }
   },
   "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude"
-    ]
+    "options": ["copy", "view", "chatgpt", "claude"]
   },
   "integrations": {
     "telemetry": {
