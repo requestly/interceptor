@@ -16,7 +16,7 @@ import {
 import { handleLogoutButtonOnClick } from "features/onboarding/components/auth/components/Form/actions";
 import APP_CONSTANTS from "config/constants";
 import { SOURCE } from "modules/analytics/events/common/constants";
-import { parseGravatarImage } from "utils/Misc";
+import { getUserAvatarUrl } from "utils/ImageUtils";
 import { trackHeaderClicked } from "modules/analytics/events/common/onboarding/header";
 import { trackUpgradeClicked } from "modules/analytics/events/misc/monetizationExperiment";
 import { getAppFlavour } from "utils/AppUtils";
@@ -43,7 +43,9 @@ export default function HeaderUser() {
 
   const userName = user.loggedIn ? user?.details?.profile?.displayName ?? "User" : null;
   const userPhoto =
-    user.loggedIn && user?.details?.profile?.photoURL ? parseGravatarImage(user.details.profile.photoURL) : null;
+    user.loggedIn && user?.details?.profile
+      ? getUserAvatarUrl(user.details.profile.email, user.details.profile.photoURL)
+      : null;
   const userEmail = user?.details?.profile?.email;
   const planDetails = user?.details?.planDetails;
 

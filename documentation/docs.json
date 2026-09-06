@@ -199,9 +199,7 @@
               },
               {
                 "group": "Other",
-                "pages": [
-                  "guides/other/claim-your-requestly-github-student-pack-benefit"
-                ]
+                "pages": ["guides/other/claim-your-requestly-github-student-pack-benefit"]
               }
             ]
           },
@@ -343,22 +341,15 @@
     }
   },
   "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude"
-    ]
+    "options": ["copy", "view", "chatgpt", "claude"]
   },
   "integrations": {
-    "ga4": {
-      "measurementId": "G-7FZEBFLWK0"
-    },
-    "amplitude": {
-      "apiKey": "6d37003f0cdb1921422bc474c634c135"
-    },
     "telemetry": {
       "enabled": true
+    },
+    "cookies": {
+      "key": "rq_consent_tracking",
+      "value": "granted"
     }
   },
   "errors": {

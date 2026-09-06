@@ -9,6 +9,10 @@ const changeLogs: VersionedChangeLogs[] = [
     logs: [],
   },
   {
+    version: "26.7.27",
+    logs: ["feat: extension network recorder open modes (new tab/window/incognito) + close-on-stop (#88)"],
+  },
+  {
     version: "26.6.10",
     logs: [
       "feat(extension): advanced recording settings for Network Interceptor (#66)",

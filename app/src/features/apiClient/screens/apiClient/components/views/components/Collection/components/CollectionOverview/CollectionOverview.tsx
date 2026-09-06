@@ -4,7 +4,6 @@ import * as Sentry from "@sentry/react";
 import { InlineInput } from "componentsV2/InlineInput/InlineInput";
 import { Input, notification, Tabs } from "antd";
 import ReactMarkdown from "react-markdown";
-import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 import { useOutsideClick } from "hooks";
 import { useRBAC } from "features/rbac";
@@ -107,7 +106,6 @@ export const CollectionOverview: React.FC<CollectionOverviewProps> = ({ collecti
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
         components={{
           a(props) {
             return (

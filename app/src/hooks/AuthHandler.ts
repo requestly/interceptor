@@ -88,6 +88,8 @@ const AuthHandler: React.FC<{}> = () => {
           loggedIn: true,
           details: {
             organization: enterpriseDetails?.data?.enterpriseData ?? null,
+            browserstackGroupId: userData?.browserstackGroupId ?? null,
+            browserstackSubGroupId: userData?.browserstackSubGroupId ?? null,
           },
         })
       );

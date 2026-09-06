@@ -17,16 +17,7 @@ import { WorkspaceProvider } from "features/apiClient/common/WorkspaceProvider";
 import { useGetAllSelectedWorkspaces } from "features/apiClient/slices/workspaceView/hooks";
 import { WorkspaceType } from "features/workspaces/types";
 import { DownloadPlatform, detectDownloadPlatform, ALL_PLATFORMS } from "./detectOS";
-import {
-  DOWNLOAD_URLS,
-  DOWNLOAD_LABELS,
-  REPORT_ISSUES_URL,
-  MIGRATION_BLOCK_DISMISSABLE_FLAG,
-  MIGRATION_BLOCK_CLOUD_FORCE_FLAG,
-  MIGRATION_BLOCK_LOCAL_STORAGE_FLAG,
-  MIGRATION_BLOCK_CLOUD_FLAG,
-  MIGRATION_BLOCK_LOCAL_FS_FLAG,
-} from "./constants";
+import { DOWNLOAD_URLS, DOWNLOAD_LABELS, REPORT_ISSUES_URL, MIGRATION_BLOCK_CLOUD_FORCE_FLAG } from "./constants";
 import {
   trackMigrationBlockScreenShown,
   trackMigrationBlockScreenCtaClicked,
@@ -80,14 +71,15 @@ function openExternalLink(url: string): void {
 export const MigrationBlockModal: React.FC = () => {
   const segment = useMigrationSegment();
   const selectedWorkspaces = useGetAllSelectedWorkspaces();
-  const dismissable = useFeatureIsOn(MIGRATION_BLOCK_DISMISSABLE_FLAG);
+  // RQ-4699: the migration block is mandatory. The modal is non-dismissable and
+  // renders for every segment — the per-segment enable flags are no longer
+  // consulted here. The only gate is the container's master kill-switch
+  // (MIGRATION_BLOCK_FLAG), which is also what the makeRequest guard reads, so
+  // the modal and the request block turn on together.
+  const dismissable = false;
   const forceCloudMigration = useFeatureIsOn(MIGRATION_BLOCK_CLOUD_FORCE_FLAG);
-  const isLocalStorageVariantOn = useFeatureIsOn(MIGRATION_BLOCK_LOCAL_STORAGE_FLAG);
-  const isCloudVariantOn = useFeatureIsOn(MIGRATION_BLOCK_CLOUD_FLAG);
-  const isLocalFsVariantOn = useFeatureIsOn(MIGRATION_BLOCK_LOCAL_FS_FLAG);
 
   if (segment === "local-storage") {
-    if (!isLocalStorageVariantOn) return null;
     // local-storage is always SINGLE view with exactly one selected workspace.
     const workspace = selectedWorkspaces[0];
     if (!workspace || workspace.status.loading) return null;
@@ -99,7 +91,6 @@ export const MigrationBlockModal: React.FC = () => {
   }
 
   if (segment === "auto-cloud") {
-    if (!isCloudVariantOn) return null;
     const workspace = selectedWorkspaces[0];
     if (!workspace || workspace.status.loading) return null;
     return (
@@ -110,7 +101,6 @@ export const MigrationBlockModal: React.FC = () => {
   }
 
   if (segment === "auto-local-fs") {
-    if (!isLocalFsVariantOn) return null;
     // LocalFS data lives on disk and the new app reads the same paths, so the
     // copy is workspace-agnostic — no sign-in, no WorkspaceProvider at this
     // level. Same modal renders for SINGLE (one LOCAL ws) and MULTI (N LOCAL

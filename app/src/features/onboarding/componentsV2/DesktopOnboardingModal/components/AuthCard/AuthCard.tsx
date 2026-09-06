@@ -1,5 +1,4 @@
 import React from "react";
-import { IoMdArrowBack } from "@react-icons/all-files/io/IoMdArrowBack";
 import { RQButton } from "lib/design-system-v2/components";
 import LINKS from "config/constants/sub/links";
 import { useDispatch, useSelector } from "react-redux";
@@ -10,11 +9,7 @@ import { SOURCE } from "modules/analytics/events/common/constants";
 import APP_CONSTANTS from "config/constants";
 import "./authCard.scss";
 
-interface Props {
-  onBackClick: () => void;
-}
-
-export const AuthCard: React.FC<Props> = ({ onBackClick }) => {
+export const AuthCard: React.FC = () => {
   const dispatch = useDispatch();
   const appMode = useSelector(getAppMode);
 
@@ -33,10 +28,7 @@ export const AuthCard: React.FC<Props> = ({ onBackClick }) => {
   };
   return (
     <>
-      <div className="auth-card-header">
-        <IoMdArrowBack onClick={onBackClick} />
-        Create your free account
-      </div>
+      <div className="auth-card-header">Create your free account</div>
 
       <div className="auth-card-description">
         You will be redirected to your browser to securely complete the sign-up process in a few simple steps.

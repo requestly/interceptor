@@ -21,6 +21,7 @@ export enum BANNER_ACTIONS {
   REDIRECT_TO_CHROME_STORE_REVIEWS = "redirect_to_chrome_store_reviews",
   REDIRECT_TO_LINKEDIN_FORM = "redirect_to_linkedin_form",
   REDIRECT_TO_NOTION_PAGE = "redirect_to_notion_page",
+  MERGE_BSTACK_ACCOUNT = "merge_bstack_account",
 }
 
 export enum BANNER_ID {
@@ -32,6 +33,7 @@ export enum BANNER_ID {
   BILLING_TEAM_PLAN_REMINDER = "billing_team_plan_reminder",
   CHROME_STORE_REVIEWS = "chrome_store_reviews",
   SHARE_ON_LINKEDIN = "share_on_linkedin",
+  LOGIN_MIGRATION = "login_migration",
 }
 
 export interface Banner {
