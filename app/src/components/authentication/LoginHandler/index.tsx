@@ -16,7 +16,7 @@ import { trackSignUpFailedEvent, trackSignupSuccessEvent } from "modules/analyti
 import { trackLoginSuccessEvent } from "modules/analytics/events/common/auth/login";
 import * as Sentry from "@sentry/react";
 import { AUTH_PROVIDERS } from "modules/analytics/constants";
-import { clearRedirectMetadata, getRedirectMetadata } from "features/onboarding/utils";
+import { clearRedirectMetadata, getRedirectMetadata, isAuthFlowPath } from "features/onboarding/utils";
 
 const ARGUMENTS = {
   REDIRECT_URL: "redirectURL",
@@ -102,8 +102,15 @@ const LoginHandler: React.FC = () => {
       clearRedirectMetadata();
     }
 
-    redirect(redirectURLFromParam ?? redirectURLFromLocalStorage ?? "");
-  }, [redirect, params, postLoginDesktopAppRedirect, isNewUser]);
+    const redirectURL = redirectURLFromParam ?? redirectURLFromLocalStorage ?? "";
+    // an auth route would send the user back to the form they just completed, home is the only sane fallback
+    if (!redirectURL || isAuthFlowPath(redirectURL)) {
+      redirectToHome(appMode, navigate);
+      return;
+    }
+
+    redirect(redirectURL);
+  }, [redirect, params, postLoginDesktopAppRedirect, isNewUser, appMode, navigate]);
 
   useEffect(() => {
     if (user.loggedIn && loginComplete) {
