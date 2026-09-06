@@ -778,17 +778,14 @@ const createRecordingSurface = (
   onCreated: (created: { tabId: number; windowId?: number } | null, error?: string) => void
 ) => {
   if (openMode === OpenMode.WINDOW || openMode === OpenMode.INCOGNITO) {
-    chrome.windows.create(
-      { url: "about:blank", focused: true, incognito: openMode === OpenMode.INCOGNITO },
-      (win) => {
-        const tab = win?.tabs?.[0];
-        if (chrome.runtime.lastError || !win?.id || !tab?.id) {
-          onCreated(null, chrome.runtime.lastError?.message || "Failed to create window");
-          return;
-        }
-        onCreated({ tabId: tab.id, windowId: win.id });
+    chrome.windows.create({ url: "about:blank", focused: true, incognito: openMode === OpenMode.INCOGNITO }, (win) => {
+      const tab = win?.tabs?.[0];
+      if (chrome.runtime.lastError || !win?.id || !tab?.id) {
+        onCreated(null, chrome.runtime.lastError?.message || "Failed to create window");
+        return;
       }
-    );
+      onCreated({ tabId: tab.id, windowId: win.id });
+    });
     return;
   }
   chrome.tabs.create({ url: "about:blank" }, (tab) => {

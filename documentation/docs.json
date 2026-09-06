@@ -199,9 +199,7 @@
               },
               {
                 "group": "Other",
-                "pages": [
-                  "guides/other/claim-your-requestly-github-student-pack-benefit"
-                ]
+                "pages": ["guides/other/claim-your-requestly-github-student-pack-benefit"]
               }
             ]
           },
@@ -343,12 +341,7 @@
     }
   },
   "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude"
-    ]
+    "options": ["copy", "view", "chatgpt", "claude"]
   },
   "integrations": {
     "telemetry": {
