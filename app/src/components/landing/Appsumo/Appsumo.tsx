@@ -10,8 +10,6 @@ import { FiXCircle } from "@react-icons/all-files/fi/FiXCircle";
 import { useNavigate } from "react-router-dom";
 import { redirectToRoot } from "utils/RedirectionUtils";
 import AppSumoWorkspaceDropdown from "components/landing/Appsumo/AppSumoWorkspaceDropdown/AppSumoWorkspaceDropdown";
-import { doc, getDoc, getFirestore, writeBatch } from "firebase/firestore";
-import firebaseApp from "../../../firebase";
 import { toast } from "utils/Toast";
 import { isEmailValid } from "utils/FormattingHelper";
 import { useDebounce } from "hooks/useDebounce";
@@ -48,8 +46,6 @@ const AppSumoModal: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingSubscription, setIsUpdatingSubscription] = useState(false);
   const [showMaxCodesExeceededError, setShowMaxCodesExeceededError] = useState(false);
-
-  const db = getFirestore(firebaseApp);
 
   const addAppSumoCodeInput = () => {
     if (appsumoCodes.length >= 10) {
@@ -96,34 +92,46 @@ const AppSumoModal: React.FC = () => {
         return;
       }
 
-      const docRef = doc(db, "appSumoCodes", enteredCode);
-      const docSnap = await getDoc(docRef);
+      // RQ-3893: the server validates now. This used to read `appSumoCodes/{code}`
+      // straight from the browser, which forced the Firestore rules to let every
+      // authenticated user read the collection — and a wildcard read also grants
+      // `list`, so the entire licence table was enumerable. The callable returns a
+      // verdict only for the code the user typed.
+      const validateAppSumoCodes = httpsCallable<
+        { codes: string[] },
+        { success: boolean; message?: string; checks?: { code: string; valid: boolean; reason?: string }[] }
+      >(getFunctions(), "subscription-validateAppSumoCodes");
 
-      if (!docSnap.exists()) {
-        updateAppSumoCode(index, "error", "Invalid code");
+      try {
+        const response = await validateAppSumoCodes({ codes: [enteredCode] });
+        const verdict = response?.data?.checks?.find((check) => check.code === enteredCode);
+
+        if (!response?.data?.success || !verdict) {
+          updateAppSumoCode(index, "error", "Could not verify this code, please try again");
+          updateAppSumoCode(index, "verified", false);
+          return;
+        }
+
+        if (!verdict.valid) {
+          updateAppSumoCode(
+            index,
+            "error",
+            verdict.reason === "already_redeemed" ? "Code already redeemed" : "Invalid code"
+          );
+          updateAppSumoCode(index, "verified", false);
+          return;
+        }
+      } catch {
+        updateAppSumoCode(index, "error", "Could not verify this code, please try again");
         updateAppSumoCode(index, "verified", false);
         return;
       }
 
-      if (docSnap.data()?.redeemed) {
-        updateAppSumoCode(index, "error", "Code already redeemed");
-        updateAppSumoCode(index, "verified", false);
-        return;
-      }
       updateAppSumoCode(index, "error", "");
       updateAppSumoCode(index, "verified", true);
     },
-    [db, appsumoCodes]
+    [appsumoCodes]
   );
-
-  const redeemSubmittedCodes = useCallback(async () => {
-    const batch = writeBatch(db);
-    appsumoCodes.forEach((code) => {
-      const docRef = doc(db, "appSumoCodes", code.code);
-      batch.update(docRef, { redeemed: true });
-    });
-    await batch.commit();
-  }, [db, appsumoCodes]);
 
   const createNewWorkspaceForAppSumo = useCallback(async () => {
     setIsLoading(true);
@@ -181,8 +189,16 @@ const AppSumoModal: React.FC = () => {
         .then((response) => {
           if (!response?.data?.success && response?.data?.error === "max_limit_reached") {
             setShowMaxCodesExeceededError(true);
+          } else if (!response?.data?.success) {
+            // RQ-3893: previously any unsuccessful response that was not
+            // `max_limit_reached` fell into the success branch below and showed an
+            // "unlocked" toast for a redemption that never happened.
+            toast.error(response?.data?.message || "Could not redeem these codes, please try again", 10);
           } else {
-            redeemSubmittedCodes();
+            // RQ-3893: the codes are marked redeemed by the callable, inside the same
+            // transaction that grants the tier. The browser used to do it afterwards
+            // in an un-awaited batch write, so a failure there was silent and left the
+            // codes reusable.
             trackAppsumoCodeRedeemed(appsumoCodes.length);
             toast.success(
               `Lifetime access to SessionBook Plus unlocked for ${
@@ -198,13 +214,14 @@ const AppSumoModal: React.FC = () => {
         });
     } catch (error) {
       console.error("from appsumo", error);
+      setIsUpdatingSubscription(false);
+      toast.error("Could not redeem these codes, please try again", 10);
     }
   }, [
     createNewWorkspaceForAppSumo,
     appsumoCodes,
     emailValidationError,
     isAllCodeCheckPassed,
-    redeemSubmittedCodes,
     workspaceToUpgrade?.id,
     navigate,
   ]);
