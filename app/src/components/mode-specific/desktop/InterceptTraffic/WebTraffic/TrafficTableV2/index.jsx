@@ -81,6 +81,7 @@ const CurrentTrafficTable = ({
   // Component State
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedRequestData, setSelectedRequestData] = useState({});
+  const [selectedRowId, setSelectedRowId] = useState(null);
   const [rulePaneSizes, setRulePaneSizes] = useState([100, 0]);
   const [isSSLProxyingModalVisible, setIsSSLProxyingModalVisible] = useState(false);
 
@@ -97,6 +98,10 @@ const CurrentTrafficTable = ({
   const [showOnlyModifiedRequests, setShowOnlyModifiedRequests] = useState(false);
 
   const mounted = useRef(false);
+
+  const handleSelectedRowChange = useCallback((id) => {
+    setSelectedRowId(id);
+  }, []);
 
   const selectedRequestResponse =
     useSelector(getLogResponseById(selectedRequestData?.id)) || selectedRequestData?.response?.body;
@@ -131,6 +136,7 @@ const CurrentTrafficTable = ({
 
   const handleRowClick = useCallback((row) => {
     setSelectedRequestData(row);
+    setSelectedRowId(row.id);
     handlePreviewVisibility(true);
     trackTrafficTableRequestClicked();
     trackRQDesktopLastActivity(TRAFFIC_TABLE.TRAFFIC_TABLE_REQUEST_CLICKED);
@@ -138,6 +144,7 @@ const CurrentTrafficTable = ({
 
   const handleClosePane = () => {
     handlePreviewVisibility(false);
+    setSelectedRowId(null);
   };
 
   // const printLogsToConsole = useCallback(
@@ -461,6 +468,8 @@ const CurrentTrafficTable = ({
           showMockRequestSelector={showMockRequestSelector}
           selectedMockRequests={selectedMockRequests}
           showMockFilters={createMocksMode}
+          selectedRowId={selectedRowId}
+          onSelectedRowChange={handleSelectedRowChange}
         />
       );
     },
@@ -476,6 +485,8 @@ const CurrentTrafficTable = ({
       showMockRequestSelector,
       selectedMockRequests,
       createMocksMode,
+      selectedRowId,
+      handleSelectedRowChange,
     ]
   );
 
