@@ -52,7 +52,12 @@ export const useIsUserBlocked = () => {
   const hasBrowserstackSeat = useMemo(
     () => hasActiveBrowserstackSeat(planDetails),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [planDetails?.planId, planDetails?.status, planDetails?.subscription?.endDate, planDetails?.subscription?.isBrowserstackSubscription]
+    [
+      planDetails?.planId,
+      planDetails?.status,
+      planDetails?.subscription?.endDate,
+      planDetails?.subscription?.isBrowserstackSubscription,
+    ]
   );
 
   const [domainBlockConfig, setDomainBlockConfig] = useState<BlockConfig | undefined>(undefined);

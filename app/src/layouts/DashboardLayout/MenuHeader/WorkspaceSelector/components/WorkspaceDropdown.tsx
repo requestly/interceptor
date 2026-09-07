@@ -48,8 +48,7 @@ const WorkSpaceDropDown = ({ teamInvites }: { teamInvites: Invite[] }) => {
     setIsDropdownOpen((prev) => !prev);
   };
 
-  const tooltipTitle =
-    viewMode === ApiClientViewMode.MULTI ? null : prettifyWorkspaceName(activeWorkspaceName);
+  const tooltipTitle = viewMode === ApiClientViewMode.MULTI ? null : prettifyWorkspaceName(activeWorkspaceName);
 
   return (
     <>

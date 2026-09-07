@@ -71,11 +71,7 @@ export const BillingTeamDetails = () => {
         userId={userId}
         requestAction={joinRequestAction}
       />
-      {hasAccessToCurrentTeam || isCurrentTeamMember ? (
-        <MyBillingTeamDetails />
-      ) : (
-        <OtherBillingTeamDetails />
-      )}
+      {hasAccessToCurrentTeam || isCurrentTeamMember ? <MyBillingTeamDetails /> : <OtherBillingTeamDetails />}
     </>
   );
 };

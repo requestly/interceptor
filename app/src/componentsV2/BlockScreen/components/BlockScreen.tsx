@@ -62,12 +62,7 @@ export const BlockScreen: React.FC<Props> = ({ blockConfig }) => {
     const contactEmail = config?.metadata?.contactEmail || "contact@requestly.com";
     const title = config?.metadata?.title || "Important Update on Requestly Usage";
     const contactLink = (
-      <a
-        target="_blank"
-        rel="noreferrer"
-        href={`mailto:${contactEmail}`}
-        className="block-screen-message-contact-mail"
-      >
+      <a target="_blank" rel="noreferrer" href={`mailto:${contactEmail}`} className="block-screen-message-contact-mail">
         {contactEmail}
       </a>
     );
