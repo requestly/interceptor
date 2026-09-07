@@ -17,12 +17,7 @@ import { WorkspaceProvider } from "features/apiClient/common/WorkspaceProvider";
 import { useGetAllSelectedWorkspaces } from "features/apiClient/slices/workspaceView/hooks";
 import { WorkspaceType } from "features/workspaces/types";
 import { DownloadPlatform, detectDownloadPlatform, ALL_PLATFORMS } from "./detectOS";
-import {
-  DOWNLOAD_URLS,
-  DOWNLOAD_LABELS,
-  REPORT_ISSUES_URL,
-  MIGRATION_BLOCK_CLOUD_FORCE_FLAG,
-} from "./constants";
+import { DOWNLOAD_URLS, DOWNLOAD_LABELS, REPORT_ISSUES_URL, MIGRATION_BLOCK_CLOUD_FORCE_FLAG } from "./constants";
 import {
   trackMigrationBlockScreenShown,
   trackMigrationBlockScreenCtaClicked,
