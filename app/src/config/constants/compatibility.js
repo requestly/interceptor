@@ -256,4 +256,12 @@ export const FEATURE_COMPATIBLE_VERSION = {
     [GLOBAL_CONSTANTS.APP_MODES.DESKTOP]: "26.3.19",
     [GLOBAL_CONSTANTS.APP_MODES.EXTENSION]: null,
   },
+  [FEATURES.DEVELOPER_SCRIPT_MODE]: {
+    // RQ-2426: TODO — replace "99.99.99" with the desktop release that ships the
+    // devScriptMode preference handlers + sandboxing proxy (the RQ-2426 desktop PR).
+    // Placeholder is intentionally fail-closed: the toggle stays HIDDEN on every
+    // desktop version until this is set, so it never appears on an incompatible build.
+    [GLOBAL_CONSTANTS.APP_MODES.DESKTOP]: "99.99.99",
+    [GLOBAL_CONSTANTS.APP_MODES.EXTENSION]: null, // desktop-proxy-only feature
+  },
 };

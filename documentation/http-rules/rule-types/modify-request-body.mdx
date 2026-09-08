@@ -124,6 +124,13 @@ The Modify Request Body rule enables you to override or programmatically modify 
     <Tip>
       You can also use Dynamic Data to override GraphQL APIs by detecting the operation name in the request body.
     </Tip>
+
+    <Note>
+      On the **desktop app**, this JavaScript runs inside a secure sandbox by default — it has no
+      filesystem or system access. If your script needs Node.js APIs such as `require`, `fs`, or
+      `process`, enable <a target="_blank" href="/interceptor/desktop-app/developer-script-mode">**Developer Script Mode**</a>
+      (off by default for safety).
+    </Note>
   </Step>
 
   <Step title="Save and Activate the Rule">

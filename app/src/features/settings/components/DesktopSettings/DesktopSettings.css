@@ -13,13 +13,20 @@
 }
 
 .desktop-settings-container {
-  display: flex;
-  justify-content: center;
+  /* Block (not flex) scroll container: the shared .settings-content ancestor is
+     height:100% + overflow:hidden, so scroll here instead of clipping. Using block
+     layout (centering the wrapper via margin:auto below) also preserves the wrapper's
+     bottom padding at the end of the scroll — a flex scroll container clips it. */
+  height: 100%;
+  overflow-y: auto;
 }
 
 .desktop-settings-wrapper {
+  margin: 0 auto; /* center now that the container is block, not flex */
   padding: 2rem;
   padding-top: 1rem;
+  /* extra breathing room so the last setting isn't flush against the bottom when scrolled */
+  padding-bottom: 4rem;
   width: 100%;
   max-width: 1000px;
 }
