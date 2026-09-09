@@ -18,11 +18,6 @@ export const trackViewGithubClicked = () => {
   trackEvent(BUSINESS.VIEW_GITHUB_CLICKED);
 };
 
-export const trackAppsumoCodeRedeemed = (number_of_codes) => {
-  const params = { number_of_codes };
-  trackEvent(BUSINESS.APPSUMO_CODE_REDEEMED, params);
-};
-
 export const trackPricingPlanCTAClicked = ({ current_plan, selected_plan, action, quantity }, source) => {
   const params = { current_plan, selected_plan, action, source, quantity };
   trackEvent(BUSINESS.PRICING_PLAN_CTA_CLICKED, params);

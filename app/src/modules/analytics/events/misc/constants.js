@@ -48,7 +48,6 @@ export const BUSINESS = {
   TRIAL_MODE_EXPIRED_UPGRADE_BUTTON_CLICKED: "trial_mode_expired_upgrade_button_clicked",
   UPGRADE_CLICKED: "upgrade_clicked",
   VIEW_GITHUB_CLICKED: "view_github_clicked",
-  APPSUMO_CODE_REDEEMED: "appsumo_code_redeemed",
   PRICING_PLAN_CTA_CLICKED: "pricing_plan_cta_clicked",
   PRICING_PLAN_CANCELLATION_REQUESTED: "pricing_plan_cancellation_requested",
   PRICING_PLAN_CANCELLED: "pricing_plan_cancelled",
