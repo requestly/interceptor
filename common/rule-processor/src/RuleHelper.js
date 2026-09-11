@@ -156,7 +156,7 @@ class RuleMatcher {
     let destination = typeof pair.destination !== "undefined" ? pair.destination : null;
     let newResultingUrl = null;
 
-    if (RuleMatcher.matchRequestWithRuleSourceFilters(pair.source.filters, requestDetails)) {
+    if (RuleMatcher.matchRequestWithRuleSourceFilters(pair.source.filters, requestDetails, url)) {
       newResultingUrl = RuleMatcher.matchUrlWithRuleSource(pair.source, url, destination);
     }
 
@@ -185,7 +185,7 @@ class RuleMatcher {
     return resultingUrl !== url ? resultingUrl : null;
   }
 
-  static matchRequestWithRuleSourceFilters(sourceFilters, requestDetails) {
+  static matchRequestWithRuleSourceFilters(sourceFilters, requestDetails, url) {
     if (!sourceFilters || !requestDetails) {
       return true;
     }
@@ -225,12 +225,16 @@ class RuleMatcher {
             break;
 
           case CONSTANTS.RULE_SOURCE_FILTER_TYPES.REQUEST_DATA:
+            // eslint-disable-next-line no-case-declarations
+            const requestPayload = RuleMatcher.getRequestPayloadForMatching(
+              requestDetails.requestData,
+              url,
+              requestDetails.method
+            );
             if (
               // although currently only accepts one entry from UI
               // but this is to be compatible with changes made to accept array of filter values
-              !filterValues.some((filterValue) =>
-                this.isRequestPayloadFilterApplicable(requestDetails.requestData, filterValue)
-              )
+              !filterValues.some((filterValue) => this.isRequestPayloadFilterApplicable(requestPayload, filterValue))
             ) {
               return false;
             }
@@ -390,6 +394,38 @@ class RuleMatcher {
     }
 
     return false;
+  }
+
+  // Picks the object that request payload filters (e.g. GraphQL operationName) should match against.
+  // POST style requests keep their JSON body. GET/HEAD requests carry no body, so their payload
+  // (like the GraphQL operationName) lives in the URL query params instead. This mirrors how
+  // getGraphQLDetails in harLogs/utils.ts reads GQL details from the query string on GET requests.
+  static getRequestPayloadForMatching(requestData, url, method) {
+    if (requestData && typeof requestData === "object" && Object.keys(requestData).length > 0) {
+      return requestData;
+    }
+
+    const normalizedMethod = (method || "").toUpperCase();
+    if (normalizedMethod === "GET" || normalizedMethod === "HEAD") {
+      return RuleMatcher.parseQueryParams(url);
+    }
+
+    return requestData;
+  }
+
+  static parseQueryParams(url) {
+    if (!url) return {};
+
+    try {
+      const searchParams = new URL(url).searchParams;
+      const queryParams = {};
+      searchParams.forEach((value, key) => {
+        queryParams[key] = value;
+      });
+      return queryParams;
+    } catch (e) {
+      return {};
+    }
   }
 }
 
