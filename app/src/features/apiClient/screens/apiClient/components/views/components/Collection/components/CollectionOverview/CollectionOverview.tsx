@@ -2,7 +2,7 @@ import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import * as Sentry from "@sentry/react";
 import { InlineInput } from "componentsV2/InlineInput/InlineInput";
-import { Input, notification, Tabs } from "antd";
+import { Button, Input, notification, Tabs } from "antd";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useOutsideClick } from "hooks";
@@ -161,18 +161,16 @@ export const CollectionOverview: React.FC<CollectionOverviewProps> = ({ collecti
               ]}
             />
           ) : (
-            <div
-              className="collection-overview-description-markdown"
-              onClick={() => {
-                if (!isValidPermission) {
-                  return;
-                }
-
-                setShowEditor(true);
-              }}
-            >
-              {markdown}
-            </div>
+            <>
+              {isValidPermission ? (
+                <div className="collection-overview-description-actions">
+                  <Button type="link" size="small" onClick={() => setShowEditor(true)}>
+                    Edit Description
+                  </Button>
+                </div>
+              ) : null}
+              <div className="collection-overview-description-markdown">{markdown}</div>
+            </>
           )}
         </div>
       </div>
