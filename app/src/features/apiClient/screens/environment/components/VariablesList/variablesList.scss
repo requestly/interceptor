@@ -81,6 +81,17 @@
     }
   }
 
+  /* Multi-line value editor: fixed one-line height when blurred, grows in place when focused. */
+  td.ant-table-cell .ant-input.single-line-editor--multiline {
+    height: auto;
+    min-height: 26px;
+    cursor: text;
+
+    &:focus-within {
+      border: 1px solid var(--requestly-color-primary-500);
+    }
+  }
+
   td.ant-table-cell:nth-last-child(2) {
     border-right: none !important;
   }

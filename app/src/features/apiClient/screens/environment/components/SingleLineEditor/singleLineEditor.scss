@@ -139,3 +139,38 @@
     cursor: pointer;
   }
 }
+
+/*
+  Postman-style multi-line mode (opt-in via the `multiline` prop).
+  Collapsed while blurred: exactly one line tall, the rest clipped. Expanded while focused: grows
+  in place up to a scrollable cap.
+*/
+.single-line-editor--multiline {
+  --rq-multiline-editor-line-height: 21px;
+  --rq-multiline-editor-max-height: 180px;
+
+  /* variable-popover.scss forces `line-height: inherit !important` on .cm-scroller, so set it here. */
+  line-height: var(--rq-multiline-editor-line-height);
+
+  .cm-scroller {
+    max-height: var(--rq-multiline-editor-line-height);
+    overflow: hidden;
+  }
+
+  .cm-editor.cm-focused .cm-scroller {
+    max-height: var(--rq-multiline-editor-max-height);
+    overflow-y: auto;
+  }
+
+  /* Read-only content can't take focus, so let it expand on hover — otherwise the tail is unreadable. */
+  &.single-line-editor--read-only:hover .cm-scroller {
+    max-height: var(--rq-multiline-editor-max-height);
+    overflow-y: auto;
+  }
+
+  .cm-newline-glyph {
+    color: var(--requestly-color-text-placeholder);
+    padding-left: 2px;
+    user-select: none;
+  }
+}
