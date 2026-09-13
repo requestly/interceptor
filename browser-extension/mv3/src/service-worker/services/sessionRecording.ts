@@ -10,6 +10,24 @@ import { isExtensionEnabled } from "../../utils";
 
 const CONFIG_STORAGE_KEY = "sessionRecordingConfig";
 
+const getTopFrameOrigin = (url?: string): string | undefined => {
+  try {
+    return url ? new URL(url).origin : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// Ensures the per-recording relay auth fields (RQ-3095 / RQ-3096) are present and
+// stable across every frame of the tab: one random token, generated once and reused
+// (so top and iframes share it), plus the top-frame origin used as the relay
+// postMessage targetOrigin. Both are broadcast to all frames via startRecording.
+const withRelayAuth = (data: Record<string, any>, topUrl?: string): Record<string, any> => ({
+  ...data,
+  relayToken: data.relayToken ?? crypto.randomUUID(),
+  trustedOrigin: getTopFrameOrigin(topUrl),
+});
+
 const getSessionRecordingConfig = async (url: string): Promise<SessionRecordingConfig> => {
   const sessionRecordingConfig = await getRecord<SessionRecordingConfig>(CONFIG_STORAGE_KEY);
 
@@ -100,7 +118,7 @@ export const startRecordingExplicitly = async (tab: chrome.tabs.Tab, showWidget:
     return;
   }
 
-  const sessionRecordingData = { explicit: true, showWidget };
+  const sessionRecordingData = withRelayAuth({ explicit: true, showWidget }, tab.url);
   tabService.setData(tab.id, TAB_SERVICE_DATA.SESSION_RECORDING, sessionRecordingData);
 
   startRecording(tab.id, sessionRecordingData);
@@ -145,6 +163,11 @@ export const handleSessionRecordingOnClientPageLoad = async (tab: chrome.tabs.Ta
   }
 
   if (sessionRecordingData) {
+    // Attach/keep the stable relay token + top origin before broadcasting so every
+    // frame (top and iframes, including ones that load later) receives the same values.
+    sessionRecordingData = withRelayAuth(sessionRecordingData, tab.url);
+    tabService.setData(tab.id, TAB_SERVICE_DATA.SESSION_RECORDING, sessionRecordingData);
+
     startRecording(tab.id, sessionRecordingData).then(() => {
       tabService.setData(tab.id, TAB_SERVICE_DATA.SESSION_RECORDING, {
         ...sessionRecordingData,
