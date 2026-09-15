@@ -11,12 +11,19 @@ import { initIntegrations } from "./minimalIntegrations";
 import removePreloader from "actions/UI/removePreloader";
 import getExtensionInstallLink from "./getExtensionInstallLink";
 import PATHS from "config/constants/sub/paths";
+import { trackExtensionInstalled } from "modules/analytics/events/misc/installation";
 
 /* TEMPORARY COMPONENT, SHOULD BE REMOVED AFTER NEXT EXTENSION RELEASE */
 const ExtensionInstalledScreen = () => {
   useEffect(() => {
     removePreloader();
     initIntegrations();
+
+    // requestly.com/extension-installed-success always lands here, even when the install did not
+    // happen, so only report an install once the extension has stamped its version on the page.
+    if (isExtensionInstalled()) {
+      trackExtensionInstalled();
+    }
   }, []);
 
   const navigate = useNavigate();
