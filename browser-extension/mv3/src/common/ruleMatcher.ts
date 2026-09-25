@@ -35,7 +35,7 @@ const checkRegexMatch = (regexString: string, inputString: string): boolean => {
 };
 
 const createRegexForWildcardString = (wildCardString: string): string => {
-  return "/^" + wildCardString.replace(/([?.-])/g, "\\$1").replace(/(\*)/g, "(.*)") + "$/";
+  return "/^" + wildCardString.replace(/([?.-])/g, "\\$1").replace(/(\*)/g, "(.*?)") + "$/";
 };
 
 const checkWildCardMatch = (wildCardString: string, inputString: string): boolean => {

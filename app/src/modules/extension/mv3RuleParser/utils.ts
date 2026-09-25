@@ -39,7 +39,7 @@ export const countCapturingGroups = (regexPattern: string) => {
 const createRegexForWildcardString = (value: string, isWildcardCapturingGroupsEnabled: boolean = true): string => {
   // TODO: convert all * to .* and escape all special chars for regex
   if (isWildcardCapturingGroupsEnabled) {
-    return "/" + value.replace(/([?.-])/g, "\\$1").replace(/(\*)/g, "(.*)") + "/";
+    return "/" + value.replace(/([?.-])/g, "\\$1").replace(/(\*)/g, "(.*?)") + "/";
   } else {
     return "/" + value.replace(/([?.-])/g, "\\$1").replace(/(\*)/g, "(?:.*)") + "/";
   }
