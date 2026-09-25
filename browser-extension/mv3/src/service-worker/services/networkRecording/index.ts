@@ -964,10 +964,11 @@ const returnFocusToSender = (recording: NetworkRecordingState) => {
 // Close the recording surface on a user-stop with config.closeOnStop, THEN return focus to the LTS
 // context. ORDER MATTERS: removing a window makes Chrome shuffle OS focus to some other window (with
 // multiple profiles open it can even land on a DIFFERENT profile's window), so we refocus LTS AFTER
-// the removal resolves — our focus() must be the last word. Window/incognito modes remove the WINDOW
-// only if it still holds just our tab (don't nuke tabs the user added or a sibling recording), else
-// just our tab. Issued AFTER activeRecordings.delete in stopNetworkRecording so chrome.tabs.onRemoved
-// -> cleanupRecording short-circuits (no double "complete").
+// the removal resolves — our focus() must be the last word. Window/incognito modes close the WHOLE
+// created window (including any tabs the user opened or the recorded flow spawned — LTAR-226) as long
+// as our recording tab is still in it and no sibling recording shares it; otherwise just our tab.
+// Issued AFTER activeRecordings.delete in stopNetworkRecording so chrome.tabs.onRemoved ->
+// cleanupRecording short-circuits (no double "complete").
 const closeRecordingSurface = (recording: NetworkRecordingState) => {
   const { openMode, createdWindowId, targetTabId } = recording;
   const refocusLts = () => returnFocusToSender(recording);
@@ -979,10 +980,24 @@ const closeRecordingSurface = (recording: NetworkRecordingState) => {
         removeTabThenRefocus();
         return;
       }
-      if ((win.tabs?.length ?? 0) <= 1) {
+      // LTAR-226: the dedicated recording window closes WHOLESALE on stop, even when extra tabs were
+      // opened in it (manually or by the recorded flow). The old guard removed the window only when
+      // it held <= 1 tab, so a second tab left it open — the reported bug. Guard on OWNERSHIP, not
+      // tab count: close the whole window only while our recording tab is still inside it.
+      const tabs = win.tabs ?? [];
+      const ourTabStillHere = tabs.some((t) => t.id === targetTabId);
+      // Our own recording is already out of activeRecordings by now (see the ordering note above), so
+      // any remaining tab that IS an active recording is a SIBLING the user dragged in — removing the
+      // window would kill it. Fall back to closing only our tab in that case.
+      const holdsSiblingRecording = tabs.some(
+        (t) => t.id !== targetTabId && t.id !== undefined && activeRecordings.has(t.id)
+      );
+
+      if (ourTabStillHere && !holdsSiblingRecording) {
         chrome.windows.remove(createdWindowId).then(refocusLts, refocusLts);
       } else {
-        // Window has other tabs (user added some / dragged ours out) — close only our tab.
+        // Our tab was dragged out into another window, or a sibling recording shares this one — don't
+        // nuke a window that isn't solely ours; close just our tab wherever it now lives.
         removeTabThenRefocus();
       }
     });
