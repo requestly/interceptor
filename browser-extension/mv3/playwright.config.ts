@@ -27,6 +27,10 @@ export default defineConfig({
       testDir: "tests/rules/query",
     },
     {
+      name: "Matcher Unit",
+      testDir: "tests/common",
+    },
+    {
       name: "Redirect Rule",
       use: { ...devices["Desktop Chrome"] },
       testDir: "tests/rules/redirect",
