@@ -159,8 +159,9 @@ export function getQueryParamsMap(queryString) {
   queryParams = queryString.split("&");
 
   queryParams.forEach(function (queryParam) {
-    var paramName = queryParam.split("=")[0],
-      paramValue = queryParam.split("=")[1];
+    var separatorIndex = queryParam.indexOf("="),
+      paramName = separatorIndex === -1 ? queryParam : queryParam.slice(0, separatorIndex),
+      paramValue = separatorIndex === -1 ? undefined : queryParam.slice(separatorIndex + 1);
 
     // We are keeping value of param as array so that in future we can support multiple param values of same name
     // And we do not want to lose the params if url already contains multiple params of same name
