@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 BROWSER=chrome ENV=local npm run config
 
-# echo **Playwright test Started**
-# npm run test
-# # Check if the tests failed
-# if [ $? -ne 0 ]; then
-#   echo "Playwright tests failed. Aborting release."
-#   exit 1
-# fi
+echo **Playwright test Started**
+npm run test
+# Check if the tests failed
+if [ $? -ne 0 ]; then
+  echo "Playwright tests failed. Aborting release."
+  exit 1
+fi
 
 # Continue with the rest of your script if tests pass
 echo "Playwright tests passed. Continuing..."
