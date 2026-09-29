@@ -20,6 +20,7 @@ import { RQButton } from "lib/design-system/components";
 import "./DesktopSettings.css";
 import LocalLogFile from "./LocalLogFile";
 import InsecureCerts from "./InsecureCerts";
+import DevScriptMode from "./DevScriptMode";
 
 export const DesktopSettings = () => {
   const appMode = useSelector(getAppMode);
@@ -238,6 +239,7 @@ export const DesktopSettings = () => {
           </>
         ) : null}
         {isFeatureCompatible(FEATURES.ALLOW_INSECURE_SSL) && <InsecureCerts />}
+        {isFeatureCompatible(FEATURES.DEVELOPER_SCRIPT_MODE) && <DevScriptMode />}
         <LocalLogFile />
       </div>
     </div>

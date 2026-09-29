@@ -1,0 +1,62 @@
+// RQ-2426: persistent "Developer Script Mode is ON" header indicator.
+// Amber styling that reads on both light and dark themes (translucent amber).
+.dev-script-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  color: #ffc069;
+  background: rgba(250, 140, 22, 0.15);
+  border: 1px solid rgba(250, 140, 22, 0.5);
+
+  &__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #fa8c16;
+    flex: 0 0 auto;
+  }
+
+  &:hover {
+    background: rgba(250, 140, 22, 0.25);
+    border-color: rgba(250, 140, 22, 0.7);
+  }
+}
+
+// Hover popover content (rendered in a portal, so styled as top-level classes).
+.dev-script-mode-badge__popover {
+  max-width: 260px;
+
+  &-title {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: #fa8c16;
+  }
+
+  &-desc {
+    font-size: 12px;
+    line-height: 18px;
+    margin-bottom: 8px;
+    color: var(--requestly-color-text-subtle, #9b9b9b);
+  }
+
+  &-link {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--requestly-color-primary, #3b82f6);
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
