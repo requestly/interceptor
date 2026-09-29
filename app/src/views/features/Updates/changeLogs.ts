@@ -9,6 +9,10 @@ const changeLogs: VersionedChangeLogs[] = [
     logs: [],
   },
   {
+    version: "26.9.29",
+    logs: ["fix: network recorder new-window now closes on stop when it holds extra tabs (#127)"],
+  },
+  {
     version: "26.7.27",
     logs: ["feat: extension network recorder open modes (new tab/window/incognito) + close-on-stop (#88)"],
   },
