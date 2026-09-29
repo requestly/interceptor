@@ -10,6 +10,8 @@ interface Props {
   setSelectedMockRequests: Function;
   showMockRequestSelector: boolean;
   selectedMockRequests: Record<string, any>;
+  selectedRowId: string | null;
+  onSelectedRowChange: (id: string | null) => void;
 }
 
 const NetworkInspector: React.FC<Props> = (props) => {
@@ -22,6 +24,8 @@ const NetworkInspector: React.FC<Props> = (props) => {
         setSelectedMockRequests={props.setSelectedMockRequests}
         showMockRequestSelector={props.showMockRequestSelector}
         selectedMockRequests={props.selectedMockRequests}
+        selectedRowId={props.selectedRowId}
+        onSelectedRowChange={props.onSelectedRowChange}
       />
     </AutoThemeProvider>
   );
