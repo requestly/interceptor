@@ -13,7 +13,7 @@ class ReplaceRuleProcessor {
       pair = pairs[i];
       pair.from = pair.from || "";
 
-      if (pair.source && !RuleHelper.matchRequestWithRuleSourceFilters(pair.source.filters, details)) {
+      if (pair.source && !RuleHelper.matchRequestWithRuleSourceFilters(pair.source.filters, details, requestURL)) {
         continue;
       }
 
