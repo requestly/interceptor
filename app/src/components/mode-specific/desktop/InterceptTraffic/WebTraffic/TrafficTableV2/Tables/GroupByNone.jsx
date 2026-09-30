@@ -15,6 +15,7 @@ const GroupByNone = ({
   showMockRequestSelector,
   selectedMockRequests,
   showMockFilters,
+  selectedRowId,
 }) => {
   const renderNoTrafficCTA = () => {
     if (emptyCtaAction && emptyCtaText) {
@@ -39,6 +40,7 @@ const GroupByNone = ({
     <NetworkInspector
       isStaticPreview={isStaticPreview}
       logs={requestsLog}
+      selectedRowId={selectedRowId}
       onRow={(record) => {
         const { actions } = record;
         return {

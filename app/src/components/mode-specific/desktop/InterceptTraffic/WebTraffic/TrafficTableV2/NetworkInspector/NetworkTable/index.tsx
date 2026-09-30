@@ -27,6 +27,7 @@ interface Props {
   setSelectedMockRequests: Function;
   showMockRequestSelector: boolean;
   selectedMockRequests: Record<string, any>;
+  selectedRowId?: string | null;
 }
 
 const NetworkTable: React.FC<Props> = ({
@@ -36,6 +37,7 @@ const NetworkTable: React.FC<Props> = ({
   setSelectedMockRequests,
   showMockRequestSelector,
   selectedMockRequests,
+  selectedRowId,
 }) => {
   const [selectedRowData, setSelectedRowData] = useState<RQNetworkLog | null>(null);
   const [isReplayRequestModalOpen, setIsReplayRequestModalOpen] = useState(false);
@@ -271,6 +273,7 @@ const NetworkTable: React.FC<Props> = ({
           logs={logs}
           selectedRowData={selectedRowData}
           onReplayRequest={onReplayRequest}
+          selectedRowId={selectedRowId}
         />
       </div>
       {isReplayRequestModalOpen ? (

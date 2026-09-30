@@ -138,6 +138,7 @@ const CurrentTrafficTable = ({
 
   const handleClosePane = () => {
     handlePreviewVisibility(false);
+    setSelectedRequestData({});
   };
 
   // const printLogsToConsole = useCallback(
@@ -156,6 +157,7 @@ const CurrentTrafficTable = ({
     dispatch(desktopTrafficTableActions.logsClearAll());
     setDomainList(new Set([...trafficTableFilters.domain]));
     setAppList(new Set([...trafficTableFilters.app]));
+    setSelectedRequestData({});
     setIsPreviewOpen(false);
     trackTrafficTableLogsCleared(getConnectedAppsCount(Object.values(desktopSpecificDetails.appsList)) > 0);
     trackRQDesktopLastActivity(TRAFFIC_TABLE.TRAFFIC_TABLE_LOGS_CLEARED);
@@ -452,6 +454,7 @@ const CurrentTrafficTable = ({
       return (
         <GroupByNone
           requestsLog={logsToRender}
+          selectedRowId={isPreviewOpen ? selectedRequestData?.id : null}
           handleRowClick={handleRowClick}
           emptyCtaText={emptyCtaText}
           emptyCtaAction={emptyCtaAction}
@@ -467,6 +470,8 @@ const CurrentTrafficTable = ({
     [
       getFilteredLogs,
       requestLogs,
+      isPreviewOpen,
+      selectedRequestData?.id,
       handleRowClick,
       emptyCtaText,
       emptyCtaAction,
