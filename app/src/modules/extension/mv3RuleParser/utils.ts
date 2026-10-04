@@ -36,12 +36,14 @@ export const countCapturingGroups = (regexPattern: string) => {
   return num_groups;
 };
 
+// Every regex special character except * is literal in a wildcard source.
+const escapeWildcardLiterals = (value: string): string => value.replace(/[.+?^${}()|[\]\\-]/g, "\\$&");
+
 const createRegexForWildcardString = (value: string, isWildcardCapturingGroupsEnabled: boolean = true): string => {
-  // TODO: convert all * to .* and escape all special chars for regex
   if (isWildcardCapturingGroupsEnabled) {
-    return "/" + value.replace(/([?.-])/g, "\\$1").replace(/(\*)/g, "(.*)") + "/";
+    return "/" + escapeWildcardLiterals(value).replace(/(\*)/g, "(.*)") + "/";
   } else {
-    return "/" + value.replace(/([?.-])/g, "\\$1").replace(/(\*)/g, "(?:.*)") + "/";
+    return "/" + escapeWildcardLiterals(value).replace(/(\*)/g, "(?:.*)") + "/";
   }
 };
 

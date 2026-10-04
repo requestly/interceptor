@@ -35,7 +35,9 @@ const checkRegexMatch = (regexString: string, inputString: string): boolean => {
 };
 
 const createRegexForWildcardString = (wildCardString: string): string => {
-  return "/^" + wildCardString.replace(/([?.-])/g, "\\$1").replace(/(\*)/g, "(.*)") + "$/";
+  // Every regex special character except * is literal in a wildcard source.
+  const escaped = wildCardString.replace(/[.+?^${}()|[\]\\-]/g, "\\$&");
+  return "/^" + escaped.replace(/(\*)/g, "(.*)") + "$/";
 };
 
 const checkWildCardMatch = (wildCardString: string, inputString: string): boolean => {
