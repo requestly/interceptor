@@ -8,7 +8,6 @@ import Page403 from "views/misc/ServerResponses/403";
 import Page404 from "views/misc/ServerResponses/404";
 import AcceptTeamInvite from "components/user/Teams/AcceptTeamInvite";
 import ProtectedRoute from "components/authentication/ProtectedRoute";
-import AppSumoModal from "components/landing/Appsumo/Appsumo";
 import { Home } from "components/Home";
 import { PricingIndexPage } from "features/pricing/components/PricingPage";
 import { ImportFromCharlesWrapperView } from "features/rules/screens/rulesList/components/RulesList/components";
@@ -84,10 +83,6 @@ export const miscRoutes: RouteObject[] = [
   {
     path: PATHS.HOME.RELATIVE,
     element: <Home />,
-  },
-  {
-    path: PATHS.APPSUMO.RELATIVE,
-    element: <ProtectedRoute component={AppSumoModal} />,
   },
   {
     path: PATHS.SELENIUM_IMPORTER.RELATIVE,
