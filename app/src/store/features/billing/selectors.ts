@@ -15,7 +15,20 @@ export const getBillingTeamById = (id: string | undefined) => (state: RootState)
   return allAvailableBillingTeams.find((billingTeam) => billingTeam.id === id);
 };
 
-export const getBillingTeamMembers = (billingId: string | undefined) => (state: RootState): Record<string, any> => {
+/**
+ * Returns `undefined` when the members for `billingId` have not been fetched (or the fetch failed) —
+ * callers must handle it. Note the `!billingId` branch below predates this and returns `{}` instead;
+ * that inconsistency is left alone rather than widened here.
+ *
+ * Deliberately NOT defaulted to `{}`, because BillingTeamMembers and OtherBillingTeamDetails both
+ * drive an antd `<Table loading={!billingTeamMembers} />`, and a truthy empty object silently swaps
+ * those spinners for an empty-state. A fresh `{}` per call would additionally re-render both on every
+ * dispatched action while members are absent; that part is avoidable with a shared constant, the
+ * loading-state regression is not.
+ */
+export const getBillingTeamMembers = (billingId: string | undefined) => (
+  state: RootState
+): Record<string, any> | undefined => {
   if (!billingId) {
     return {};
   }
