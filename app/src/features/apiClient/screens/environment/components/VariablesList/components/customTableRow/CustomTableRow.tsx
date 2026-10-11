@@ -4,6 +4,7 @@ import { EnvironmentVariableType } from "backend/environment/types";
 import Logger from "lib/logger";
 import { MdOutlineWarningAmber } from "@react-icons/all-files/md/MdOutlineWarningAmber";
 import { VariableRow } from "../../VariablesList";
+import SingleLineEditor from "../../../SingleLineEditor";
 
 const EditableContext = React.createContext<FormInstance<any> | null>(null);
 
@@ -117,11 +118,14 @@ export const EditableCell: React.FC<EditableCellProps> = ({
 
     switch (record.type) {
       case EnvironmentVariableType.String:
+        // String values may contain newlines, so they get the expand-on-focus multi-line editor.
+        // `defaultValue` is read off the record: the antd Form value stays in sync through onChange.
         return (
-          <Input
-            ref={inputRef}
-            disabled={disabled}
-            onChange={(e) => handleChange(e.target.value)}
+          <SingleLineEditor
+            multiline
+            readOnly={disabled}
+            defaultValue={String(record[dataIndex] ?? "")}
+            onChange={(value: string) => handleChange(value)}
             placeholder={getPlaceholderText(dataIndex)}
           />
         );
