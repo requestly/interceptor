@@ -43,6 +43,7 @@ const AuthHandler: React.FC<{}> = () => {
       ),
     []
   );
+  const refreshBrowserstackData = useMemo(() => httpsCallable(getFunctions(), "users-refreshBrowserstackData"), []);
   const emailTypeRef = useRef<string | null>(null);
 
   const nonBlockingOperations = useCallback(
@@ -75,6 +76,12 @@ const AuthHandler: React.FC<{}> = () => {
 
       submitAttrUtil(TRACKING.ATTR.BROWSERSTACK_ID, userData?.browserstackId ?? null);
 
+      // RQ-6634: backstop for missed BrowserStack sync events. The backend re-pulls this user's
+      // user / group / subscription data only when it is older than 24h; the doc listeners pick up any change.
+      if (userData?.browserstackId) {
+        refreshBrowserstackData().catch((error) => Logger.log("[AuthHandler] refreshBrowserstackData failed", error));
+      }
+
       if (userData?.username) {
         dispatch(globalActions.updateUsername({ username: userData.username }));
       }
@@ -103,7 +110,7 @@ const AuthHandler: React.FC<{}> = () => {
 
       Logger.timeEnd("AuthHandler-nonBlockingOperations");
     },
-    [appMode, dispatch, getEnterpriseAdminDetails, getOrganizationUsers, userAttributes]
+    [appMode, dispatch, getEnterpriseAdminDetails, getOrganizationUsers, refreshBrowserstackData, userAttributes]
   );
 
   const blockingOperations = useCallback(
