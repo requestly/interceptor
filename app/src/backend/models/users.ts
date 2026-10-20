@@ -18,6 +18,8 @@ export interface User {
   browserstackId?: string;
   browserstackGroupId?: string;
   browserstackSubGroupId?: string;
+  /** Server-written (RQ-6634): ask for a BrowserStack data refresh only after this time. */
+  browserstackRefreshDueAt?: number;
   "block-config"?: BlockConfig;
   metadata?: UserMetadata;
 }

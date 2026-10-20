@@ -77,8 +77,9 @@ const AuthHandler: React.FC<{}> = () => {
       submitAttrUtil(TRACKING.ATTR.BROWSERSTACK_ID, userData?.browserstackId ?? null);
 
       // RQ-6634: backstop for missed BrowserStack sync events. The backend re-pulls this user's
-      // user / group / subscription data only when it is older than 24h; the doc listeners pick up any change.
-      if (userData?.browserstackId) {
+      // user / group / subscription data once it is over 24h old, and writes when to ask next.
+      const refreshDueAt = userData?.browserstackRefreshDueAt;
+      if (userData?.browserstackId && (!refreshDueAt || refreshDueAt <= Date.now())) {
         refreshBrowserstackData().catch((error) => Logger.log("[AuthHandler] refreshBrowserstackData failed", error));
       }
 
