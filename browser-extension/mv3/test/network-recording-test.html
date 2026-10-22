@@ -61,6 +61,12 @@
         <label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;margin-right:16px;"><input type="radio" name="requestScope" value="all" checked style="width:auto;margin:0;" /> All requests</label>
         <label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;"><input type="radio" name="requestScope" value="top-level" style="width:auto;margin:0;" /> Top-level only</label>
       </p>
+      <p style="margin-top: 10px; margin-bottom: 6px;">
+        <label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;margin-right:16px;"><input type="radio" name="openMode" value="tab" style="width:auto;margin:0;" /> New tab</label>
+        <label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;margin-right:16px;"><input type="radio" name="openMode" value="window" checked style="width:auto;margin:0;" /> New window</label>
+        <label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;"><input type="radio" name="openMode" value="incognito" style="width:auto;margin:0;" /> New incognito</label>
+      </p>
+      <p style="margin-bottom: 0;"><label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;"><input type="checkbox" id="closeOnStop" checked style="width:auto;margin:0;" /> Close recording tab/window on stop</label></p>
     </div>
 
     <p style="margin-top: 12px;">Status: <span class="status status-idle" id="status">Idle</span></p>
@@ -125,6 +131,8 @@
       const wipeServiceWorkers = document.getElementById('wipeServiceWorkers').checked;
       const recordAjax = document.getElementById('recordAjax').checked;
       const requestScope = document.querySelector('input[name="requestScope"]:checked')?.value || 'all';
+      const openMode = document.querySelector('input[name="openMode"]:checked')?.value || 'tab';
+      const closeOnStop = document.getElementById('closeOnStop').checked;
 
       log(`Sending startNetworkRecording for: ${url}`);
 
@@ -134,7 +142,7 @@
           action: "startNetworkRecording",
           payload: {
             url: url,
-            config: { maxDuration: 15 * 60 * 1000, disableCache, wipeServiceWorkers, recordAjax, requestScope },
+            config: { maxDuration: 15 * 60 * 1000, disableCache, wipeServiceWorkers, recordAjax, requestScope, openMode, closeOnStop },
           },
         },
         (response) => {
