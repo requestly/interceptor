@@ -1,0 +1,82 @@
+---
+title: "Developer Script Mode"
+slug: "developer-script-mode"
+path: "/http-interceptor/desktop-app/developer-script-mode"
+visibility: "PUBLIC"
+format: "MDX"
+---
+
+Requestly lets you write JavaScript to transform requests and responses — the
+**Programmatic (JavaScript)** option in *Modify Request Body* and *Modify Response Body*
+rules. On the desktop app this code runs inside the interception proxy.
+
+To keep you safe, that code runs in a **secure sandbox by default**. **Developer Script Mode**
+is an opt-in setting that removes the sandbox and gives your rule scripts full access to your
+system.
+
+<Note>
+  This setting applies only to the **desktop app**, and only to **"code" (Programmatic
+  JavaScript) rules**. Other rule types are unaffected.
+</Note>
+
+## Why the sandbox exists
+
+Rule scripts travel between people — through shared lists, import/export, and team sync. A
+script you import from someone else runs on **your** machine. If those scripts had unrestricted
+access to Node.js, an imported rule could read your files, run commands, or make arbitrary
+network calls without you realizing it.
+
+To prevent this, code rules run in an isolated JavaScript engine that has **no access to your
+operating system**.
+
+## Safe mode (default)
+
+Your script runs in an isolated sandbox. It can do everything needed for typical
+request/response manipulation, but it cannot touch the host machine.
+
+**Available**
+
+- Standard JavaScript, `console.*`, `args`, and `$sharedState`
+- `fetch`, `XMLHttpRequest`
+- `URL`, `URLSearchParams`, `TextEncoder` / `TextDecoder`, `Buffer`, `Blob`, `atob` / `btoa`, `structuredClone`
+- `crypto` (`randomUUID`, `getRandomValues`, `subtle.digest`) and `require('crypto')` for hashing/HMAC
+
+**Blocked**
+
+- `require(...)` for anything other than `crypto` — e.g. `require('fs')`, `require('child_process')`
+- `process`, the filesystem, spawning processes, and other Node.js / OS APIs
+
+<Info>
+  Scripts are also bounded by execution-time and memory limits so a runaway rule can't stall
+  interception.
+</Info>
+
+## Developer Script Mode (opt‑in)
+
+When enabled, code rules run with **full system access** — the same capabilities a normal
+Node.js script has (`require`, `process`, `fs`, `child_process`, …). Use it only when you
+genuinely need it and only for scripts you fully trust.
+
+<Warning>
+  In Developer Script Mode a shared or imported rule can run **arbitrary code on your machine**
+  with your privileges. Enable it only for code you have written or reviewed.
+</Warning>
+
+## Enabling / disabling
+
+<Steps>
+  <Step title="Open Desktop Settings">
+    Click the settings icon in the top‑right and go to **Desktop Settings**. You'll find the
+    **Developer script mode** toggle there (off by default).
+
+    {/* Screenshot: the Desktop Settings screen with the "Developer script mode" row visible and the toggle OFF. Crop to the setting row + its description. */}
+    <img src="/images/developer-script-mode/desktop-settings-toggle.png" align="center" fullwidth="false" />
+  </Step>
+  <Step title="Toggle Developer Script Mode">
+    Turn **Developer script mode** on. You'll be asked to confirm, since it grants full system
+    access. Turning it back off is immediate.
+
+    {/* Screenshot: the confirmation dialog/popover that appears when enabling dev mode (the "Dev mode runs rule scripts with FULL system access…" prompt with Enable/Cancel). */}
+    <img src="/images/developer-script-mode/enable-confirmation.png" align="center" fullwidth="false" />
+  </Step>
+</Steps>

@@ -1,0 +1,80 @@
+// RQ-2426: inline Script execution mode selector (Safe / Developer) in Desktop Settings.
+
+// This is the last section — drop the shared setting-item divider under it.
+.dev-script-mode-setting.setting-item-container {
+  border-bottom: none;
+}
+
+.dev-script-mode-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  width: 100%;
+
+  .dev-script-mode-option.ant-radio-wrapper {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    margin: 0;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    white-space: normal;
+    transition: border-color 0.15s ease, background 0.15s ease;
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.28);
+    }
+
+    &.ant-radio-wrapper-checked {
+      border-color: rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .ant-radio {
+      margin-top: 2px;
+    }
+
+    // antd puts the label content in the trailing span — stack title over description
+    > span:last-child {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding-inline-end: 0;
+    }
+  }
+
+  .dev-script-mode-option__title {
+    font-weight: 600;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  // Green "Default" chip, styled like the api-client "BETA" tag.
+  .dev-script-mode-option__tag {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 0 6px;
+    border-radius: 8px;
+    color: #73d13d;
+    background: rgba(82, 196, 26, 0.15);
+    border: 1px solid rgba(82, 196, 26, 0.4);
+  }
+
+  // Orange "(use only if you trust…)" caveat next to Developer Mode.
+  .dev-script-mode-option__caveat {
+    font-size: 12px;
+    font-weight: 500;
+    color: #fa8c16;
+  }
+
+  .dev-script-mode-option__desc {
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--requestly-color-text-subtle, #9b9b9b);
+  }
+}
