@@ -17,7 +17,7 @@ class DelayRequestRuleProcessor {
 
       // If Source does not match, proceed with next pair
       if (
-        !RuleHelper.matchRequestWithRuleSourceFilters(pair.source.filters, details) ||
+        !RuleHelper.matchRequestWithRuleSourceFilters(pair.source.filters, details, requestURL) ||
         RuleHelper.matchUrlWithRuleSource(pair.source, requestURL) === null
       ) {
         continue;
