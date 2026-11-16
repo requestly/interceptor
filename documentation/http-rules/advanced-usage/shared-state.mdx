@@ -15,6 +15,12 @@ Shared State allows developers to store and retrieve data within and across Modi
   Shared State was introduced in the Requestly Interceptor extension version `24.8.13` and Desktop App `1.7.1` . Make sure you are using the latest version.
 </Warning>
 
+<Note>
+  On the **desktop app**, programmatic rule scripts run in a secure sandbox by default (no
+  filesystem or system access). To use Node.js APIs like `require`, `fs`, or `process`, turn on
+  <a target="_blank" href="/interceptor/desktop-app/developer-script-mode">**Developer Script Mode**</a>.
+</Note>
+
 ## Use Cases for Shared State
 
 1. **Conditional Request/Response Modification**: Use shared state to modify requests or responses dynamically based on conditions stored in prior requests. For example, you can conditionally fail requests based on request counts.
