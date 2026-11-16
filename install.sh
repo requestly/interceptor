@@ -7,13 +7,6 @@ set -e
 rm -rf node_modules
 npm install
 
-# The root .npmrc sets ignore-scripts=true, so `npm install` no longer runs the `prepare: husky install`
-# script. Local setups (getting-started.md: `sh install.sh local`) install the git hooks explicitly here.
-# CI calls this script without `local` and needs no hooks.
-if [ "$1" = "local" ]; then
-  npx --no-install husky install
-fi
-
 echo -e "\n\033[1;37m\033[44m***** Installing and Building @requestly/shared module *****\033[0m"
 cd ./shared
 rm -rf node_modules
