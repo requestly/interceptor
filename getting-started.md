@@ -8,7 +8,7 @@ This repository contains most of the modules that make up Requestly.
 
 ### Install
 
-Please make sure that Node version >= 18.18.0 is installed on your system.
+Please make sure that Node version >= 20.0.0 is installed on your system (the build tooling, e.g. `@rollup/plugin-terser` and `serialize-javascript`, requires Node 20).
 
 #### Windows Users
 
