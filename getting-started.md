@@ -24,6 +24,8 @@ Then proceed with the installation:
 sh install.sh local
 ```    
 
+This also installs the git pre-commit hook (Husky). The root `.npmrc` sets `ignore-scripts=true`, so a plain `npm install` at the root does not install it. If you install without the script, run `npx husky install` once.
+
 ### Build
 
 ```sh
