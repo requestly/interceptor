@@ -24,6 +24,8 @@ Then proceed with the installation:
 sh install.sh local
 ```    
 
+This also installs the git pre-commit hook (Husky): the app depends on the root package (`file:..`), and installing the app runs its `prepare: husky install`. The root `.npmrc` sets `ignore-scripts=true`, so a plain `npm install` at the root alone does not install it. If you install without the script, run `npx husky install` once.
+
 ### Build
 
 ```sh
