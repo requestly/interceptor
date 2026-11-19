@@ -15,6 +15,7 @@ import {
 } from "componentsV2/CodeEditor/components/EditorV2/plugins";
 import { VariableAutocompletePopover } from "../VariableAutocompletePopover/VariableAutocompletePopover";
 import { useVariableAutocomplete } from "../hooks/useVariableAutocomplete";
+import { multilineExtensions, singleLineConstraint } from "./singleLineEditorExtensions";
 
 export const RQSingleLineEditor: React.FC<SingleLineEditorProps> = ({
   className,
@@ -26,6 +27,8 @@ export const RQSingleLineEditor: React.FC<SingleLineEditorProps> = ({
   onPaste,
   variables,
   suggestions,
+  multiline = false,
+  readOnly = false,
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const editorViewRef = useRef<EditorView | null>(null);
@@ -46,6 +49,7 @@ export const RQSingleLineEditor: React.FC<SingleLineEditorProps> = ({
   const onBlurRef = useRef(onBlur);
   const onChangeRef = useRef(onChange);
   const onPasteRef = useRef(onPaste);
+  const onPressEnterRef = useRef(onPressEnter);
   const previousDefaultValueRef = useRef(defaultValue);
   const isPopoverPinnedRef = useRef(false);
 
@@ -55,7 +59,8 @@ export const RQSingleLineEditor: React.FC<SingleLineEditorProps> = ({
     onBlurRef.current = onBlur;
     onChangeRef.current = onChange;
     onPasteRef.current = onPaste;
-  }, [onBlur, onChange, onPaste]);
+    onPressEnterRef.current = onPressEnter;
+  }, [onBlur, onChange, onPaste, onPressEnter]);
 
   const [hoveredVariable, setHoveredVariable] = useState<string | null>(null);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
@@ -102,9 +107,13 @@ export const RQSingleLineEditor: React.FC<SingleLineEditorProps> = ({
           history(),
           keymap.of(historyKeymap),
           customKeyBinding,
-          EditorState.transactionFilter.of((tr) => {
-            return tr.newDoc.lines > 1 ? [] : [tr];
-          }),
+          EditorState.readOnly.of(readOnly),
+          EditorView.editable.of(!readOnly),
+          multiline
+            ? multilineExtensions((value) =>
+                onPressEnterRef.current?.(new KeyboardEvent("keydown", { key: "Enter" }), value)
+              )
+            : singleLineConstraint,
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               onChangeRef.current?.(update.state.doc.toString());
@@ -118,14 +127,15 @@ export const RQSingleLineEditor: React.FC<SingleLineEditorProps> = ({
             },
             // Added Focus logic from New Code
             focus: (_, view) => {
-              if (suggestions?.length) {
+              if (suggestions?.length && !readOnly) {
                 // Timeout ensures the editor is fully focused before opening menu
                 setTimeout(() => startCompletion(view), 0);
               }
             },
             keypress: (event, view) => {
-              if (event.key === "Enter") {
-                onPressEnter?.(event, view.state.doc.toString());
+              // In multiline mode Enter is bound in multilineExtensions (Enter commits, Shift+Enter adds a line).
+              if (event.key === "Enter" && !multiline) {
+                onPressEnterRef.current?.(event, view.state.doc.toString());
               }
             },
             paste: (event, view) => {
@@ -136,7 +146,8 @@ export const RQSingleLineEditor: React.FC<SingleLineEditorProps> = ({
               // (e.g., for cURL import)
               onPasteRef.current?.(event, pastedText);
               // If parent didn't prevent default, handle multiline paste conversion
-              if (!event.defaultPrevented && pastedText.includes("\n")) {
+              // Multiline editors keep the newlines as-is.
+              if (!multiline && !event.defaultPrevented && pastedText.includes("\n")) {
                 event.preventDefault();
                 const singleLineText = pastedText.replace(/\\\s*\n\s*/g, " ").replace(/\n/g, " ");
                 view.dispatch(
@@ -171,7 +182,7 @@ export const RQSingleLineEditor: React.FC<SingleLineEditorProps> = ({
     //Need to disable to implement the onChange handler
     // Shouldn't be recreated every render
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [placeholder, variables, handleSetVariable, suggestions]);
+  }, [placeholder, variables, handleSetVariable, suggestions, multiline, readOnly]);
 
   useEffect(() => {
     if (defaultValue !== previousDefaultValueRef.current) {
@@ -206,7 +217,9 @@ export const RQSingleLineEditor: React.FC<SingleLineEditorProps> = ({
     <>
       <div
         ref={editorRef}
-        className={`${className ?? ""} editor-popup-container ant-input`}
+        className={`${className ?? ""} editor-popup-container ant-input${
+          multiline ? " single-line-editor--multiline" : ""
+        }${multiline && readOnly ? " single-line-editor--read-only" : ""}`}
         onMouseLeave={handleMouseLeave}
       >
         <Conditional condition={!!hoveredVariable}>
