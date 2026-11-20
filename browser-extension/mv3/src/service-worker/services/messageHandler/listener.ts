@@ -43,7 +43,17 @@ import {
   onBodyRecorderReady,
   reopenNetworkRecordingPanel,
   refreshIncognitoAllowedCache,
+  pauseNetworkRecording,
+  resumeNetworkRecording,
+  createNetworkRecordingGroup,
+  renameNetworkRecordingGroup,
+  moveNetworkRecordingRequests,
+  deleteNetworkRecordingRequests,
+  undoNetworkRecordingOperation,
 } from "../networkRecording";
+
+const toIdList = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((id): id is string => typeof id === "string") : [];
 
 export const initExternalMessageListener = () => {
   chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
@@ -292,6 +302,37 @@ export const initMessageHandler = () => {
       case EXTENSION_MESSAGES.GET_NETWORK_RECORDING_STATE:
         sendResponse(getNetworkRecordingState(message.tabId || sender.tab?.id));
         return true;
+
+      // Side panel commands for grouped recordings. Each replies synchronously with {ok, ...}.
+      case EXTENSION_MESSAGES.PAUSE_NETWORK_RECORDING:
+        sendResponse(pauseNetworkRecording(message.targetTabId));
+        break;
+
+      case EXTENSION_MESSAGES.RESUME_NETWORK_RECORDING:
+        sendResponse(resumeNetworkRecording(message.targetTabId));
+        break;
+
+      case EXTENSION_MESSAGES.NEW_NETWORK_RECORDING_GROUP:
+        sendResponse(createNetworkRecordingGroup(message.targetTabId));
+        break;
+
+      case EXTENSION_MESSAGES.RENAME_NETWORK_RECORDING_GROUP:
+        sendResponse(renameNetworkRecordingGroup(message.targetTabId, message.groupId, message.name));
+        break;
+
+      case EXTENSION_MESSAGES.MOVE_NETWORK_RECORDING_REQUESTS:
+        sendResponse(
+          moveNetworkRecordingRequests(message.targetTabId, toIdList(message.requestIds), message.targetGroupId)
+        );
+        break;
+
+      case EXTENSION_MESSAGES.DELETE_NETWORK_RECORDING_REQUESTS:
+        sendResponse(deleteNetworkRecordingRequests(message.targetTabId, toIdList(message.requestIds)));
+        break;
+
+      case EXTENSION_MESSAGES.UNDO_NETWORK_RECORDING_OPERATION:
+        sendResponse(undoNetworkRecordingOperation(message.targetTabId, message.opId));
+        break;
     }
 
     return false;

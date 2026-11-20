@@ -4,7 +4,7 @@ import NetworkEventRow from "./components/NetworkEventRow";
 import FilterBar from "./components/FilterBar";
 
 // Maps the HAR _resourceType (DevTools enum) to the short label shown in the list.
-const RESOURCE_TYPE_DISPLAY: Record<string, string> = {
+export const RESOURCE_TYPE_DISPLAY: Record<string, string> = {
   document: "document",
   stylesheet: "css",
   script: "js",
@@ -16,14 +16,14 @@ const RESOURCE_TYPE_DISPLAY: Record<string, string> = {
   other: "other",
 };
 
-const formatTime = (ms: number): string => {
+export const formatTime = (ms: number): string => {
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 };
 
-const formatSize = (bytes: number | undefined): string => {
+export const formatSize = (bytes: number | undefined): string => {
   if (bytes === undefined || bytes < 0) return "—"; // -1 = size unknown (HAR sentinel)
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -31,11 +31,11 @@ const formatSize = (bytes: number | undefined): string => {
 };
 
 // Why a recording ended — mirrors the StopReason union in the service worker.
-type StopReason = "user" | "max-duration" | "connection-lost" | "tab-closed" | "extension-disabled";
+export type StopReason = "user" | "max-duration" | "connection-lost" | "tab-closed" | "extension-disabled";
 
 // Banner shown for SW-initiated stops. `user` and `tab-closed` show no banner (the user knows /
 // the panel is gone), so they're absent from this map.
-const STOP_BANNERS: Partial<Record<StopReason, { icon: string; text: string; variant: string }>> = {
+export const STOP_BANNERS: Partial<Record<StopReason, { icon: string; text: string; variant: string }>> = {
   "max-duration": {
     icon: "⏱",
     text: "Recording stopped — time limit reached",

@@ -27,7 +27,25 @@ export interface SdkNetworkPayload {
   responseTime?: number;
   responseURL?: string;
   errors?: number[];
+  // Epoch ms stamped by the page script when the capture happened (see networkBodyRecorder.js).
+  startedAt?: number;
 }
+
+const MAX_SDK_CAPTURE_DELAY_MS = 60_000;
+
+/**
+ * Start time (epoch ms) of an SDK capture. Prefers the page script's stamp, which is taken when the
+ * capture happened and so is not skewed by the pre-START buffer. Falls back to now - responseTime
+ * when the stamp is missing, in the future, or older than responseTime plus 60 s.
+ */
+export const resolveSdkStartedAt = (payload: SdkNetworkPayload, now: number = Date.now()): number => {
+  const responseTime = Math.max(0, Math.round(payload.responseTime ?? 0));
+  const stamp = payload.startedAt;
+  if (typeof stamp !== "number" || !Number.isFinite(stamp)) return now - responseTime;
+  if (stamp > now) return now - responseTime;
+  if (now - stamp > responseTime + MAX_SDK_CAPTURE_DELAY_MS) return now - responseTime;
+  return stamp;
+};
 
 /**
  * The HAR _resourceType enum (Chrome DevTools convention) differs from
@@ -222,10 +240,12 @@ const byteLength = (text: string | undefined): number => (text === undefined ? -
  * XHR/Fetch. Unlike the webRequest path this carries request + response BODIES and headers, with
  * no correlation needed (the payload is self-complete). `requestId` is extension-assigned.
  */
-export const buildSdkEntry = (payload: SdkNetworkPayload, requestId: string): NetworkHarEntry => {
+export const buildSdkEntry = (payload: SdkNetworkPayload, requestId: string, startedAtMs?: number): NetworkHarEntry => {
   const responseTime = Math.max(0, Math.round(payload.responseTime ?? 0));
   // The SDK doesn't give a start timestamp; derive it so startedDateTime + time are consistent.
-  const startTime = Date.now() - responseTime;
+  // Grouped recordings pass the resolved capture-time stamp so the entry is dated by the same
+  // moment it was filed by.
+  const startTime = startedAtMs ?? Date.now() - responseTime;
 
   const requestText = bodyToText(payload.requestData);
   const responseText = bodyToText(payload.response);

@@ -9,8 +9,20 @@ import {
   buildSdkEntry,
   CorrelationData,
   NetworkHarEntry,
+  resolveSdkStartedAt,
   SdkNetworkPayload,
 } from "./harBuilder";
+import { GroupedRecordingSession } from "./groupedSession";
+import { acceptsGroupsOptIn, buildCompleteMessages, buildStartReply, buildSubscribeMessages } from "./groupsPort";
+import type {
+  GroupsManifest,
+  NetworkRecordingPortMessage,
+  NewGroupResult,
+  OperationResult,
+  PanelGroupsView,
+  RenameGroupResult,
+  SimpleResult,
+} from "common/networkRecordingProtocol";
 
 // Recording config from the LTS start call. All optional.
 // - maxDuration: time cap (no cap when omitted; see isOverMaxDuration).
@@ -69,6 +81,9 @@ export interface NetworkRecordingConfig {
   // in window/incognito modes. Default false (extension default OFF; LTS sends true). Applied only
   // on reason "user".
   closeOnStop?: boolean;
+  // Opt-in to grouped recording (groups, pause, move/delete/undo, manifest). Only `true` counts, and
+  // only where the side panel API exists; the start reply then carries `groups: true`.
+  groups?: boolean;
 }
 
 // 10 MB per-body cap (bytes), LTS-overridable via config.maxPayloadSize. Sized as a "safe maximum":
@@ -94,6 +109,8 @@ interface NetworkRecordingState {
   createdWindowId?: number;
   // Resolved open mode, mirrored from config so the stop-time close branch is self-contained.
   openMode?: OpenMode;
+  // Present only when the start opted in to groups and was accepted.
+  session?: GroupedRecordingSession;
 }
 
 // Opened only when the originating LTS tab AND its window are both gone at stop time, so the user
@@ -117,6 +134,17 @@ const DISCONNECT_GRACE_MS = 3_000;
 
 // webRequest requestId -> request-start correlation data (internal only, never surfaced).
 const correlationMap = new Map<string, CorrelationData>();
+
+// Grouped recordings only: webRequest requestId -> the time its FIRST hop started. correlationMap is
+// overwritten on every redirect hop and swept after 60 s, so a redirected or slow request would
+// otherwise be filed by a later time. Cleared on completion, error and stop.
+const firstSeenStarts = new Map<string, { tabId: number; startedAt: number }>();
+
+const clearFirstSeenStarts = (tabId: number) => {
+  firstSeenStarts.forEach((value, requestId) => {
+    if (value.tabId === tabId) firstSeenStarts.delete(requestId);
+  });
+};
 
 const NETWORK_RECORDING_PORT = "network-recording";
 
@@ -253,6 +281,9 @@ const onBeforeSendHeaders = (details: chrome.webRequest.WebRequestHeadersDetails
   if (!recording) return;
   if (isAjaxRequest(details.type)) return; // xhr/fetch never recorded via webRequest (SDK source, or recordAjax off)
   if (isExcludedByScope(recording, details.frameId)) return; // top-level scope: skip sub-frame requests
+  if (recording.session && !firstSeenStarts.has(details.requestId)) {
+    firstSeenStarts.set(details.requestId, { tabId: details.tabId, startedAt: details.timeStamp });
+  }
   correlationMap.set(details.requestId, {
     startTime: details.timeStamp,
     requestHeaders: details.requestHeaders,
@@ -282,10 +313,10 @@ const onRequestCompleted = (details: chrome.webRequest.WebResponseCacheDetails) 
 
   const correlation = correlationMap.get(details.requestId);
   correlationMap.delete(details.requestId);
+  const startedAt = takeStartedAt(details.requestId, correlation?.startTime ?? details.timeStamp);
 
   const entry = buildCompletedEntry(details, correlation, nextRequestId());
-  recordingEntries.get(details.tabId)?.push(entry);
-  deliverEntry(details.tabId, entry);
+  recordEntry(details.tabId, recording, entry, startedAt);
 };
 
 const IGNORED_ERRORS = new Set(["net::ERR_CACHE_MISS", "net::ERR_ABORTED", "net::ERR_BLOCKED_BY_CLIENT"]);
@@ -302,22 +333,47 @@ const onRequestError = (details: chrome.webRequest.WebResponseErrorDetails) => {
 
   const correlation = correlationMap.get(details.requestId);
   correlationMap.delete(details.requestId);
+  const startedAt = takeStartedAt(details.requestId, correlation?.startTime ?? details.timeStamp);
 
   if (IGNORED_ERRORS.has(details.error)) return;
 
   const entry = buildErrorEntry(details, correlation, nextRequestId(), details.error);
-  recordingEntries.get(details.tabId)?.push(entry);
-  deliverEntry(details.tabId, entry);
+  recordEntry(details.tabId, recording, entry, startedAt);
+};
+
+// Time a webRequest request started, for filing it into a group. Consumes the first-hop stamp.
+const takeStartedAt = (requestId: string, fallback: number): number => {
+  const first = firstSeenStarts.get(requestId);
+  firstSeenStarts.delete(requestId);
+  return first?.startedAt ?? fallback;
+};
+
+/**
+ * Single funnel for every captured entry (webRequest and SDK). A grouped recording files the entry by
+ * the time it STARTED: a request that started during a pause is dropped here, so it is never stored,
+ * delivered or counted. A flat recording stores and delivers it as before.
+ */
+const recordEntry = (tabId: number, recording: NetworkRecordingState, entry: NetworkHarEntry, startedAt: number) => {
+  let groupId: string | undefined;
+  if (recording.session) {
+    const filed = recording.session.file(entry._request_id as string, startedAt);
+    if (filed === null) return;
+    groupId = filed;
+  }
+  recordingEntries.get(tabId)?.push(entry);
+  deliverEntry(tabId, entry, groupId);
 };
 
 /** Deliver a captured entry to the internal sidepanel and any subscribed LTS ports. */
-const deliverEntry = (tabId: number, entry: NetworkHarEntry) => {
-  // Internal sidepanel (fire-and-forget; panel may be closed).
+const deliverEntry = (tabId: number, entry: NetworkHarEntry, groupId?: string) => {
+  // Internal sidepanel (fire-and-forget; panel may be closed). groupId rides on this message only:
+  // the HAR entry and the port message never carry it.
   chrome.runtime
     .sendMessage({
       action: CLIENT_MESSAGES.NETWORK_EVENT_CAPTURED,
       entry,
       tabId,
+      ...(groupId !== undefined ? { groupId } : {}),
     })
     .catch(() => {});
 
@@ -354,9 +410,14 @@ export const onNetworkBodyCaptured = (
     return;
   }
 
+  if (recording.session) {
+    const startedAt = resolveSdkStartedAt(payload);
+    recordEntry(tabId, recording, buildSdkEntry(payload, nextRequestId(), startedAt), startedAt);
+    return;
+  }
+
   const entry = buildSdkEntry(payload, nextRequestId());
-  recordingEntries.get(tabId)?.push(entry);
-  deliverEntry(tabId, entry);
+  recordEntry(tabId, recording, entry, Date.now());
 };
 
 // Why a recording ended — drives the message the side panel shows.
@@ -379,18 +440,23 @@ const notifyPanelEnded = (tabId: number, reason: StopReason) => {
     .catch(() => {});
 };
 
-/** Signal subscribed LTS ports that a recording has ended. Pure signal — the consumer then
- *  fetches the summary via getNetworkRecordingSummary. */
-const streamCompleteToPorts = (tabId: number) => {
-  const subs = subscriptions.get(tabId);
-  if (!subs) return;
-  subs.forEach((port) => {
-    try {
-      port.postMessage({ type: "complete" });
-    } catch {
-      /* ignore */
-    }
+const postToPorts = (tabId: number, messages: NetworkRecordingPortMessage[]) => {
+  subscriptions.get(tabId)?.forEach((port) => {
+    messages.forEach((message) => {
+      try {
+        port.postMessage(message);
+      } catch {
+        // Port died between events; onDisconnect will clean it up.
+      }
+    });
   });
+};
+
+/** Signal subscribed LTS ports that a recording has ended. A grouped recording sends its final
+ *  manifest strictly before `complete` (the FE closes the port on complete). The consumer then
+ *  fetches the summary via getNetworkRecordingSummary. */
+const streamCompleteToPorts = (tabId: number, manifest?: GroupsManifest) => {
+  postToPorts(tabId, buildCompleteMessages(manifest));
 };
 
 const addWebRequestListeners = () => {
@@ -516,22 +582,24 @@ export const initNetworkRecordingPort = () => {
           return;
         }
 
-        port.postMessage({ type: "subscribed", targetTabId: tabId });
-
-        // Synchronous backfill, then register — no await in between.
-        const buffered = recordingEntries.get(tabId) || [];
-        for (const entry of buffered) {
-          port.postMessage({ type: "entry", entry });
-        }
+        // Ack, backfill, then (grouped only) state and the analytics backlog, then register — all
+        // synchronous, no await in between. A recording that already ended but whose buffer is still
+        // around (e.g. very short) is followed by its manifest and `complete`.
+        const recording = activeRecordings.get(tabId);
+        const entries = recordingEntries.get(tabId) || [];
+        const messages = recording?.session
+          ? recording.session.subscribeMessages(entries)
+          : buildSubscribeMessages({
+              targetTabId: tabId,
+              entries,
+              active: !!recording,
+              retainedManifest: recentSummaries.get(tabId)?.manifest,
+            });
+        messages.forEach((message) => port.postMessage(message));
 
         if (!subscriptions.has(tabId)) subscriptions.set(tabId, new Set());
         subscriptions.get(tabId)!.add(port);
         cancelDisconnectGrace(tabId); // a reconnect within the grace window keeps the recording alive
-
-        // Recording already ended (e.g. very short) but buffer still around: signal complete.
-        if (!activeRecordings.has(tabId)) {
-          port.postMessage({ type: "complete" });
-        }
       } else if (msg.action === "unsubscribe") {
         subscriptions.get(tabId)?.delete(port);
         if (subscriptions.get(tabId)?.size === 0) subscriptions.delete(tabId);
@@ -801,7 +869,14 @@ export const startNetworkRecording = async (
   url: string,
   config: NetworkRecordingConfig = {},
   sender?: { tabId?: number; windowId?: number }
-): Promise<{ success: boolean; targetTabId?: number; error?: string; code?: string; openedMode?: OpenMode }> => {
+): Promise<{
+  success: boolean;
+  targetTabId?: number;
+  error?: string;
+  code?: string;
+  openedMode?: OpenMode;
+  groups?: true;
+}> => {
   // Reject a start while the extension is off, so the UI never says "disabled" with a live
   // recording. Read from the in-memory cache (NOT an await).
   if (!isExtensionEnabledCache) {
@@ -816,6 +891,10 @@ export const startNetworkRecording = async (
   }
 
   const openMode = config.openMode ?? OpenMode.TAB;
+
+  // Grouped recording needs the side panel (Chrome/Edge); Firefox and Safari stay flat. Decided here,
+  // synchronously, so the reply can acknowledge it.
+  const groupsEnabled = acceptsGroupsOptIn(config, !!sidePanelApi);
 
   // Incognito is gated by the user's "Allow in Incognito" toggle (chrome://extensions), which is
   // NOT programmatically settable. Reject synchronously (NO await — it would forfeit the
@@ -849,11 +928,12 @@ export const startNetworkRecording = async (
         return;
       }
       const tabId = created.tabId;
+      const startTime = Date.now();
 
       const state: NetworkRecordingState = {
         targetTabId: tabId,
         url,
-        startTime: Date.now(),
+        startTime,
         // Resolve maxPayloadSize to its default now so the body page script (v2) can read a
         // concrete cap off state without re-defaulting. maxDuration stays undefined = no cap.
         config: { ...config, maxPayloadSize: config.maxPayloadSize ?? DEFAULT_MAX_PAYLOAD_SIZE },
@@ -861,6 +941,15 @@ export const startNetworkRecording = async (
         senderWindowId: sender?.windowId,
         createdWindowId: created.windowId,
         openMode,
+        session: groupsEnabled
+          ? new GroupedRecordingSession(tabId, startTime, {
+              post: (messages) => postToPorts(tabId, messages),
+              notifyPanel: (view) =>
+                chrome.runtime
+                  .sendMessage({ action: CLIENT_MESSAGES.NETWORK_RECORDING_GROUPS_CHANGED, tabId, view })
+                  .catch(() => {}),
+            })
+          : undefined,
       };
 
       activeRecordings.set(tabId, state);
@@ -886,7 +975,7 @@ export const startNetworkRecording = async (
       // about:blank, so nothing is loading yet.
       openPanel(tabId);
 
-      resolve({ success: true, targetTabId: tabId, openedMode: openMode });
+      resolve(buildStartReply({ targetTabId: tabId, openedMode: openMode, groupsEnabled }));
 
       // Now register the body-recorder scripts, THEN navigate the blank tab to the real URL. The
       // await is AFTER openPanel/resolve, so it costs neither the gesture nor the LTS response.
@@ -910,9 +999,15 @@ export interface RecordingSummary {
   endTime: number;
   duration: number;
   totalCount: number;
+  // Grouped recordings only: the same object last sent on the port (same revision).
+  manifest?: GroupsManifest;
 }
 
-const buildSummary = (recording: NetworkRecordingState, totalCount: number): RecordingSummary => {
+const buildSummary = (
+  recording: NetworkRecordingState,
+  totalCount: number,
+  manifest?: GroupsManifest
+): RecordingSummary => {
   const endTime = Date.now();
   return {
     targetTabId: recording.targetTabId,
@@ -921,6 +1016,7 @@ const buildSummary = (recording: NetworkRecordingState, totalCount: number): Rec
     endTime,
     duration: endTime - recording.startTime,
     totalCount,
+    ...(manifest ? { manifest } : {}),
   };
 };
 
@@ -1023,10 +1119,12 @@ export const stopNetworkRecording = (
   // Stop returns { success } only. Whoever holds the stream (LTS) learns of the end via the
   // port `complete` signal and fetches the metadata with getNetworkRecordingSummary — the same
   // path regardless of who triggered this stop (LTS or the side panel) — so retain it briefly.
-  retainSummary(buildSummary(recording, entries.length));
+  // A grouped recording builds its final manifest first so the summary carries the same one.
+  const manifest = recording.session?.finish();
+  retainSummary(buildSummary(recording, entries.length, manifest));
 
   // Signal subscribed LTS ports before tearing down the buffer.
-  streamCompleteToPorts(targetTabId);
+  streamCompleteToPorts(targetTabId, manifest);
   // Tell the side panel why it ended so it can show the right stopped state / banner.
   notifyPanelEnded(targetTabId, reason);
   // v2: tell the page script to stop capturing bodies (gates its callback off; no clearInterceptors).
@@ -1034,6 +1132,7 @@ export const stopNetworkRecording = (
 
   activeRecordings.delete(targetTabId);
   recordingEntries.delete(targetTabId);
+  clearFirstSeenStarts(targetTabId);
   tabService.removeData(targetTabId, TAB_SERVICE_DATA.NETWORK_RECORDING);
 
   if (activeRecordings.size === 0) {
@@ -1093,19 +1192,81 @@ export const getNetworkRecordingSummary = (
   return { success: false, error: `No summary for tab ${targetTabId}` };
 };
 
-export const getNetworkRecordingState = (
-  tabId: number
-): { active: boolean; entries: NetworkHarEntry[]; startTime: number; url: string } | null => {
+export interface NetworkRecordingPanelState {
+  active: boolean;
+  entries: NetworkHarEntry[];
+  startTime: number;
+  url: string;
+  // Grouped recordings only. `view` places every entry (view.groups[].requestIds); entries that are
+  // in no group were deleted. After Stop, `manifest` stands in for the live view.
+  groupsEnabled?: true;
+  view?: PanelGroupsView;
+  endTime?: number;
+  manifest?: GroupsManifest;
+}
+
+export const getNetworkRecordingState = (tabId: number): NetworkRecordingPanelState | null => {
   const recording = activeRecordings.get(tabId);
-  if (!recording) return null;
+  if (!recording) {
+    // A grouped panel reopened after Stop reads the retained manifest instead of showing "Recording".
+    const ended = recentSummaries.get(tabId);
+    if (!ended?.manifest) return null;
+    return {
+      active: false,
+      entries: [],
+      startTime: ended.startTime,
+      endTime: ended.endTime,
+      url: ended.url,
+      groupsEnabled: true,
+      manifest: ended.manifest,
+    };
+  }
 
   return {
     active: true,
     entries: recordingEntries.get(tabId) || [],
     startTime: recording.startTime,
     url: recording.url,
+    ...(recording.session ? { groupsEnabled: true as const, view: recording.session.view() } : {}),
   };
 };
+
+// --- Side panel commands (grouped recordings only) -------------------------------------------
+// The service worker owns every group; the panel sends a command and redraws from the snapshot it
+// gets back. See GroupedRecordingSession for what each command sends to the panel and the port.
+
+type NotGrouped = { ok: false; reason: "not-recording" | "not-grouped" };
+
+const withSession = <T>(tabId: number | undefined, run: (session: GroupedRecordingSession) => T): T | NotGrouped => {
+  const recording = tabId === undefined ? undefined : activeRecordings.get(tabId);
+  if (!recording) return { ok: false, reason: "not-recording" };
+  if (!recording.session) return { ok: false, reason: "not-grouped" };
+  return run(recording.session);
+};
+
+export const pauseNetworkRecording = (tabId?: number): SimpleResult => withSession(tabId, (s) => s.pause());
+
+export const resumeNetworkRecording = (tabId?: number): SimpleResult => withSession(tabId, (s) => s.resume());
+
+export const createNetworkRecordingGroup = (tabId?: number): NewGroupResult => withSession(tabId, (s) => s.newGroup());
+
+export const renameNetworkRecordingGroup = (
+  tabId: number | undefined,
+  groupId: string,
+  name: string
+): RenameGroupResult => withSession(tabId, (s) => s.rename(groupId, name));
+
+export const moveNetworkRecordingRequests = (
+  tabId: number | undefined,
+  requestIds: string[],
+  targetGroupId: string
+): OperationResult => withSession(tabId, (s) => s.move(requestIds, targetGroupId));
+
+export const deleteNetworkRecordingRequests = (tabId: number | undefined, requestIds: string[]): OperationResult =>
+  withSession(tabId, (s) => s.delete(requestIds));
+
+export const undoNetworkRecordingOperation = (tabId: number | undefined, opId: string): SimpleResult =>
+  withSession(tabId, (s) => s.undo(opId));
 
 export const handleNetworkRecordingOnClientPageLoad = (tab: chrome.tabs.Tab) => {
   const recordingData = tabService.getData(tab.id, TAB_SERVICE_DATA.NETWORK_RECORDING);
@@ -1116,15 +1277,18 @@ export const handleNetworkRecordingOnClientPageLoad = (tab: chrome.tabs.Tab) => 
 const cleanupRecording = (tabId: number) => {
   cancelDisconnectGrace(tabId);
   const recording = activeRecordings.get(tabId);
+  let manifest: GroupsManifest | undefined;
   if (recording) {
     if (recording.maxDurationTimer !== undefined) clearTimeout(recording.maxDurationTimer);
-    retainSummary(buildSummary(recording, recordingEntries.get(tabId)?.length ?? 0));
+    manifest = recording.session?.finish();
+    retainSummary(buildSummary(recording, recordingEntries.get(tabId)?.length ?? 0, manifest));
   }
-  streamCompleteToPorts(tabId);
+  streamCompleteToPorts(tabId, manifest);
   // The recorded tab closed — its panel is gone with it, but send for contract completeness.
   notifyPanelEnded(tabId, "tab-closed");
   activeRecordings.delete(tabId);
   recordingEntries.delete(tabId);
+  clearFirstSeenStarts(tabId);
   if (activeRecordings.size === 0) {
     removeWebRequestListeners();
     unregisterBodyRecorderScripts(); // no recordings left — stop injecting the body-recorder scripts

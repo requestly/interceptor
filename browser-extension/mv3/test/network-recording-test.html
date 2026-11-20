@@ -66,7 +66,8 @@
         <label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;margin-right:16px;"><input type="radio" name="openMode" value="window" checked style="width:auto;margin:0;" /> New window</label>
         <label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;"><input type="radio" name="openMode" value="incognito" style="width:auto;margin:0;" /> New incognito</label>
       </p>
-      <p style="margin-bottom: 0;"><label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;"><input type="checkbox" id="closeOnStop" checked style="width:auto;margin:0;" /> Close recording tab/window on stop</label></p>
+      <p style="margin-bottom: 6px;"><label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;"><input type="checkbox" id="closeOnStop" checked style="width:auto;margin:0;" /> Close recording tab/window on stop</label></p>
+      <p style="margin-bottom: 0;"><label style="display:inline-flex;align-items:center;gap:8px;color:#fff;font-size:13px;"><input type="checkbox" id="groups" style="width:auto;margin:0;" /> Request groups (opt-in: groups, pause, move/delete/undo in the side panel; the start reply echoes <code>groups: true</code> when accepted)</label></p>
     </div>
 
     <p style="margin-top: 12px;">Status: <span class="status status-idle" id="status">Idle</span></p>
@@ -97,6 +98,7 @@
     let currentTargetTabId = null;
     let streamPort = null;
     let streamedEntries = [];   // local accumulator, keyed/deduped by _request_id
+    let lastManifest = null;    // groups manifest from the port (grouped recordings only)
     const seenRequestIds = new Set();
 
     function log(message, type = 'info') {
@@ -133,6 +135,7 @@
       const requestScope = document.querySelector('input[name="requestScope"]:checked')?.value || 'all';
       const openMode = document.querySelector('input[name="openMode"]:checked')?.value || 'tab';
       const closeOnStop = document.getElementById('closeOnStop').checked;
+      const groups = document.getElementById('groups').checked;
 
       log(`Sending startNetworkRecording for: ${url}`);
 
@@ -142,7 +145,7 @@
           action: "startNetworkRecording",
           payload: {
             url: url,
-            config: { maxDuration: 15 * 60 * 1000, disableCache, wipeServiceWorkers, recordAjax, requestScope, openMode, closeOnStop },
+            config: { maxDuration: 15 * 60 * 1000, disableCache, wipeServiceWorkers, recordAjax, requestScope, openMode, closeOnStop, ...(groups ? { groups: true } : {}) },
           },
         },
         (response) => {
@@ -161,6 +164,11 @@
             document.getElementById('btnStart').disabled = true;
             document.getElementById('btnStop').disabled = false;
             log(`Recording started on tab ${currentTargetTabId}`, 'info');
+            if (groups) {
+              log(response.groups === true
+                ? 'Groups opt-in ACCEPTED (reply has groups: true). Use the side panel to add groups, pause, move or delete.'
+                : 'Groups opt-in NOT accepted (no groups field in the reply): this recording is flat.', response.groups === true ? 'info' : 'error');
+            }
             openStream(extId, currentTargetTabId);
           } else {
             log('Failed to start recording', 'error');
@@ -192,6 +200,16 @@
               `${targetTabId} (${streamedEntries.length} entries)`;
             break;
           }
+          case "state":
+            log(`state rev ${msg.revision}: paused=${msg.paused} pausedMs=${msg.pausedMs} activeGroupId=${msg.activeGroupId} deletedCount=${msg.deletedCount}`, 'data');
+            break;
+          case "analytics":
+            log(`analytics ${msg.event} ${JSON.stringify(msg.props)} id=${msg.id}`, 'data');
+            break;
+          case "manifest":
+            lastManifest = msg.manifest;
+            log(`manifest rev ${msg.manifest.revision}: ${msg.manifest.groups.map(g => `${g.name} (${g.requestIds.length})`).join(', ') || 'no groups'}; deleted ${msg.manifest.deletedRequestIds.length}`, 'info');
+            break;
           case "complete":
             // Recording ended (possibly stopped from the side panel — we did NOT trigger it).
             // `complete` is a pure signal; fetch the summary metadata on demand.
@@ -237,6 +255,10 @@
                 <tr><td style="color:#9e9e9e;padding:2px 8px 2px 0;">By type</td><td>${breakdown}</td></tr>
               </table>`;
             log(`Summary received for tab ${targetTabId}`, 'info');
+            if (lastManifest || s.manifest) {
+              const same = JSON.stringify(lastManifest) === JSON.stringify(s.manifest);
+              log(`summary.manifest ${s.manifest ? 'present' : 'MISSING'}; identical to the port manifest: ${same ? 'yes' : 'NO'}`, same ? 'info' : 'error');
+            }
           } else {
             log(`Summary unavailable: ${response?.error}`, 'error');
             summaryEl.innerHTML = `<span style="color:#e43434;">Unavailable: ${response?.error}</span>`;
