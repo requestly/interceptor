@@ -32,9 +32,20 @@ interface NetworkEventRowProps {
   entry: NetworkEntry;
   typeDisplay: string;
   formatSize: (bytes: number | undefined) => string;
+  // Grouped recordings only: a checkbox and a row menu, revealed on hover or focus.
+  selection?: { checked: boolean; onChange: () => void; label: string };
+  menu?: React.ReactNode;
+  flash?: boolean;
 }
 
-const NetworkEventRow: React.FC<NetworkEventRowProps> = ({ entry, typeDisplay, formatSize }) => {
+const NetworkEventRow: React.FC<NetworkEventRowProps> = ({
+  entry,
+  typeDisplay,
+  formatSize,
+  selection,
+  menu,
+  flash,
+}) => {
   const { method, url } = entry.request;
   const { status } = entry.response;
   const error = (entry as { _error?: string })._error;
@@ -42,7 +53,21 @@ const NetworkEventRow: React.FC<NetworkEventRowProps> = ({ entry, typeDisplay, f
   const { host, path } = splitUrl(url);
 
   return (
-    <div className={`network-row ${isError ? "network-row--error" : ""}`}>
+    <div
+      className={`network-row ${isError ? "network-row--error" : ""} ${selection ? "network-row--selectable" : ""} ${
+        selection?.checked ? "network-row--selected" : ""
+      } ${flash ? "network-row--flash" : ""}`}
+    >
+      {selection && (
+        <input
+          type="checkbox"
+          className="row-checkbox"
+          checked={selection.checked}
+          onChange={selection.onChange}
+          aria-label={selection.label}
+        />
+      )}
+      {menu}
       <div className="row-main">
         <span className="method-badge" style={{ backgroundColor: METHOD_COLORS[method] || "#9E9E9E" }}>
           {method}

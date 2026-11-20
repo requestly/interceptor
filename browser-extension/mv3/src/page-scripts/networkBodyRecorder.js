@@ -120,8 +120,12 @@ const applyCaps = (data, cfg) => {
     // overrideResponse=false → observe only, never block/alter the real response.
     Requestly.Network.intercept(
       /.*/,
-      (data) => {
+      (rawData) => {
         if (state === "stopped") return;
+        // Stamp the start now, on the RAW capture: the pre-START buffer holds raw data, so a stamp
+        // taken at flush time would date every buffered request by the flush. Carried through
+        // applyCaps' spread; the service worker validates it and falls back when it looks wrong.
+        const data = { ...rawData, startedAt: Date.now() - (Number(rawData.responseTime) || 0) };
         if (state === "buffering") {
           // Hold until START resolves the caps, then flush in order. Hard-cap the buffer so a tab
           // that is slow to START — or never will (a non-recorded tab the broad registration landed

@@ -1,0 +1,1161 @@
+{
+  "note": "Golden transcripts for the LTAR-528 recorder groups contract. Entries are reduced to {_request_id}. Ids are deterministic (id-1, id-2, ...) and the clock is the step's t. Regenerate with UPDATE_GOLDEN=1 npm run test:recorder.",
+  "scenarios": [
+    {
+      "name": "flat-default-only",
+      "description": "Opted in, the tester never adds a group: one Default group, then stop.",
+      "optIn": true,
+      "sidePanel": true,
+      "startTime": 1000000,
+      "steps": [
+        {
+          "op": "subscribe",
+          "t": 1000000
+        },
+        {
+          "op": "file",
+          "t": 1000100,
+          "id": "r1"
+        },
+        {
+          "op": "file",
+          "t": 1000200,
+          "id": "r2"
+        },
+        {
+          "op": "stop",
+          "t": 1000300
+        }
+      ],
+      "expected": {
+        "startReply": {
+          "success": true,
+          "targetTabId": 7,
+          "openedMode": "window",
+          "groups": true
+        },
+        "messages": [
+          {
+            "type": "subscribed",
+            "targetTabId": 7
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 1,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-1",
+            "deletedCount": 0
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r1"
+            }
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r2"
+            }
+          },
+          {
+            "type": "manifest",
+            "manifest": {
+              "version": 1,
+              "revision": 4,
+              "groups": [
+                {
+                  "id": "id-1",
+                  "name": "Default group",
+                  "isDefault": true,
+                  "requestIds": [
+                    "r1",
+                    "r2"
+                  ]
+                }
+              ],
+              "deletedRequestIds": [],
+              "stats": {
+                "groupsCreated": 0,
+                "renames": 0,
+                "moves": 0,
+                "deletes": 0,
+                "undos": 0,
+                "pauses": 0,
+                "pausedMs": 0
+              }
+            }
+          },
+          {
+            "type": "complete"
+          }
+        ],
+        "summaryManifest": {
+          "version": 1,
+          "revision": 4,
+          "groups": [
+            {
+              "id": "id-1",
+              "name": "Default group",
+              "isDefault": true,
+              "requestIds": [
+                "r1",
+                "r2"
+              ]
+            }
+          ],
+          "deletedRequestIds": [],
+          "stats": {
+            "groupsCreated": 0,
+            "renames": 0,
+            "moves": 0,
+            "deletes": 0,
+            "undos": 0,
+            "pauses": 0,
+            "pausedMs": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "several-groups-with-rename-and-move",
+      "description": "A new group, a rename, a slow request filed by its start time, then a move. The manifest lists groups in creation order and requestIds in final order.",
+      "optIn": true,
+      "sidePanel": true,
+      "startTime": 1000000,
+      "steps": [
+        {
+          "op": "subscribe",
+          "t": 1000000
+        },
+        {
+          "op": "file",
+          "t": 1000100,
+          "id": "r1"
+        },
+        {
+          "op": "file",
+          "t": 1000150,
+          "id": "r2"
+        },
+        {
+          "op": "newGroup",
+          "t": 1000200
+        },
+        {
+          "op": "rename",
+          "t": 1000250,
+          "group": 1,
+          "name": "Checkout"
+        },
+        {
+          "op": "file",
+          "t": 1000320,
+          "id": "r3",
+          "startedAt": 1000190
+        },
+        {
+          "op": "file",
+          "t": 1000400,
+          "id": "r4"
+        },
+        {
+          "op": "move",
+          "t": 1000450,
+          "ids": [
+            "r2"
+          ],
+          "to": 1
+        },
+        {
+          "op": "stop",
+          "t": 1000500
+        }
+      ],
+      "expected": {
+        "startReply": {
+          "success": true,
+          "targetTabId": 7,
+          "openedMode": "window",
+          "groups": true
+        },
+        "messages": [
+          {
+            "type": "subscribed",
+            "targetTabId": 7
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 1,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-1",
+            "deletedCount": 0
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r1"
+            }
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r2"
+            }
+          },
+          {
+            "type": "analytics",
+            "id": "id-3",
+            "event": "group_created",
+            "props": {},
+            "at": 1000200
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 4,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-2",
+            "deletedCount": 0
+          },
+          {
+            "type": "analytics",
+            "id": "id-4",
+            "event": "group_renamed",
+            "props": {},
+            "at": 1000250
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r3"
+            }
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r4"
+            }
+          },
+          {
+            "type": "analytics",
+            "id": "id-6",
+            "event": "requests_moved",
+            "props": {
+              "count": 1,
+              "bulk": false
+            },
+            "at": 1000450
+          },
+          {
+            "type": "manifest",
+            "manifest": {
+              "version": 1,
+              "revision": 9,
+              "groups": [
+                {
+                  "id": "id-1",
+                  "name": "Default group",
+                  "isDefault": true,
+                  "requestIds": [
+                    "r1",
+                    "r3"
+                  ]
+                },
+                {
+                  "id": "id-2",
+                  "name": "Checkout",
+                  "isDefault": false,
+                  "requestIds": [
+                    "r4",
+                    "r2"
+                  ]
+                }
+              ],
+              "deletedRequestIds": [],
+              "stats": {
+                "groupsCreated": 1,
+                "renames": 1,
+                "moves": 1,
+                "deletes": 0,
+                "undos": 0,
+                "pauses": 0,
+                "pausedMs": 0
+              }
+            }
+          },
+          {
+            "type": "complete"
+          }
+        ],
+        "summaryManifest": {
+          "version": 1,
+          "revision": 9,
+          "groups": [
+            {
+              "id": "id-1",
+              "name": "Default group",
+              "isDefault": true,
+              "requestIds": [
+                "r1",
+                "r3"
+              ]
+            },
+            {
+              "id": "id-2",
+              "name": "Checkout",
+              "isDefault": false,
+              "requestIds": [
+                "r4",
+                "r2"
+              ]
+            }
+          ],
+          "deletedRequestIds": [],
+          "stats": {
+            "groupsCreated": 1,
+            "renames": 1,
+            "moves": 1,
+            "deletes": 0,
+            "undos": 0,
+            "pauses": 0,
+            "pausedMs": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "pause-with-state",
+      "description": "A request that started during the pause is never delivered. One that started before the pause and finished during it is kept.",
+      "optIn": true,
+      "sidePanel": true,
+      "startTime": 1000000,
+      "steps": [
+        {
+          "op": "subscribe",
+          "t": 1000000
+        },
+        {
+          "op": "file",
+          "t": 1000100,
+          "id": "r1"
+        },
+        {
+          "op": "pause",
+          "t": 1000200
+        },
+        {
+          "op": "file",
+          "t": 1000260,
+          "id": "dropped",
+          "startedAt": 1000250
+        },
+        {
+          "op": "file",
+          "t": 1000280,
+          "id": "r2",
+          "startedAt": 1000150
+        },
+        {
+          "op": "resume",
+          "t": 1000300
+        },
+        {
+          "op": "file",
+          "t": 1000350,
+          "id": "r3"
+        },
+        {
+          "op": "stop",
+          "t": 1000400
+        }
+      ],
+      "expected": {
+        "startReply": {
+          "success": true,
+          "targetTabId": 7,
+          "openedMode": "window",
+          "groups": true
+        },
+        "messages": [
+          {
+            "type": "subscribed",
+            "targetTabId": 7
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 1,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-1",
+            "deletedCount": 0
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r1"
+            }
+          },
+          {
+            "type": "analytics",
+            "id": "id-2",
+            "event": "recording_paused",
+            "props": {},
+            "at": 1000200
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 3,
+            "paused": true,
+            "pausedMs": 0,
+            "activeGroupId": "id-1",
+            "deletedCount": 0
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r2"
+            }
+          },
+          {
+            "type": "analytics",
+            "id": "id-3",
+            "event": "recording_resumed",
+            "props": {},
+            "at": 1000300
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 5,
+            "paused": false,
+            "pausedMs": 100,
+            "activeGroupId": "id-1",
+            "deletedCount": 0
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r3"
+            }
+          },
+          {
+            "type": "manifest",
+            "manifest": {
+              "version": 1,
+              "revision": 7,
+              "groups": [
+                {
+                  "id": "id-1",
+                  "name": "Default group",
+                  "isDefault": true,
+                  "requestIds": [
+                    "r1",
+                    "r2",
+                    "r3"
+                  ]
+                }
+              ],
+              "deletedRequestIds": [],
+              "stats": {
+                "groupsCreated": 0,
+                "renames": 0,
+                "moves": 0,
+                "deletes": 0,
+                "undos": 0,
+                "pauses": 1,
+                "pausedMs": 100
+              }
+            }
+          },
+          {
+            "type": "complete"
+          }
+        ],
+        "summaryManifest": {
+          "version": 1,
+          "revision": 7,
+          "groups": [
+            {
+              "id": "id-1",
+              "name": "Default group",
+              "isDefault": true,
+              "requestIds": [
+                "r1",
+                "r2",
+                "r3"
+              ]
+            }
+          ],
+          "deletedRequestIds": [],
+          "stats": {
+            "groupsCreated": 0,
+            "renames": 0,
+            "moves": 0,
+            "deletes": 0,
+            "undos": 0,
+            "pauses": 1,
+            "pausedMs": 100
+          }
+        }
+      }
+    },
+    {
+      "name": "delete-then-undo",
+      "description": "Delete one request and undo it, then delete two and keep them deleted. State follows each delete and undo; the manifest lists what stayed deleted.",
+      "optIn": true,
+      "sidePanel": true,
+      "startTime": 1000000,
+      "steps": [
+        {
+          "op": "subscribe",
+          "t": 1000000
+        },
+        {
+          "op": "file",
+          "t": 1000100,
+          "id": "r1"
+        },
+        {
+          "op": "file",
+          "t": 1000150,
+          "id": "r2"
+        },
+        {
+          "op": "file",
+          "t": 1000200,
+          "id": "r3"
+        },
+        {
+          "op": "delete",
+          "t": 1000300,
+          "ids": [
+            "r2"
+          ]
+        },
+        {
+          "op": "undo",
+          "t": 1000350,
+          "which": "last"
+        },
+        {
+          "op": "delete",
+          "t": 1000400,
+          "ids": [
+            "r1",
+            "r3"
+          ]
+        },
+        {
+          "op": "stop",
+          "t": 1000500
+        }
+      ],
+      "expected": {
+        "startReply": {
+          "success": true,
+          "targetTabId": 7,
+          "openedMode": "window",
+          "groups": true
+        },
+        "messages": [
+          {
+            "type": "subscribed",
+            "targetTabId": 7
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 1,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-1",
+            "deletedCount": 0
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r1"
+            }
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r2"
+            }
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r3"
+            }
+          },
+          {
+            "type": "analytics",
+            "id": "id-3",
+            "event": "requests_deleted",
+            "props": {
+              "count": 1,
+              "bulk": false
+            },
+            "at": 1000300
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 5,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-1",
+            "deletedCount": 1
+          },
+          {
+            "type": "analytics",
+            "id": "id-4",
+            "event": "undo_used",
+            "props": {
+              "count": 1,
+              "bulk": false
+            },
+            "at": 1000350
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 6,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-1",
+            "deletedCount": 0
+          },
+          {
+            "type": "analytics",
+            "id": "id-6",
+            "event": "requests_deleted",
+            "props": {
+              "count": 2,
+              "bulk": true
+            },
+            "at": 1000400
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 7,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-1",
+            "deletedCount": 2
+          },
+          {
+            "type": "manifest",
+            "manifest": {
+              "version": 1,
+              "revision": 8,
+              "groups": [
+                {
+                  "id": "id-1",
+                  "name": "Default group",
+                  "isDefault": true,
+                  "requestIds": [
+                    "r2"
+                  ]
+                }
+              ],
+              "deletedRequestIds": [
+                "r1",
+                "r3"
+              ],
+              "stats": {
+                "groupsCreated": 0,
+                "renames": 0,
+                "moves": 0,
+                "deletes": 2,
+                "undos": 1,
+                "pauses": 0,
+                "pausedMs": 0
+              }
+            }
+          },
+          {
+            "type": "complete"
+          }
+        ],
+        "summaryManifest": {
+          "version": 1,
+          "revision": 8,
+          "groups": [
+            {
+              "id": "id-1",
+              "name": "Default group",
+              "isDefault": true,
+              "requestIds": [
+                "r2"
+              ]
+            }
+          ],
+          "deletedRequestIds": [
+            "r1",
+            "r3"
+          ],
+          "stats": {
+            "groupsCreated": 0,
+            "renames": 0,
+            "moves": 0,
+            "deletes": 2,
+            "undos": 1,
+            "pauses": 0,
+            "pausedMs": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "reconnect-with-analytics-replay",
+      "description": "The port drops and reconnects. The new subscribe replays every entry, then state, then the whole analytics backlog; the FE de-duplicates by id.",
+      "optIn": true,
+      "sidePanel": true,
+      "startTime": 1000000,
+      "steps": [
+        {
+          "op": "subscribe",
+          "t": 1000000
+        },
+        {
+          "op": "file",
+          "t": 1000100,
+          "id": "r1"
+        },
+        {
+          "op": "newGroup",
+          "t": 1000200
+        },
+        {
+          "op": "disconnect",
+          "t": 1000300
+        },
+        {
+          "op": "pause",
+          "t": 1000310
+        },
+        {
+          "op": "resume",
+          "t": 1000320
+        },
+        {
+          "op": "file",
+          "t": 1000330,
+          "id": "r2"
+        },
+        {
+          "op": "subscribe",
+          "t": 1000400
+        },
+        {
+          "op": "file",
+          "t": 1000450,
+          "id": "r3"
+        },
+        {
+          "op": "stop",
+          "t": 1000500
+        }
+      ],
+      "expected": {
+        "startReply": {
+          "success": true,
+          "targetTabId": 7,
+          "openedMode": "window",
+          "groups": true
+        },
+        "messages": [
+          {
+            "type": "subscribed",
+            "targetTabId": 7
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 1,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-1",
+            "deletedCount": 0
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r1"
+            }
+          },
+          {
+            "type": "analytics",
+            "id": "id-3",
+            "event": "group_created",
+            "props": {},
+            "at": 1000200
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 3,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-2",
+            "deletedCount": 0
+          },
+          {
+            "type": "subscribed",
+            "targetTabId": 7
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r1"
+            }
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r2"
+            }
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 6,
+            "paused": false,
+            "pausedMs": 10,
+            "activeGroupId": "id-2",
+            "deletedCount": 0
+          },
+          {
+            "type": "analytics",
+            "id": "id-3",
+            "event": "group_created",
+            "props": {},
+            "at": 1000200
+          },
+          {
+            "type": "analytics",
+            "id": "id-4",
+            "event": "recording_paused",
+            "props": {},
+            "at": 1000310
+          },
+          {
+            "type": "analytics",
+            "id": "id-5",
+            "event": "recording_resumed",
+            "props": {},
+            "at": 1000320
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r3"
+            }
+          },
+          {
+            "type": "manifest",
+            "manifest": {
+              "version": 1,
+              "revision": 8,
+              "groups": [
+                {
+                  "id": "id-1",
+                  "name": "Default group",
+                  "isDefault": true,
+                  "requestIds": [
+                    "r1"
+                  ]
+                },
+                {
+                  "id": "id-2",
+                  "name": "New group",
+                  "isDefault": false,
+                  "requestIds": [
+                    "r2",
+                    "r3"
+                  ]
+                }
+              ],
+              "deletedRequestIds": [],
+              "stats": {
+                "groupsCreated": 1,
+                "renames": 0,
+                "moves": 0,
+                "deletes": 0,
+                "undos": 0,
+                "pauses": 1,
+                "pausedMs": 10
+              }
+            }
+          },
+          {
+            "type": "complete"
+          }
+        ],
+        "summaryManifest": {
+          "version": 1,
+          "revision": 8,
+          "groups": [
+            {
+              "id": "id-1",
+              "name": "Default group",
+              "isDefault": true,
+              "requestIds": [
+                "r1"
+              ]
+            },
+            {
+              "id": "id-2",
+              "name": "New group",
+              "isDefault": false,
+              "requestIds": [
+                "r2",
+                "r3"
+              ]
+            }
+          ],
+          "deletedRequestIds": [],
+          "stats": {
+            "groupsCreated": 1,
+            "renames": 0,
+            "moves": 0,
+            "deletes": 0,
+            "undos": 0,
+            "pauses": 1,
+            "pausedMs": 10
+          }
+        }
+      }
+    },
+    {
+      "name": "stop-during-reconnect",
+      "description": "Stop lands while the port is down, so nothing reaches it. The FE recovers the manifest from getNetworkRecordingSummary: summary.manifest equals the one built at stop.",
+      "optIn": true,
+      "sidePanel": true,
+      "startTime": 1000000,
+      "steps": [
+        {
+          "op": "subscribe",
+          "t": 1000000
+        },
+        {
+          "op": "file",
+          "t": 1000100,
+          "id": "r1"
+        },
+        {
+          "op": "newGroup",
+          "t": 1000200
+        },
+        {
+          "op": "file",
+          "t": 1000300,
+          "id": "r2"
+        },
+        {
+          "op": "disconnect",
+          "t": 1000350
+        },
+        {
+          "op": "stop",
+          "t": 1000400
+        }
+      ],
+      "expected": {
+        "startReply": {
+          "success": true,
+          "targetTabId": 7,
+          "openedMode": "window",
+          "groups": true
+        },
+        "messages": [
+          {
+            "type": "subscribed",
+            "targetTabId": 7
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 1,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-1",
+            "deletedCount": 0
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r1"
+            }
+          },
+          {
+            "type": "analytics",
+            "id": "id-3",
+            "event": "group_created",
+            "props": {},
+            "at": 1000200
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 3,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-2",
+            "deletedCount": 0
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r2"
+            }
+          }
+        ],
+        "summaryManifest": {
+          "version": 1,
+          "revision": 5,
+          "groups": [
+            {
+              "id": "id-1",
+              "name": "Default group",
+              "isDefault": true,
+              "requestIds": [
+                "r1"
+              ]
+            },
+            {
+              "id": "id-2",
+              "name": "New group",
+              "isDefault": false,
+              "requestIds": [
+                "r2"
+              ]
+            }
+          ],
+          "deletedRequestIds": [],
+          "stats": {
+            "groupsCreated": 1,
+            "renames": 0,
+            "moves": 0,
+            "deletes": 0,
+            "undos": 0,
+            "pauses": 0,
+            "pausedMs": 0
+          }
+        }
+      }
+    },
+    {
+      "name": "start-without-opt-in",
+      "description": "The START config has no groups key: the reply has no groups field and the stream is exactly today's (subscribed, entries, complete).",
+      "optIn": false,
+      "sidePanel": true,
+      "startTime": 1000000,
+      "steps": [
+        {
+          "op": "subscribe",
+          "t": 1000000
+        },
+        {
+          "op": "file",
+          "t": 1000100,
+          "id": "r1"
+        },
+        {
+          "op": "file",
+          "t": 1000200,
+          "id": "r2"
+        },
+        {
+          "op": "stop",
+          "t": 1000300
+        }
+      ],
+      "expected": {
+        "startReply": {
+          "success": true,
+          "targetTabId": 7,
+          "openedMode": "window"
+        },
+        "messages": [
+          {
+            "type": "subscribed",
+            "targetTabId": 7
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r1"
+            }
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r2"
+            }
+          },
+          {
+            "type": "complete"
+          }
+        ],
+        "summaryManifest": null
+      }
+    },
+    {
+      "name": "old-extension-without-echo",
+      "description": "The FE opts in but the extension does not acknowledge it (an older build, Firefox, Safari): the reply has no groups field and the stream stays flat. The FE must treat the recording as flat.",
+      "optIn": true,
+      "sidePanel": false,
+      "startTime": 1000000,
+      "steps": [
+        {
+          "op": "subscribe",
+          "t": 1000000
+        },
+        {
+          "op": "file",
+          "t": 1000100,
+          "id": "r1"
+        },
+        {
+          "op": "stop",
+          "t": 1000200
+        }
+      ],
+      "expected": {
+        "startReply": {
+          "success": true,
+          "targetTabId": 7,
+          "openedMode": "window"
+        },
+        "messages": [
+          {
+            "type": "subscribed",
+            "targetTabId": 7
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r1"
+            }
+          },
+          {
+            "type": "complete"
+          }
+        ],
+        "summaryManifest": null
+      }
+    }
+  ]
+}
