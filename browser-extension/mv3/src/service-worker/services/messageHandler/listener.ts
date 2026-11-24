@@ -45,6 +45,30 @@ import {
   refreshIncognitoAllowedCache,
 } from "../networkRecording";
 
+/**
+ * Derives the true origin of a message sender from browser-populated fields
+ * (`sender.origin`, falling back to parsing `sender.url`). Chrome sets these from the
+ * actual sending frame, so — unlike anything inside the message payload — a web page
+ * cannot forge them. Returns `undefined` when no origin can be determined; an opaque
+ * (sandboxed) frame legitimately serializes to the string "null".
+ *
+ * Used to pin caller-supplied `requestDetails.initiator` to the real sender origin so a
+ * page cannot claim another origin (RQ-3050 and its onBeforeAjaxRequest sibling).
+ */
+const getTrustedSenderOrigin = (sender: chrome.runtime.MessageSender): string | undefined => {
+  if (sender.origin) {
+    return sender.origin;
+  }
+  if (!sender.url) {
+    return undefined;
+  }
+  try {
+    return new URL(sender.url).origin;
+  } catch {
+    return undefined;
+  }
+};
+
 export const initExternalMessageListener = () => {
   chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => {
     switch (message.action) {
@@ -210,12 +234,39 @@ export const initMessageHandler = () => {
         break;
 
       case EXTENSION_MESSAGES.ON_BEFORE_AJAX_REQUEST:
-        requestProcessor.onBeforeAJAXRequest(sender.tab.id, message.requestDetails).then(sendResponse);
+        // Security (RQ-3050 sibling): handleInitiatorDomainFunction stamps requestDetails.initiator
+        // into headers for rules that use rq_request_initiator_origin(). This message arrives over
+        // the same forgeable page channel, so pin initiator to the unforgeable sender origin — a page
+        // must not be able to claim another origin. requestDetails.url / requestHeaders stay as-is (the
+        // AJAX target is legitimately cross-origin, and forwardHeadersOnRedirect scopes its own rule to
+        // the user's redirect destination). For real traffic initiator === sender origin, so this is a
+        // no-op; an opaque frame's origin is "null", which is also its truthful value.
+        requestProcessor
+          .onBeforeAJAXRequest(sender.tab.id, {
+            ...message.requestDetails,
+            initiator: getTrustedSenderOrigin(sender),
+          })
+          .then(sendResponse);
         return true;
 
-      case EXTENSION_MESSAGES.ON_ERROR_OCCURRED:
-        requestProcessor.onErrorOccurred(sender.tab.id, message.requestDetails).then(sendResponse);
+      case EXTENSION_MESSAGES.ON_ERROR_OCCURRED: {
+        // Security (RQ-3050): handleCSPError strips the Content-Security-Policy header for
+        // requestDetails.initiator. This message is relayed from the page's MAIN world, where
+        // the caller-supplied initiator is forgeable, so a page could arm a CSP-removal rule for
+        // an arbitrary third-party origin. Pin the target to the browser-provided sender origin
+        // (unforgeable) so a page can only ever affect its own origin. The legitimate emitter
+        // already sends initiator === location.origin and posts same-frame, so this is a no-op
+        // for real traffic — keep the emitter same-frame (never window.top) or this breaks.
+        const trustedOrigin = getTrustedSenderOrigin(sender);
+        if (!sender.tab?.id || !trustedOrigin || trustedOrigin === "null") {
+          sendResponse();
+          return true;
+        }
+        requestProcessor
+          .onErrorOccurred(sender.tab.id, { ...message.requestDetails, initiator: trustedOrigin })
+          .then(sendResponse);
         return true;
+      }
 
       case EXTENSION_MESSAGES.TEST_RULE_ON_URL:
         launchUrlAndStartRuleTesting(message, sender.tab.id);
