@@ -13,6 +13,8 @@ import {
   SdkNetworkPayload,
 } from "./harBuilder";
 import { GroupedRecordingSession } from "./groupedSession";
+import { surfaceActionOnStop } from "./stopPolicy";
+import type { StopReason } from "./stopPolicy";
 import { acceptsGroupsOptIn, buildCompleteMessages, buildStartReply, buildSubscribeMessages } from "./groupsPort";
 import type {
   GroupsManifest,
@@ -419,14 +421,6 @@ export const onNetworkBodyCaptured = (
   const entry = buildSdkEntry(payload, nextRequestId());
   recordEntry(tabId, recording, entry, Date.now());
 };
-
-// Why a recording ended — drives the message the side panel shows.
-//   user               – the user clicked Stop in the panel (no banner; just "Stopped")
-//   max-duration       – config.maxDuration elapsed (amber banner)
-//   connection-lost    – the LTS port disconnected and no reconnect within the grace window (red)
-//   tab-closed         – the recorded tab was removed (panel is gone with it; informational only)
-//   extension-disabled – the Requestly extension was toggled off mid-recording (red banner)
-type StopReason = "user" | "max-duration" | "connection-lost" | "tab-closed" | "extension-disabled";
 
 /** Tell the side panel a recording ended and why, so it can flip to a stopped state with the
  *  right banner. Fire-and-forget — the panel may already be closed. */
@@ -1057,8 +1051,8 @@ const returnFocusToSender = (recording: NetworkRecordingState) => {
     );
 };
 
-// Close the recording surface on a user-stop with config.closeOnStop, THEN return focus to the LTS
-// context. ORDER MATTERS: removing a window makes Chrome shuffle OS focus to some other window (with
+// Close the recording surface on a user or time-limit stop with config.closeOnStop, THEN return focus
+// to the LTS context. ORDER MATTERS: removing a window makes Chrome shuffle OS focus to some other window (with
 // multiple profiles open it can even land on a DIFFERENT profile's window), so we refocus LTS AFTER
 // the removal resolves — our focus() must be the last word. Window/incognito modes close the WHOLE
 // created window (including any tabs the user opened or the recorded flow spawned — LTAR-226) as long
@@ -1142,19 +1136,15 @@ export const stopNetworkRecording = (
   }
   stopKeepaliveIfIdle();
 
-  // Leave the panel open showing the stopped state + reason banner; the user closes it.
-  // Return focus to the LTS context ONLY when the user themselves ended the recording (clicked
-  // Stop). Every other reason — max-duration, connection-lost, extension-disabled — is a
-  // background/system event, not an action on this recording; yanking the user's focus on top of
-  // the banner that already explains what happened would be surprising.
-  if (reason === "user") {
-    if (recording.config.closeOnStop) {
-      // closeRecordingSurface removes the surface and THEN refocuses LTS (focus must be the last
-      // action so it wins Chrome's post-close focus shuffle — see the ordering note there).
-      closeRecordingSurface(recording);
-    } else {
-      returnFocusToSender(recording);
-    }
+  // A time-limit stop ends like the user's own Stop. Failures leave the surface and its banner in
+  // place, since pulling focus over the banner that explains them would be surprising.
+  const surfaceAction = surfaceActionOnStop(reason, !!recording.config.closeOnStop);
+  if (surfaceAction === "close") {
+    // closeRecordingSurface removes the surface and THEN refocuses LTS (focus must be the last
+    // action so it wins Chrome's post-close focus shuffle — see the ordering note there).
+    closeRecordingSurface(recording);
+  } else if (surfaceAction === "refocus") {
+    returnFocusToSender(recording);
   }
 
   return { success: true };
