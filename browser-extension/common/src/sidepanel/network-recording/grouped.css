@@ -303,9 +303,9 @@
   flex: none;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   height: 22px;
-  padding: 0 7px;
+  padding: 0 7px 0 8px;
   border: 1px solid var(--gp-control-border);
   border-radius: 4px;
   background: var(--gp-surface);
@@ -450,7 +450,8 @@
 .gp-checkbox {
   width: 13px;
   height: 13px;
-  margin: 0;
+  margin: 0 0 0 5px;
+  color-scheme: light;
   accent-color: var(--gp-blue);
   cursor: pointer;
   visibility: hidden;
@@ -463,6 +464,11 @@
 .gp-checkbox:indeterminate,
 .gp-panel--selecting .gp-checkbox {
   visibility: visible;
+}
+
+/* The open menu is inside the row, so hovering it would otherwise count as hovering the row. */
+.gp-panel:not(.gp-panel--selecting) .gp-row--menu-open .gp-checkbox:not(:checked) {
+  visibility: hidden;
 }
 
 .gp-action-slot {
@@ -641,7 +647,7 @@
   display: flex;
   align-items: center;
   height: var(--gp-row-h);
-  padding: 2.5px var(--gp-pad) 0 12px;
+  padding: 2.5px 6px 0 12px;
   font-family: var(--gp-mono);
   font-size: 11.25px;
 }
@@ -651,17 +657,17 @@
 }
 
 .gp-row > .gp-action-slot {
-  width: 18px;
+  width: 24px;
 }
 
 .gp-row:hover,
 .gp-row--menu-open {
-  background: rgba(255, 255, 255, 0.035);
+  background: var(--gp-surface);
 }
 
 .gp-row--selected,
 .gp-row--selected:hover {
-  background: rgba(0, 78, 235, 0.12);
+  background: var(--gp-blue-wash);
 }
 
 .gp-row--flash {
@@ -692,11 +698,11 @@
 }
 
 .gp-method--post {
-  color: #7aa7ff;
+  color: #f59e0b;
 }
 
 .gp-method--put {
-  color: var(--gp-amber);
+  color: #7aa7ff;
 }
 
 .gp-method--delete {
@@ -748,16 +754,15 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border-radius: 4px;
-  color: var(--gp-muted);
+  color: var(--gp-text);
 }
 
 .gp-row-menu-btn:hover,
 .gp-menu-root--open .gp-row-menu-btn {
-  color: var(--gp-text);
-  background: var(--gp-surface-hover);
+  background: #52525b;
 }
 
 .gp-group-empty {
@@ -774,11 +779,11 @@
 .gp-menu {
   position: fixed;
   z-index: 20;
-  min-width: 150px;
+  min-width: 160px;
   max-width: 220px;
   padding: 4px;
   background: var(--gp-surface);
-  border: 1px solid #3f3f46;
+  border: 1px solid var(--gp-menu-border);
   border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
   font-family:
@@ -790,18 +795,33 @@
   font-size: 11.5px;
 }
 
+.gp-menu--row {
+  min-width: 188px;
+}
+
+.gp-menu--toolbar {
+  min-width: 168px;
+}
+
 .gp-menu--sub {
   position: absolute;
-  top: -5px;
-  right: calc(100% + 6px);
+  top: 24px;
+  right: calc(100% + 8px);
 }
 
 .gp-menu-sub-anchor {
   position: relative;
 }
 
+.gp-menu-sub-anchor + .gp-menu-item {
+  margin-top: 8px;
+}
+
 .gp-menu-heading {
-  padding: 4px 8px 4px;
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 7px;
   font-size: 10.5px;
   color: var(--gp-muted);
 }
@@ -811,8 +831,8 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  height: 28px;
-  padding: 0 8px;
+  height: 26px;
+  padding: 0 7px;
   border-radius: 4px;
   color: var(--gp-text);
   text-align: left;
@@ -820,7 +840,11 @@
 
 .gp-panel .gp-menu-item:hover:not(:disabled),
 .gp-panel .gp-menu-item--active {
-  background: #3f3f46;
+  background: #363639;
+}
+
+.gp-menu-sub-anchor > .gp-menu-item .gp-menu-item-icon {
+  color: var(--gp-muted);
 }
 
 .gp-panel .gp-menu-item:disabled {

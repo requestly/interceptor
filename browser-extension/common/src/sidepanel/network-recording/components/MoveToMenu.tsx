@@ -4,6 +4,7 @@ import { Icon } from "./icons";
 
 interface MenuProps {
   buttonClass: string;
+  menuClass: string;
   buttonLabel: React.ReactNode;
   ariaLabel: string;
   disabled?: boolean;
@@ -18,6 +19,7 @@ const MENU_GAP = 4;
 // on an outside click, on scroll and after a pick.
 const Menu: React.FC<MenuProps> = ({
   buttonClass,
+  menuClass,
   buttonLabel,
   ariaLabel,
   disabled,
@@ -93,7 +95,7 @@ const Menu: React.FC<MenuProps> = ({
         {buttonLabel}
       </button>
       {open && (
-        <div ref={popoverRef} className="gp-menu" role="menu" style={position}>
+        <div ref={popoverRef} className={`gp-menu ${menuClass}`} role="menu" style={position}>
           {children(() => setOpen(false))}
         </div>
       )}
@@ -112,7 +114,7 @@ const GroupOptions: React.FC<{ groups: PanelGroup[]; onPick: (groupId: string) =
         title={g.name}
         onClick={() => onPick(g.id)}
       >
-        <Icon name="folder" className="gp-menu-item-icon gp-folder-icon" />
+        <Icon name="folder" size={13} className="gp-menu-item-icon gp-folder-icon" />
         <span className="gp-menu-item-label">{g.name}</span>
       </button>
     ))}
@@ -130,6 +132,7 @@ interface MoveToMenuProps {
 export const MoveToMenu: React.FC<MoveToMenuProps> = ({ groups, count, disabled, onPick }) => (
   <Menu
     buttonClass="gp-toolbar-btn"
+    menuClass="gp-menu--toolbar"
     buttonLabel={
       <>
         <Icon name="folderMove" size={14} />
@@ -177,6 +180,7 @@ export const RowMenu: React.FC<RowMenuProps> = ({
   return (
     <Menu
       buttonClass="gp-row-menu-btn"
+      menuClass="gp-menu--row"
       buttonLabel={<Icon name="moreVert" size={16} />}
       ariaLabel={`Actions for ${requestLabel}`}
       onOpenChange={onOpenChange}
@@ -225,6 +229,7 @@ const RowMenuItems: React.FC<{
             if (e.key === "ArrowRight" || e.key === "ArrowLeft") setSubOpen(true);
           }}
         >
+          <Icon name="folderMove" size={13} className="gp-menu-item-icon" />
           <span className="gp-menu-item-label">Move to group</span>
           <Icon name="chevronRight" size={14} className="gp-menu-item-chevron" />
         </button>
@@ -236,7 +241,7 @@ const RowMenuItems: React.FC<{
         )}
       </div>
       <button type="button" role="menuitem" className="gp-menu-item gp-menu-item--danger" onClick={onDelete}>
-        <Icon name="trash" className="gp-menu-item-icon" />
+        <Icon name="trash" size={13} className="gp-menu-item-icon" />
         <span className="gp-menu-item-label">Delete</span>
       </button>
     </>
