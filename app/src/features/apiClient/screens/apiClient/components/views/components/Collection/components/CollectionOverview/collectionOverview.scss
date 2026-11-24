@@ -47,12 +47,22 @@
       background: var(--requestly-color-surface-0);
     }
 
+    &-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 4px;
+
+      .ant-btn-link {
+        padding: 0;
+        height: auto;
+      }
+    }
+
     &-markdown {
       padding: 8px;
       border-radius: 8px;
 
       &:hover {
-        cursor: text;
         background: var(--requestly-color-surface-0);
       }
     }
