@@ -201,7 +201,9 @@ export const getMatchedDelayRule = (requestDetails) => {
   for (const rule of window[PUBLIC_NAMESPACE]?.delayRules) {
     const { isApplied, matchedPair } = matchRuleWithRequest(rule, requestDetails);
 
-    return matchedPair;
+    if (isApplied) {
+      return matchedPair;
+    }
   }
 
   return null;
