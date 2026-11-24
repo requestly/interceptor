@@ -500,23 +500,6 @@
   border-left-color: var(--gp-amber);
 }
 
-/* An error line grows the editor downward; the left icons stay centred on the input's 28px line. */
-.gp-group-header--editing {
-  align-items: flex-start;
-}
-
-.gp-group-header--editing > .gp-check-slot {
-  height: var(--gp-row-h);
-}
-
-.gp-group-header--editing > .gp-chevron {
-  margin-top: 4px;
-}
-
-.gp-group-header--editing > .gp-folder-icon {
-  margin-top: 6px;
-}
-
 .gp-chevron {
   display: inline-flex;
   align-items: center;
@@ -616,22 +599,18 @@
 .gp-editor {
   flex: 1;
   min-width: 0;
-  padding: 3px 0;
-}
-
-.gp-editor-row {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
+  padding: 6px 4px 6px 0;
 }
 
 .gp-editor-input {
   flex: 1;
   min-width: 0;
   height: 22px;
-  margin-right: 4px;
   padding: 0 6px;
-  background: var(--gp-bg);
+  background: var(--gp-surface);
   border: 1px solid var(--gp-blue);
   border-radius: 4px;
   outline: none;
@@ -641,24 +620,18 @@
   font-weight: 500;
 }
 
-.gp-editor-input--invalid {
-  border-color: var(--gp-red);
-}
-
-.gp-editor-save:not(:disabled) {
-  color: var(--gp-text);
-}
-
 .gp-editor-save:disabled {
   opacity: 0.35;
 }
 
+/* Under the header row, outside its highlight, aligned with the empty-group text. */
 .gp-editor-error {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 4px;
-  font-size: 11.25px;
+  gap: 5px;
+  padding: 0 var(--gp-pad) 4px 43px;
+  font-size: 10.25px;
+  line-height: 12px;
   color: var(--gp-red);
 }
 
@@ -788,11 +761,11 @@
 }
 
 .gp-group-empty {
-  height: var(--gp-row-h);
+  height: 48px;
   display: flex;
   align-items: center;
-  padding: 0 var(--gp-pad) 0 38px;
-  color: var(--gp-faint);
+  padding: 0 var(--gp-pad) 0 43px;
+  color: var(--gp-muted);
   font-size: 11.25px;
 }
 
