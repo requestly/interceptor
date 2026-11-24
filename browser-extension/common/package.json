@@ -15,7 +15,7 @@
     "url": "https://requestly.com/"
   },
   "engines": {
-    "node": ">=18.18.0",
+    "node": ">=20.0.0",
     "npm": ">=8.0.0"
   },
   "license": "SEE LICENSE IN LICENSE",
@@ -72,5 +72,10 @@
     "react-dom": "^18.2.0",
     "react-split": "^2.0.14",
     "uuid": "^9.0.0"
+  },
+  "overrides": {
+    "@rollup/plugin-terser": {
+      "serialize-javascript": "7.1.4"
+    }
   }
 }
