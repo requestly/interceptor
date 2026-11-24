@@ -15,10 +15,17 @@ interface Props {
   renderLogRow: any;
   selectedRowData: RQNetworkLog | null;
   onReplayRequest: () => void;
+  selectedRowId?: string | null;
 }
 
-const VirtualTableV2: React.FC<Props> = ({ logs = [], header, renderLogRow, selectedRowData, onReplayRequest }) => {
-  const [selected, setSelected] = useState<string | null>(null);
+const VirtualTableV2: React.FC<Props> = ({
+  logs = [],
+  header,
+  renderLogRow,
+  selectedRowData,
+  onReplayRequest,
+  selectedRowId,
+}) => {
   const [lastKnownBottomIndex, setLastKnownBottomIndex] = useState<number | null>(null);
   const [isScrollToBottomEnabled, setIsScrollToBottomEnabled] = useState(true);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -147,12 +154,11 @@ const VirtualTableV2: React.FC<Props> = ({ logs = [], header, renderLogRow, sele
               "--virtualPaddingBottom": paddingBottom + "px",
             } as React.CSSProperties
           }
-          selected={selected ?? undefined}
-          onSelected={(id: string) => {
-            setSelected(id);
+          selected={selectedRowId ?? undefined}
+          onSelected={(_id: string) => {
             setIsScrollToBottomEnabled(false); // Disable autoscroll when row is selected
           }}
-          onContextMenu={(e: any) => setSelected(e.target?.parentElement.id)}
+          onContextMenu={(_e: any) => {}}
         >
           {header}
           <ContextMenu log={selectedRowData ?? ({} as RQNetworkLog)} onReplayRequest={onReplayRequest}>
