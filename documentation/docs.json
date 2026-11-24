@@ -189,6 +189,7 @@
                 "group": "Debugging & Interception",
                 "pages": [
                   "guides/how-to-avoid-intercepting-certain-domains-on-the-desktop-app",
+                  "guides/blocklist",
                   "guides/how-to-use-requestly-extension-in-browserstack-live",
                   "guides/requestly-integration-browserstack-app-live",
                   "guides/disable-rule-application-status-widget",
