@@ -472,6 +472,23 @@
   border-left-color: var(--gp-amber);
 }
 
+/* An error line grows the editor downward; the left icons stay centred on the input's 28px line. */
+.gp-group-header--editing {
+  align-items: flex-start;
+}
+
+.gp-group-header--editing > .gp-check-slot {
+  height: var(--gp-row-h);
+}
+
+.gp-group-header--editing > .gp-chevron {
+  margin-top: 4px;
+}
+
+.gp-group-header--editing > .gp-folder-icon {
+  margin-top: 6px;
+}
+
 .gp-chevron {
   display: inline-flex;
   align-items: center;
