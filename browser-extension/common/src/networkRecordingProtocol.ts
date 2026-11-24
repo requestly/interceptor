@@ -40,7 +40,8 @@ export type RecorderAnalyticsEventName =
   | "requests_deleted"
   | "undo_used"
   | "recording_paused"
-  | "recording_resumed";
+  | "recording_resumed"
+  | "recording_auto_stopped_time_limit";
 
 /** Counts and booleans only. Group names never travel in analytics. */
 export interface RecorderAnalyticsProps {

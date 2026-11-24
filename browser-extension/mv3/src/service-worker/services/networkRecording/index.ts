@@ -1114,7 +1114,7 @@ export const stopNetworkRecording = (
   // port `complete` signal and fetches the metadata with getNetworkRecordingSummary — the same
   // path regardless of who triggered this stop (LTS or the side panel) — so retain it briefly.
   // A grouped recording builds its final manifest first so the summary carries the same one.
-  const manifest = recording.session?.finish();
+  const manifest = recording.session?.finish({ timeLimitReached: reason === "max-duration" });
   retainSummary(buildSummary(recording, entries.length, manifest));
 
   // Signal subscribed LTS ports before tearing down the buffer.

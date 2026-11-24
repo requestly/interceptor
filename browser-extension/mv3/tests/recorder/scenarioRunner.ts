@@ -38,6 +38,8 @@ export interface Step {
   ids?: string[];
   /** For `undo`: the latest operation, or the first one (already replaced). */
   which?: "last" | "first";
+  /** For `stop`: why it stopped; the user's Stop when absent. */
+  reason?: "user" | "max-duration";
 }
 
 export interface ScenarioInput {
@@ -133,7 +135,7 @@ export const runScenario = (input: ScenarioInput): ScenarioOutput => {
         subscribed = false;
         break;
       case "stop": {
-        summaryManifest = session ? session.finish() : null;
+        summaryManifest = session ? session.finish({ timeLimitReached: step.reason === "max-duration" }) : null;
         post(buildCompleteMessages(summaryManifest ?? undefined));
         break;
       }

@@ -100,8 +100,12 @@ export class GroupedRecordingSession {
     return this.groups.buildView();
   }
 
-  /** Closes the recording and returns the final manifest (the same object goes in the summary). */
-  finish(): GroupsManifest {
+  /**
+   * Closes the recording and returns the final manifest (the same object goes in the summary). A
+   * time-limit stop posts its analytics event here, ahead of the `complete` that ends the port.
+   */
+  finish({ timeLimitReached = false }: { timeLimitReached?: boolean } = {}): GroupsManifest {
+    if (timeLimitReached) this.groups.timeLimitReached();
     this.groups.stop();
     return this.groups.buildManifest();
   }

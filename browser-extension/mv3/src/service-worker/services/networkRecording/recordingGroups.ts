@@ -159,6 +159,10 @@ export class RecordingGroups {
     return true;
   }
 
+  timeLimitReached(): void {
+    this.emit("recording_auto_stopped_time_limit", {});
+  }
+
   /** Time spent paused so far, including a pause that is still open. */
   pausedMs(at: number = this.now()): number {
     return this.pauses.reduce((sum, p) => sum + Math.max(0, (p.to ?? at) - p.from), 0);

@@ -130,3 +130,39 @@ describe("contract invariants", () => {
     assert.notEqual(stopped.expected.summaryManifest, null);
   });
 });
+
+describe("time-limit stop", () => {
+  const TIME_LIMIT_EVENT = "recording_auto_stopped_time_limit";
+  const recordAndStop = (reason: "user" | "max-duration", optIn = true): ScenarioOutput =>
+    runScenario({
+      name: `stop-${reason}`,
+      description: "",
+      optIn,
+      sidePanel: true,
+      startTime: 1000,
+      steps: [
+        { op: "subscribe", t: 1000 },
+        { op: "file", t: 1100, id: "r1" },
+        ...(optIn ? [{ op: "newGroup" as const, t: 1200 }] : []),
+        { op: "file", t: 1300, id: "r2" },
+        { op: "stop", t: 2000, reason },
+      ],
+    });
+  const eventsOf = (output: ScenarioOutput) =>
+    output.messages.filter((m) => m.type === "analytics").map((m) => (m as unknown as { event: string }).event);
+
+  it("posts the time-limit analytics event before the manifest and complete", () => {
+    const types = recordAndStop("max-duration").messages.map((m) =>
+      m.type === "analytics" ? (m as unknown as { event: string }).event : m.type
+    );
+    assert.deepEqual(types.slice(-3), [TIME_LIMIT_EVENT, "manifest", "complete"]);
+  });
+
+  it("posts no time-limit event when the user stops", () => {
+    assert.equal(eventsOf(recordAndStop("user")).includes(TIME_LIMIT_EVENT), false);
+  });
+
+  it("posts no analytics at all for a flat recording that hits the time limit", () => {
+    assert.deepEqual(eventsOf(recordAndStop("max-duration", false)), []);
+  });
+});
