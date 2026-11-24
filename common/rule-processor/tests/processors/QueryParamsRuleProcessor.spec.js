@@ -64,6 +64,26 @@ describe("QueryParamsRuleProcessor:", function () {
       ).toBe(URL_SOURCES.EXAMPLE + "?b=2");
     });
 
+    it("should preserve equals signs in existing query param values", function () {
+      const addModification = {
+        type: CONSTANTS.MODIFICATION_TYPES.ADD,
+        param: "added",
+        value: "2",
+      };
+      const removeModification = {
+        type: CONSTANTS.MODIFICATION_TYPES.REMOVE,
+        param: "remove",
+      };
+      const url = URL_SOURCES.EXAMPLE + "?token=abc==&remove=1";
+
+      expect(QueryParamsRuleProcessor.applyQueryParamModifications([addModification], url)).toBe(
+        URL_SOURCES.EXAMPLE + "?token=abc==&remove=1&added=2"
+      );
+      expect(QueryParamsRuleProcessor.applyQueryParamModifications([removeModification], url)).toBe(
+        URL_SOURCES.EXAMPLE + "?token=abc=="
+      );
+    });
+
     it("add and remove param should not create any effect", function () {
       var modifications = queryParamsRule.pairs[0]["modifications"];
 
