@@ -1,23 +1,24 @@
 import React from "react";
+import { Icon, IconName } from "./icons";
 
 export type BannerVariant = "error" | "warning" | "info";
 
 interface StatusBannerProps {
   variant: BannerVariant;
-  icon: string;
-  text: string;
+  icon: IconName;
+  children: React.ReactNode;
   onClose?: () => void;
 }
 
-// One banner. The panel stacks several (stop reason, paused, empty-group reuse); the undo banner is
-// its own component because it owns a timer.
-const StatusBanner: React.FC<StatusBannerProps> = ({ variant, icon, text, onClose }) => (
-  <div className={`end-banner end-banner--${variant}`} role={variant === "error" ? "alert" : "status"}>
-    <span className="end-banner-icon">{icon}</span>
-    <span className="end-banner-text">{text}</span>
+// One banner in the slot under the header. The panel stacks several (stop reason, paused, move or
+// delete with Undo); UndoBanner wraps this one because it owns a timer.
+const StatusBanner: React.FC<StatusBannerProps> = ({ variant, icon, children, onClose }) => (
+  <div className={`gp-banner gp-banner--${variant}`} role={variant === "error" ? "alert" : "status"}>
+    <Icon name={icon} size={14} className="gp-banner-icon" />
+    <span className="gp-banner-text">{children}</span>
     {onClose && (
-      <button type="button" className="banner-close" aria-label="Dismiss" onClick={onClose}>
-        ✕
+      <button type="button" className="gp-icon-btn gp-banner-close" aria-label="Dismiss" onClick={onClose}>
+        <Icon name="close" size={14} />
       </button>
     )}
   </div>

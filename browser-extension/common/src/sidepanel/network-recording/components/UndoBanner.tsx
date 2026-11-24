@@ -1,17 +1,19 @@
 import React, { useCallback, useEffect, useRef } from "react";
+import { Icon } from "./icons";
 
 export const UNDO_WINDOW_MS = 10_000;
 
 interface UndoBannerProps {
-  message: string;
+  children: React.ReactNode;
   onUndo: () => void;
   onClose: () => void;
+  hidden?: boolean;
   durationMs?: number;
 }
 
 // Lasts 10 s, and the clock stops while the banner is hovered or holds focus. The panel gives each
 // operation its own `key`, so the next move or delete replaces this banner and restarts the clock.
-const UndoBanner: React.FC<UndoBannerProps> = ({ message, onUndo, onClose, durationMs = UNDO_WINDOW_MS }) => {
+const UndoBanner: React.FC<UndoBannerProps> = ({ children, onUndo, onClose, hidden, durationMs = UNDO_WINDOW_MS }) => {
   const remainingRef = useRef(durationMs);
   const startedAtRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -45,19 +47,21 @@ const UndoBanner: React.FC<UndoBannerProps> = ({ message, onUndo, onClose, durat
 
   return (
     <div
-      className="undo-banner"
+      className="gp-banner gp-banner--info"
       role="status"
+      hidden={hidden}
       onMouseEnter={hold}
       onMouseLeave={release}
       onFocus={hold}
       onBlur={release}
     >
-      <span className="undo-banner-text">{message}</span>
-      <button type="button" className="undo-banner-btn" onClick={onUndo}>
+      <Icon name="check" size={14} className="gp-banner-icon" />
+      <span className="gp-banner-text">{children}</span>
+      <button type="button" className="gp-link-btn gp-banner-action" onClick={onUndo}>
         Undo
       </button>
-      <button type="button" className="banner-close" aria-label="Dismiss" onClick={onClose}>
-        ✕
+      <button type="button" className="gp-icon-btn gp-banner-close" aria-label="Dismiss" onClick={onClose}>
+        <Icon name="close" size={14} />
       </button>
     </div>
   );

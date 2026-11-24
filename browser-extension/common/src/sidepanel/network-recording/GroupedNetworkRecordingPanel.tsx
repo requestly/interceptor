@@ -9,15 +9,33 @@ import {
   RenameGroupResult,
 } from "../../networkRecordingProtocol";
 import { NetworkEntry } from "./types";
-import NetworkEventRow from "./components/NetworkEventRow";
-import FilterBar from "./components/FilterBar";
 import GroupHeader from "./components/GroupHeader";
+import GroupedRequestRow from "./components/GroupedRequestRow";
 import { GROUP_NAME_MESSAGES } from "./components/GroupNameEditor";
+import { Icon } from "./components/icons";
 import { RowMenu } from "./components/MoveToMenu";
 import SelectionToolbar from "./components/SelectionToolbar";
 import StatusBanner from "./components/StatusBanner";
 import UndoBanner from "./components/UndoBanner";
-import { formatSize, formatTime, RESOURCE_TYPE_DISPLAY, STOP_BANNERS, StopReason } from "./NetworkRecordingPanel";
+import { formatTime, STOP_BANNERS, StopReason } from "./NetworkRecordingPanel";
+import {
+  collapseAllBut,
+  deletedMessage,
+  emptyGroupText,
+  FILTER_CHIPS,
+  footerSummary,
+  groupCheckState,
+  matchesFilter,
+  movedMessage,
+  NEW_GROUP_TOOLTIP,
+  PAUSED_BANNER,
+  pruneSelection,
+  RequestFilter,
+  reusedGroupNotice,
+  rowLabel,
+  toggleGroupSelection,
+} from "./groupedPanelModel";
+import "./grouped.css";
 
 export interface GroupedPanelInitialState {
   tabId: number;
@@ -30,21 +48,11 @@ export interface GroupedPanelInitialState {
   manifest?: GroupsManifest;
 }
 
-interface UndoState {
-  opId: string;
-  message: string;
-}
+type UndoState =
+  | { opId: string; kind: "move"; count: number; target: string }
+  | { opId: string; kind: "delete"; count: number };
 
 const requestIdOf = (entry: NetworkEntry): string => entry._request_id as string;
-
-const splitUrl = (url: string): { host: string; path: string } => {
-  try {
-    const parsed = new URL(url);
-    return { host: parsed.host, path: parsed.pathname + parsed.search || "/" };
-  } catch {
-    return { host: "", path: url };
-  }
-};
 
 // A grouped panel reopened after Stop has no entries, only the retained manifest.
 const viewFromManifest = (manifest: GroupsManifest): PanelGroupsView => ({
@@ -56,8 +64,6 @@ const viewFromManifest = (manifest: GroupsManifest): PanelGroupsView => ({
   pausedAt: null,
   deletedCount: manifest.deletedRequestIds.length,
 });
-
-const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 const sendCommand = <T,>(action: string, tabId: number, extra: Record<string, unknown> = {}): Promise<T | undefined> =>
   new Promise((resolve) => {
@@ -82,23 +88,15 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   const [isRecording, setIsRecording] = useState(initial.active);
   const [stopReason, setStopReason] = useState<StopReason | null>(null);
   const [elapsed, setElapsed] = useState(0);
-  const [filter, setFilter] = useState({ text: "", method: "ALL" });
+  const [filter, setFilter] = useState<RequestFilter>({ text: "", chip: "ALL" });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [undo, setUndo] = useState<UndoState | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [flashId, setFlashId] = useState<string | null>(null);
+  const [reuseNotice, setReuseNotice] = useState<string | null>(null);
+  const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
   const viewRef = useRef(view);
   viewRef.current = view;
-
-  const targetHost = useMemo(() => {
-    try {
-      return new URL(initial.url).hostname;
-    } catch {
-      return initial.url || "";
-    }
-  }, [initial.url]);
 
   // --- Live updates from the service worker ---------------------------------------------------
 
@@ -129,8 +127,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
         const next = message.view as PanelGroupsView;
         placedRef.current = new Set(next.groups.flatMap((g) => g.requestIds));
         setView(next);
-        // Deleted rows leave the selection; undone rows are simply not selected.
-        setSelected((prev) => new Set(Array.from(prev).filter((id) => placedRef.current.has(id))));
+        setSelected((prev) => pruneSelection(prev, placedRef.current));
       } else if (message.action === CLIENT_MESSAGES.NETWORK_RECORDING_ENDED) {
         setIsRecording(false);
         setStopReason(message.reason ?? "user");
@@ -161,23 +158,24 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   }, [isRecording, manifestOnly, initial.startTime, initial.endTime, view?.pausedAt, view?.pausedMsClosed]);
 
   useEffect(() => {
-    if (!notice) return undefined;
-    const timer = setTimeout(() => setNotice(null), 6000);
+    if (!reuseNotice) return undefined;
+    const timer = setTimeout(() => setReuseNotice(null), 8000);
     return () => clearTimeout(timer);
-  }, [notice]);
+  }, [reuseNotice]);
 
   useEffect(() => {
-    if (!flashId) return undefined;
-    const timer = setTimeout(() => setFlashId(null), 1200);
+    if (flashIds.size === 0) return undefined;
+    const timer = setTimeout(() => setFlashIds(new Set()), 1200);
     return () => clearTimeout(timer);
-  }, [flashId]);
+  }, [flashIds]);
 
-  // After Stop nothing can change, so a pending selection, editor or undo is dropped.
+  // After Stop nothing can change, so a pending selection, editor, undo or notice is dropped.
   useEffect(() => {
     if (isRecording) return;
     setSelected(new Set());
     setEditingId(null);
     setUndo(null);
+    setReuseNotice(null);
   }, [isRecording]);
 
   // --- Derived data ---------------------------------------------------------------------------
@@ -185,14 +183,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   const paused = !!view?.paused;
   const groups = view?.groups ?? [];
 
-  const matches = useCallback(
-    (entry: NetworkEntry): boolean => {
-      if (filter.method !== "ALL" && entry.request.method !== filter.method) return false;
-      if (filter.text && !entry.request.url.toLowerCase().includes(filter.text.toLowerCase())) return false;
-      return true;
-    },
-    [filter]
-  );
+  const matches = useCallback((entry: NetworkEntry): boolean => matchesFilter(entry, filter), [filter]);
 
   const liveIdsByGroup = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -218,25 +209,13 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
     return map;
   }, [liveIdsByGroup, matches]);
 
-  const liveEntries = useMemo(
-    () => Array.from(liveIdsByGroup.values()).flatMap((ids) => ids.map((id) => entriesRef.current.get(id))),
+  const footer = useMemo(
+    () =>
+      footerSummary(
+        Array.from(liveIdsByGroup.values()).flatMap((ids) => ids.map((id) => entriesRef.current.get(id).request.url))
+      ),
     [liveIdsByGroup]
   );
-
-  const counts = useMemo(() => {
-    const shown = liveEntries.filter(matches);
-    return {
-      total: shown.length,
-      xhr: shown.filter((e) => e._resourceType === "xhr").length,
-      docs: shown.filter((e) => e._resourceType === "document").length,
-      static: shown.filter((e) => ["script", "stylesheet", "image", "font"].includes(e._resourceType as string)).length,
-    };
-  }, [liveEntries, matches]);
-
-  const footer = useMemo(() => {
-    const hosts = new Set(liveEntries.map((e) => splitUrl(e.request.url).host).filter(Boolean));
-    return `${plural(liveEntries.length, "request")}, ${plural(hosts.size, "host")}`;
-  }, [liveEntries]);
 
   const hiddenSelectedCount = useMemo(
     () =>
@@ -248,6 +227,14 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   );
 
   const groupName = (groupId: string) => groups.find((g) => g.id === groupId)?.name ?? "";
+
+  const expand = (groupId: string) =>
+    setCollapsed((prev) => {
+      if (!prev.has(groupId)) return prev;
+      const next = new Set(prev);
+      next.delete(groupId);
+      return next;
+    });
 
   // --- Commands -------------------------------------------------------------------------------
 
@@ -263,16 +250,19 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   const handleNewGroup = async () => {
     const result = await sendCommand<NewGroupResult>(EXTENSION_MESSAGES.NEW_NETWORK_RECORDING_GROUP, tabId);
     if (!result?.ok) return;
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      next.delete(result.groupId);
-      return next;
-    });
     if (result.reused) {
-      setNotice(`"${groupName(result.groupId)}" is empty, so new requests will go there.`);
+      expand(result.groupId);
+      setReuseNotice(reusedGroupNotice(groupName(result.groupId)));
     } else {
-      setEditingId(result.groupId);
+      setReuseNotice(null);
+      setCollapsed(
+        collapseAllBut(
+          groups.map((g) => g.id),
+          result.groupId
+        )
+      );
     }
+    setEditingId(result.groupId);
   };
 
   const handleRename = async (groupId: string, name: string): Promise<GroupNameRejection | null> => {
@@ -282,6 +272,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
     });
     if (result?.ok) {
       setEditingId(null);
+      setReuseNotice(null);
       return null;
     }
     if (result && result.ok === false && result.reason in GROUP_NAME_MESSAGES) {
@@ -292,19 +283,16 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   };
 
   const handleMove = async (ids: string[], targetGroupId: string) => {
+    const target = groupName(targetGroupId);
     const result = await sendCommand<OperationResult>(EXTENSION_MESSAGES.MOVE_NETWORK_RECORDING_REQUESTS, tabId, {
       requestIds: ids,
       targetGroupId,
     });
     if (!result?.ok) return;
     setSelected(new Set());
-    setUndo({ opId: result.opId, message: `Moved ${plural(result.count, "request")} to ${groupName(targetGroupId)}` });
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      next.delete(targetGroupId);
-      return next;
-    });
-    setFlashId(ids[0]);
+    setUndo({ opId: result.opId, kind: "move", count: result.count, target });
+    expand(targetGroupId);
+    setFlashIds(new Set(ids));
   };
 
   const handleDelete = async (ids: string[]) => {
@@ -313,7 +301,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
     });
     if (!result?.ok) return;
     setSelected(new Set());
-    setUndo({ opId: result.opId, message: `Deleted ${plural(result.count, "request")}` });
+    setUndo({ opId: result.opId, kind: "delete", count: result.count });
   };
 
   const handleUndo = async () => {
@@ -335,13 +323,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
 
   // The header checkbox acts on the rows matching the current search and filters.
   const toggleGroup = (groupId: string) =>
-    setSelected((prev) => {
-      const visible = visibleIdsByGroup.get(groupId) ?? [];
-      const next = new Set(prev);
-      if (visible.length > 0 && visible.every((id) => next.has(id))) visible.forEach((id) => next.delete(id));
-      else visible.forEach((id) => next.add(id));
-      return next;
-    });
+    setSelected((prev) => toggleGroupSelection(visibleIdsByGroup.get(groupId) ?? [], prev));
 
   const toggleCollapsed = (groupId: string) =>
     setCollapsed((prev) => {
@@ -354,196 +336,236 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   // --- Render ---------------------------------------------------------------------------------
 
   const stopBanner = !isRecording && stopReason ? STOP_BANNERS[stopReason] : undefined;
-  const statusLabel = !isRecording ? "Stopped" : paused ? "Paused" : "Recording";
   const selectedIds = Array.from(selected);
+  const selecting = isRecording && selectedIds.length > 0;
+  const statusClass = !isRecording
+    ? "gp-status-pill--stopped"
+    : paused
+      ? "gp-status-pill--paused"
+      : "gp-status-pill--recording";
+  const statusLabel = !isRecording ? "Stopped" : paused ? "Paused" : "Recording";
 
   return (
-    <div className="network-panel network-panel--grouped">
-      <div className="panel-header">
-        <div className="header-top">
-          <div className="recording-status">
-            {isRecording && <span className={`recording-dot ${paused ? "recording-dot--paused" : ""}`} />}
-            <span className={`recording-label ${paused ? "recording-label--paused" : ""}`}>{statusLabel}</span>
-            <span className="recording-time">{formatTime(elapsed)}</span>
-          </div>
-          {isRecording && (
-            <div className="header-actions">
-              {paused ? (
-                <button type="button" className="pause-btn" onClick={handleResume}>
-                  Resume
-                </button>
-              ) : (
-                <button type="button" className="pause-btn" onClick={handlePause}>
-                  Pause
-                </button>
-              )}
-              <button type="button" className="stop-btn" onClick={handleStop}>
-                <span className="stop-icon" />
-                Stop
+    <div className={`gp-panel ${selecting ? "gp-panel--selecting" : ""}`}>
+      <header className="gp-header">
+        <span className="gp-title">Requestly</span>
+        <span className={`gp-status-pill ${statusClass}`} aria-live="polite">
+          <span className="gp-status-dot" />
+          <span>{statusLabel} ·</span>
+          <span className="gp-status-time">{formatTime(elapsed)}</span>
+        </span>
+        {isRecording && (
+          <>
+            {paused ? (
+              <button type="button" className="gp-header-btn gp-header-btn--resume" onClick={handleResume}>
+                <Icon name="play" size={14} />
+                Resume
               </button>
-            </div>
-          )}
-        </div>
-        {targetHost && <div className="target-url">{targetHost}</div>}
+            ) : (
+              <button type="button" className="gp-header-btn" onClick={handlePause}>
+                <Icon name="pause" size={14} />
+                Pause
+              </button>
+            )}
+            <button type="button" className="gp-header-btn gp-header-btn--stop" onClick={handleStop}>
+              Stop
+            </button>
+          </>
+        )}
+      </header>
+
+      <div className="gp-banner-slot">
+        {stopBanner && (
+          <StatusBanner
+            variant={stopBanner.variant as "error" | "warning"}
+            icon={stopBanner.variant === "error" ? "error" : "info"}
+          >
+            {stopBanner.text}
+          </StatusBanner>
+        )}
+        {manifestOnly && (
+          <StatusBanner variant="info" icon="info">
+            Recording ended. Requests are no longer listed in this panel.
+          </StatusBanner>
+        )}
+        {isRecording && paused && (
+          <StatusBanner variant="warning" icon="pause">
+            {PAUSED_BANNER}
+          </StatusBanner>
+        )}
+        {selecting && (
+          <SelectionToolbar
+            groups={groups}
+            selectedCount={selectedIds.length}
+            hiddenCount={hiddenSelectedCount}
+            onClear={() => setSelected(new Set())}
+            onMove={(groupId) => handleMove(selectedIds, groupId)}
+            onDelete={() => handleDelete(selectedIds)}
+          />
+        )}
+        {/* Kept mounted under the selection toolbar so its Undo window keeps running. */}
+        {isRecording && undo && (
+          <UndoBanner key={undo.opId} hidden={selecting} onUndo={handleUndo} onClose={() => setUndo(null)}>
+            {undo.kind === "move" ? (
+              <>
+                {movedMessage(undo.count)} <strong>{undo.target}</strong>.
+              </>
+            ) : (
+              deletedMessage(undo.count)
+            )}
+          </UndoBanner>
+        )}
       </div>
 
-      {stopBanner && (
-        <StatusBanner
-          variant={stopBanner.variant as "error" | "warning"}
-          icon={stopBanner.icon}
-          text={stopBanner.text}
-        />
-      )}
-      {isRecording && paused && (
-        <StatusBanner variant="warning" icon="⏸" text="Recording paused. Requests you make now aren't captured." />
-      )}
-      {notice && <StatusBanner variant="info" icon="ℹ" text={notice} onClose={() => setNotice(null)} />}
-      {isRecording && undo && (
-        <UndoBanner key={undo.opId} message={undo.message} onUndo={handleUndo} onClose={() => setUndo(null)} />
-      )}
-      {manifestOnly && (
-        <StatusBanner variant="info" icon="ℹ" text="Recording ended. Requests are no longer listed in this panel." />
-      )}
-
       {!manifestOnly && (
-        <>
-          <div className="summary-counters">
-            <div className="counter">
-              <span className="counter-value">{counts.total}</span>
-              <span className="counter-label">Total</span>
-            </div>
-            <div className="counter">
-              <span className="counter-value">{counts.xhr}</span>
-              <span className="counter-label">XHR</span>
-            </div>
-            <div className="counter">
-              <span className="counter-value">{counts.docs}</span>
-              <span className="counter-label">Docs</span>
-            </div>
-            <div className="counter">
-              <span className="counter-value">{counts.static}</span>
-              <span className="counter-label">Static</span>
-            </div>
-          </div>
-
-          <FilterBar filter={filter} onFilterChange={setFilter} />
-
-          <div className="group-toolbar">
-            {selectedIds.length > 0 ? (
-              <SelectionToolbar
-                groups={groups}
-                selectedCount={selectedIds.length}
-                hiddenCount={hiddenSelectedCount}
-                onClear={() => setSelected(new Set())}
-                onMove={(groupId) => handleMove(selectedIds, groupId)}
-                onDelete={() => handleDelete(selectedIds)}
-              />
-            ) : (
+        <div className="gp-filters">
+          <div className="gp-search">
+            <Icon name="search" size={16} className="gp-search-icon" />
+            <input
+              type="text"
+              className="gp-search-input"
+              placeholder="Search requests"
+              aria-label="Search requests"
+              value={filter.text}
+              onChange={(e) => setFilter({ ...filter, text: e.target.value })}
+            />
+            {filter.text && (
               <button
                 type="button"
-                className="new-group-btn"
-                disabled={!isRecording}
-                title="Requests you make next are added to the new group"
-                onClick={handleNewGroup}
+                className="gp-icon-btn gp-search-clear"
+                aria-label="Clear search"
+                onClick={() => setFilter({ ...filter, text: "" })}
               >
-                + New group
+                <Icon name="close" size={14} />
               </button>
             )}
           </div>
-        </>
+          <div className="gp-chips" role="group" aria-label="Filter requests">
+            {FILTER_CHIPS.map((chip) => (
+              <button
+                key={chip.id}
+                type="button"
+                className={`gp-chip ${filter.chip === chip.id ? "gp-chip--active" : ""}`}
+                aria-pressed={filter.chip === chip.id}
+                onClick={() => setFilter({ ...filter, chip: chip.id })}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
-      <div className="request-list">
+      <div className="gp-list">
         {groups.map((group) => {
           const liveIds = liveIdsByGroup.get(group.id) ?? [];
           const visibleIds = visibleIdsByGroup.get(group.id) ?? [];
           const isCollapsed = collapsed.has(group.id);
-          const selectedVisible = visibleIds.filter((id) => selected.has(id)).length;
+          const isActive = isRecording && group.id === view?.activeGroupId;
           const count = manifestOnly ? group.requestIds.length : liveIds.length;
 
           return (
-            <div key={group.id} className="group-section">
+            <section key={group.id} className="gp-group" aria-label={group.name}>
               <GroupHeader
                 group={group}
                 count={count}
                 collapsed={isCollapsed}
-                active={isRecording && group.id === view?.activeGroupId}
+                active={isActive}
                 paused={paused}
                 editing={editingId === group.id}
                 readOnly={!isRecording}
                 otherNames={groups.filter((g) => g.id !== group.id).map((g) => g.name)}
                 checkbox={
-                  manifestOnly
-                    ? undefined
-                    : {
-                        checked: visibleIds.length > 0 && selectedVisible === visibleIds.length,
-                        indeterminate: selectedVisible > 0 && selectedVisible < visibleIds.length,
-                        disabled: !isRecording || visibleIds.length === 0,
-                        label: `Select visible requests in ${group.name}`,
+                  isRecording && visibleIds.length > 0
+                    ? {
+                        state: groupCheckState(visibleIds, selected),
+                        disabled: false,
+                        label: `Select requests in ${group.name}`,
                         onChange: () => toggleGroup(group.id),
                       }
+                    : undefined
                 }
                 onToggleCollapsed={() => toggleCollapsed(group.id)}
-                onStartEdit={() => setEditingId(group.id)}
+                onStartEdit={() => {
+                  expand(group.id);
+                  setEditingId(group.id);
+                }}
                 onCancelEdit={() => setEditingId(null)}
                 onSaveName={(name) => handleRename(group.id, name)}
               />
               {!isCollapsed && !manifestOnly && (
-                <div className="group-rows">
+                <div className="gp-group-rows">
                   {visibleIds.map((id) => {
                     const entry = entriesRef.current.get(id);
-                    const { path } = splitUrl(entry.request.url);
-                    const label = `${entry.request.method} ${path}`;
+                    const label = `${entry.request.method} ${rowLabel(entry.request.url, entry._resourceType)}`;
                     return (
-                      <NetworkEventRow
+                      <GroupedRequestRow
                         key={id}
                         entry={entry}
-                        typeDisplay={
-                          RESOURCE_TYPE_DISPLAY[entry._resourceType as string] ||
-                          (entry._resourceType as string) ||
-                          "other"
-                        }
-                        formatSize={formatSize}
-                        flash={flashId === id}
+                        flash={flashIds.has(id)}
                         selection={
                           isRecording
                             ? { checked: selected.has(id), onChange: () => toggleRow(id), label: `Select ${label}` }
                             : undefined
                         }
-                        menu={
-                          isRecording ? (
-                            <RowMenu
-                              groups={groups}
-                              ownGroupId={group.id}
-                              requestLabel={label}
-                              onMove={(groupId) => handleMove([id], groupId)}
-                              onDelete={() => handleDelete([id])}
-                            />
-                          ) : undefined
+                        renderMenu={
+                          isRecording
+                            ? (onOpenChange) => (
+                                <RowMenu
+                                  groups={groups}
+                                  ownGroupId={group.id}
+                                  requestLabel={label}
+                                  onOpenChange={onOpenChange}
+                                  onMove={(groupId) => handleMove([id], groupId)}
+                                  onDelete={() => handleDelete([id])}
+                                />
+                              )
+                            : undefined
                         }
                       />
                     );
                   })}
                   {visibleIds.length === 0 && (
-                    <div className="group-empty">
-                      {liveIds.length > 0
-                        ? "No requests match the current filter"
-                        : paused && group.id === view?.activeGroupId
-                          ? "No requests yet. Resume, then use the site."
-                          : "No requests yet."}
+                    <div className="gp-group-empty">
+                      {emptyGroupText({ hasRequests: liveIds.length > 0, active: isActive, paused })}
                     </div>
                   )}
                 </div>
               )}
-            </div>
+            </section>
           );
         })}
       </div>
 
-      <div className="panel-footer panel-footer--grouped">
-        {!manifestOnly && <span className="footer-summary">{footer}</span>}
-        <span className="version">v{chrome.runtime.getManifest().version}</span>
-      </div>
+      {!manifestOnly && (
+        <div className="gp-bottom">
+          {reuseNotice && (
+            <StatusBanner variant="info" icon="info" onClose={() => setReuseNotice(null)}>
+              {reuseNotice}
+            </StatusBanner>
+          )}
+          <div className="gp-new-group-wrap">
+            <button
+              type="button"
+              className="gp-new-group"
+              disabled={!isRecording}
+              aria-describedby="gp-new-group-tip"
+              onClick={handleNewGroup}
+            >
+              <Icon name="folderPlus" size={16} />
+              New group
+            </button>
+            <span role="tooltip" id="gp-new-group-tip" className="gp-tooltip">
+              {NEW_GROUP_TOOLTIP}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <footer className="gp-footer">
+        {!manifestOnly && <span>{footer}</span>}
+        <span className="gp-version">v{chrome.runtime.getManifest().version}</span>
+      </footer>
     </div>
   );
 };

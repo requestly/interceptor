@@ -4,7 +4,7 @@ import NetworkEventRow from "./components/NetworkEventRow";
 import FilterBar from "./components/FilterBar";
 
 // Maps the HAR _resourceType (DevTools enum) to the short label shown in the list.
-export const RESOURCE_TYPE_DISPLAY: Record<string, string> = {
+const RESOURCE_TYPE_DISPLAY: Record<string, string> = {
   document: "document",
   stylesheet: "css",
   script: "js",
@@ -23,7 +23,7 @@ export const formatTime = (ms: number): string => {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 };
 
-export const formatSize = (bytes: number | undefined): string => {
+const formatSize = (bytes: number | undefined): string => {
   if (bytes === undefined || bytes < 0) return "—"; // -1 = size unknown (HAR sentinel)
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { GROUP_NAME_MAX_LENGTH, GroupNameRejection, validateGroupName } from "../../../networkRecordingProtocol";
+import { Icon } from "./icons";
 
 export const GROUP_NAME_MESSAGES: Record<GroupNameRejection, string> = {
   empty: "Enter a name.",
@@ -50,14 +51,15 @@ const GroupNameEditor: React.FC<GroupNameEditorProps> = ({ initialName, otherNam
   };
 
   return (
-    <div className="group-editor">
-      <div className="group-editor-row">
+    <div className="gp-editor">
+      <div className="gp-editor-row">
         <input
           ref={inputRef}
-          className={`group-editor-input ${reason ? "group-editor-input--invalid" : ""}`}
+          className={`gp-editor-input ${reason ? "gp-editor-input--invalid" : ""}`}
           value={value}
           aria-label="Group name"
           aria-invalid={!!reason}
+          aria-describedby={reason ? "gp-editor-error" : undefined}
           onChange={(e) => {
             setValue(e.target.value);
             setServerReason(null);
@@ -72,7 +74,7 @@ const GroupNameEditor: React.FC<GroupNameEditorProps> = ({ initialName, otherNam
         {/* mousedown (not click) so the input's blur does not fire first and swallow the press. */}
         <button
           type="button"
-          className="group-editor-btn group-editor-btn--save"
+          className="gp-icon-btn gp-editor-save"
           aria-label="Save name"
           disabled={!checked.ok}
           onMouseDown={(e) => {
@@ -80,23 +82,24 @@ const GroupNameEditor: React.FC<GroupNameEditorProps> = ({ initialName, otherNam
             save();
           }}
         >
-          ✓
+          <Icon name="check" size={16} />
         </button>
         <button
           type="button"
-          className="group-editor-btn"
+          className="gp-icon-btn gp-editor-cancel"
           aria-label="Cancel rename"
           onMouseDown={(e) => {
             e.preventDefault();
             cancel();
           }}
         >
-          ✕
+          <Icon name="close" size={16} />
         </button>
       </div>
       {reason && (
-        <div className="group-editor-error" role="alert">
-          {GROUP_NAME_MESSAGES[reason]}
+        <div className="gp-editor-error" id="gp-editor-error" role="alert">
+          <Icon name="error" size={14} />
+          <span>{GROUP_NAME_MESSAGES[reason]}</span>
         </div>
       )}
     </div>
