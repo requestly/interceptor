@@ -93,7 +93,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
               aria-label={`Rename ${group.name}`}
               onClick={onStartEdit}
             >
-              <Icon name="edit" size={14} />
+              <Icon name="edit" size={13} />
             </button>
           )}
         </span>

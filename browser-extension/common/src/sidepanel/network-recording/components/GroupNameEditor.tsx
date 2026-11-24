@@ -82,7 +82,7 @@ const GroupNameEditor: React.FC<GroupNameEditorProps> = ({ initialName, otherNam
             save();
           }}
         >
-          <Icon name="check" size={16} />
+          <Icon name="check" size={14} />
         </button>
         <button
           type="button"
@@ -93,7 +93,7 @@ const GroupNameEditor: React.FC<GroupNameEditorProps> = ({ initialName, otherNam
             cancel();
           }}
         >
-          <Icon name="close" size={16} />
+          <Icon name="close" size={14} />
         </button>
       </div>
       {reason && (

@@ -358,12 +358,12 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
           <>
             {paused ? (
               <button type="button" className="gp-header-btn gp-header-btn--resume" onClick={handleResume}>
-                <Icon name="play" size={14} />
+                <Icon name="play" size={15} />
                 Resume
               </button>
             ) : (
               <button type="button" className="gp-header-btn" onClick={handlePause}>
-                <Icon name="pause" size={14} />
+                <Icon name="pause" size={15} />
                 Pause
               </button>
             )}
@@ -552,7 +552,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
               aria-describedby="gp-new-group-tip"
               onClick={handleNewGroup}
             >
-              <Icon name="folderPlus" size={16} />
+              <Icon name="folderPlus" size={15} />
               New group
             </button>
             <span role="tooltip" id="gp-new-group-tip" className="gp-tooltip">
