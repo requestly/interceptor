@@ -40,7 +40,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
   const className = [
     "gp-group-header",
     active ? "gp-group-header--active" : "",
-    active && paused ? "gp-group-header--paused" : "",
+    active && paused && !editing ? "gp-group-header--paused" : "",
     editing ? "gp-group-header--editing" : "",
     checkbox && checkbox.state !== "unchecked" ? "gp-group-header--selected" : "",
   ]
