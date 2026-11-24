@@ -109,7 +109,8 @@ export const parseUrlParametersFromSourceV2 = (
           // To handle case for regexSubsitution as replaces inplace instead of replace whole. So we match the whole url instead
           // https://linear.app/requestly/issue/ENGG-1831
           // https://arc.net/l/quote/erozzfqb
-          regexFilter: `.*?${pattern}.*`,
+          // Wrap the pattern so a top-level | in it cannot escape the prefix and suffix around it
+          regexFilter: `.*?(?:${pattern}).*`,
           isUrlFilterCaseSensitive: !flags?.includes("i"),
         };
       }
@@ -157,7 +158,7 @@ export const parseUrlParametersFromSourceV2 = (
         // Allows only accepted characters in the source incase of open rule (.*, .+, .?)
         const cleanedPattern = pattern.replace(/\.([+*?])/g, "[a-z0-9:.-]$1");
         return {
-          regexFilter: `^https?://[a-z0-9:.-]*?${cleanedPattern}[a-z0-9:.-]*(?:[/?#].*)?$`,
+          regexFilter: `^https?://[a-z0-9:.-]*?(?:${cleanedPattern})[a-z0-9:.-]*(?:[/?#].*)?$`,
           isUrlFilterCaseSensitive: !flags?.includes("i"),
         };
       }
