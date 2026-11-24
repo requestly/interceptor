@@ -14,7 +14,7 @@ interface StatusBannerProps {
 // delete with Undo); UndoBanner wraps this one because it owns a timer.
 const StatusBanner: React.FC<StatusBannerProps> = ({ variant, icon, children, onClose }) => (
   <div className={`gp-banner gp-banner--${variant}`} role={variant === "error" ? "alert" : "status"}>
-    <Icon name={icon} size={14} className="gp-banner-icon" />
+    <Icon name={icon} size={15} className="gp-banner-icon" />
     <span className="gp-banner-text">{children}</span>
     {onClose && (
       <button type="button" className="gp-icon-btn gp-banner-close" aria-label="Dismiss" onClick={onClose}>

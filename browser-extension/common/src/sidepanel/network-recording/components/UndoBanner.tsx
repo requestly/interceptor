@@ -46,14 +46,14 @@ const UndoBanner: React.FC<UndoBannerProps> = ({ children, onUndo, onClose, dura
 
   return (
     <div
-      className="gp-banner gp-banner--info"
+      className="gp-banner gp-banner--info gp-banner--undo"
       role="status"
       onMouseEnter={hold}
       onMouseLeave={release}
       onFocus={hold}
       onBlur={release}
     >
-      <Icon name="check" size={14} className="gp-banner-icon" />
+      <Icon name="checkCircle" size={15} className="gp-banner-icon" />
       <span className="gp-banner-text">{children}</span>
       <button type="button" className="gp-link-btn gp-banner-action" onClick={onUndo}>
         Undo

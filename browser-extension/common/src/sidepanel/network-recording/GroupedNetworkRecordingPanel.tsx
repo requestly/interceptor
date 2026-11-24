@@ -355,7 +355,11 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
       <header className="gp-header">
         <span className="gp-title">Requestly</span>
         <span className={`gp-status-pill ${statusClass}`} aria-live="polite">
-          <span className="gp-status-dot" />
+          {isRecording && paused ? (
+            <Icon name="pauseCircle" size={14} className="gp-status-icon" />
+          ) : (
+            <span className="gp-status-dot" />
+          )}
           <span>{statusLabel} ·</span>
           <span className="gp-status-time">{formatTime(elapsed)}</span>
         </span>
@@ -394,7 +398,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
           </StatusBanner>
         )}
         {isRecording && paused && (
-          <StatusBanner variant="warning" icon="pause">
+          <StatusBanner variant="warning" icon="pauseCircle">
             {PAUSED_BANNER}
           </StatusBanner>
         )}
@@ -543,13 +547,15 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
         })}
       </div>
 
+      {!manifestOnly && reusedGroupName && (
+        <div className="gp-notice" role="status">
+          <Icon name="info" size={13} />
+          <span>{reusedGroupNotice(reusedGroupName)}</span>
+        </div>
+      )}
+
       {!manifestOnly && (
         <div className="gp-bottom">
-          {reusedGroupName && (
-            <StatusBanner variant="info" icon="info" onClose={() => setReusedGroupId(null)}>
-              {reusedGroupNotice(reusedGroupName)}
-            </StatusBanner>
-          )}
           <div className="gp-new-group-wrap">
             <button
               type="button"
