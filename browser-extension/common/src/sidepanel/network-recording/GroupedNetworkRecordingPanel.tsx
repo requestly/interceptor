@@ -536,7 +536,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
                     );
                   })}
                   {visibleIds.length === 0 && (
-                    <div className="gp-group-empty">
+                    <div className={`gp-group-empty ${liveIds.length === 0 ? "gp-group-empty--new" : ""}`}>
                       {emptyGroupText({ hasRequests: liveIds.length > 0, active: isActive, paused })}
                     </div>
                   )}

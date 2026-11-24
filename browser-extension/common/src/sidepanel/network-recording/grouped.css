@@ -766,12 +766,16 @@
 }
 
 .gp-group-empty {
-  height: 48px;
+  height: var(--gp-row-h);
   display: flex;
   align-items: center;
   padding: 0 var(--gp-pad) 0 43px;
   color: var(--gp-muted);
   font-size: 11.25px;
+}
+
+.gp-group-empty--new {
+  height: 48px;
 }
 
 /* --- Menus ------------------------------------------------------------------------------------- */
