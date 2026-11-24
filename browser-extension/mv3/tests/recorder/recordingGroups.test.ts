@@ -164,7 +164,7 @@ describe("pause", () => {
 });
 
 describe("new group and rename", () => {
-  it("names new groups New group, adding a number only when the name is taken", () => {
+  it("numbers new groups Group N after the groups already there", () => {
     const { groups, at } = make();
     groups.file("r0", T0 + 1);
     at(T0 + 10);
@@ -175,7 +175,7 @@ describe("new group and rename", () => {
     groups.file("r2", T0 + 21);
     assert.deepEqual(
       groups.buildView().groups.map((g) => g.name),
-      ["Default group", "New group", "New group 2"]
+      ["Default group", "Group 1", "Group 2"]
     );
   });
 
@@ -185,10 +185,10 @@ describe("new group and rename", () => {
     at(T0 + 10);
     const first = groups.newGroup();
     groups.file("r1", T0 + 11);
-    groups.rename((first as { groupId: string }).groupId, "New group 2");
+    groups.rename((first as { groupId: string }).groupId, "Group 2");
     at(T0 + 20);
     groups.newGroup();
-    assert.equal(groups.buildView().groups[2].name, "New group");
+    assert.equal(groups.buildView().groups[2].name, "Group 3");
   });
 
   it("reuses an empty newest group instead of stacking another", () => {
@@ -227,7 +227,7 @@ describe("new group and rename", () => {
     const second = groups.newGroup();
     const id = second.ok ? second.groupId : "";
     assert.deepEqual(groups.rename(id, " Default group "), { ok: false, reason: "duplicate" });
-    assert.deepEqual(groups.rename(id, "New group"), { ok: true });
+    assert.deepEqual(groups.rename(id, "Group 1"), { ok: true });
   });
 
   it("rejects an unknown group", () => {
@@ -364,7 +364,7 @@ describe("manifest, state and analytics", () => {
       manifest.groups.map((g) => [g.name, g.isDefault]),
       [
         ["Landing", true],
-        ["New group", false],
+        ["Group 1", false],
       ]
     );
     assert.equal(manifest.version, 1);

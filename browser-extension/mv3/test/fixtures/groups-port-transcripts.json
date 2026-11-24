@@ -879,7 +879,7 @@
                 },
                 {
                   "id": "id-2",
-                  "name": "New group",
+                  "name": "Group 1",
                   "isDefault": false,
                   "requestIds": [
                     "r2",
@@ -917,7 +917,7 @@
             },
             {
               "id": "id-2",
-              "name": "New group",
+              "name": "Group 1",
               "isDefault": false,
               "requestIds": [
                 "r2",
@@ -1036,7 +1036,7 @@
             },
             {
               "id": "id-2",
-              "name": "New group",
+              "name": "Group 1",
               "isDefault": false,
               "requestIds": [
                 "r2"

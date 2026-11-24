@@ -6,7 +6,7 @@
 
 export const GROUP_NAME_MAX_LENGTH = 60;
 export const DEFAULT_GROUP_NAME = "Default group";
-export const NEW_GROUP_BASE_NAME = "New group";
+export const NEW_GROUP_BASE_NAME = "Group";
 export const ANALYTICS_BACKLOG_LIMIT = 500;
 export const MANIFEST_VERSION = 1;
 

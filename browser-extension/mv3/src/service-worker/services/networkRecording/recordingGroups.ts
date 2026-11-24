@@ -360,8 +360,7 @@ export class RecordingGroups {
 
   private nextNewGroupName(): string {
     const taken = new Set(this.groups.map((g) => g.name));
-    if (!taken.has(NEW_GROUP_BASE_NAME)) return NEW_GROUP_BASE_NAME;
-    let n = 2;
+    let n = this.groups.length;
     while (taken.has(`${NEW_GROUP_BASE_NAME} ${n}`)) n += 1;
     return `${NEW_GROUP_BASE_NAME} ${n}`;
   }
