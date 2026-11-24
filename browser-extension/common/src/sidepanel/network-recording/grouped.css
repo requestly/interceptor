@@ -10,15 +10,15 @@
   --gp-text-strong: #f4f4f5;
   --gp-muted: #a1a1aa;
   --gp-faint: #71717a;
-  --gp-blue: #1f4de2;
-  --gp-blue-tint: #1a2551;
-  --gp-blue-text: #70a3f3;
-  --gp-link: #5d8bf7;
-  --gp-red: #e77975;
-  --gp-red-fill: #3f0f0d;
-  --gp-red-border: #8c2822;
-  --gp-amber: #f2c14b;
-  --gp-green: #6ad09d;
+  --gp-blue: #004eeb;
+  --gp-blue-tint: #172554;
+  --gp-blue-text: #60a5fa;
+  --gp-link: #4e8dff;
+  --gp-red: #f87171;
+  --gp-red-fill: #450a0a;
+  --gp-red-border: #991b1b;
+  --gp-amber: #fbbf24;
+  --gp-green: #34d399;
   --gp-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --gp-pad: 12px;
   --gp-row-h: 28px;
@@ -129,12 +129,12 @@
 
 .gp-status-pill--recording .gp-status-dot {
   background: var(--gp-red);
-  box-shadow: 0 0 0 2.5px rgba(231, 121, 117, 0.25);
+  box-shadow: 0 0 0 2.5px rgba(248, 113, 113, 0.25);
 }
 
 .gp-status-pill--paused .gp-status-dot {
   background: var(--gp-amber);
-  box-shadow: 0 0 0 2.5px rgba(242, 193, 75, 0.25);
+  box-shadow: 0 0 0 2.5px rgba(251, 191, 36, 0.25);
 }
 
 .gp-status-pill--paused {
@@ -174,7 +174,7 @@
 }
 
 .gp-panel .gp-header-btn--resume:hover {
-  background: #2a5bf0;
+  background: #1a62f2;
 }
 
 .gp-panel .gp-header-btn--stop {
@@ -185,7 +185,7 @@
 }
 
 .gp-panel .gp-header-btn--stop:hover {
-  background: #561512;
+  background: #5c1010;
 }
 
 /* --- Banner slot ------------------------------------------------------------------------------- */
@@ -229,12 +229,13 @@
 }
 
 .gp-banner--warning {
-  background: rgba(242, 193, 75, 0.1);
+  background: rgba(251, 191, 36, 0.12);
+  border-bottom-color: rgba(251, 191, 36, 0.32);
   color: var(--gp-amber);
 }
 
 .gp-banner--info {
-  background: rgba(31, 77, 226, 0.16);
+  background: rgba(0, 78, 235, 0.16);
   color: var(--gp-text);
 }
 
@@ -243,7 +244,7 @@
 }
 
 .gp-banner--error {
-  background: rgba(231, 121, 117, 0.12);
+  background: rgba(248, 113, 113, 0.12);
   color: var(--gp-red);
 }
 
@@ -489,7 +490,7 @@
 }
 
 .gp-folder-icon {
-  color: #3982c2;
+  color: #0284c7;
 }
 
 .gp-group-header > .gp-folder-icon {
@@ -543,7 +544,7 @@
   margin: 0 1px 0 2px;
   border-radius: 50%;
   background: var(--gp-red);
-  box-shadow: 0 0 0 2.5px rgba(231, 121, 117, 0.25);
+  box-shadow: 0 0 0 2.5px rgba(248, 113, 113, 0.25);
 }
 
 .gp-badge--paused {
@@ -642,7 +643,7 @@
 
 .gp-row--selected,
 .gp-row--selected:hover {
-  background: rgba(31, 77, 226, 0.12);
+  background: rgba(0, 78, 235, 0.12);
 }
 
 .gp-row--flash {
@@ -652,7 +653,7 @@
 @keyframes gp-flash {
   0%,
   35% {
-    background: rgba(31, 77, 226, 0.45);
+    background: rgba(0, 78, 235, 0.45);
   }
   100% {
     background: transparent;
@@ -855,7 +856,7 @@
 }
 
 .gp-panel .gp-new-group:hover:not(:disabled) {
-  background: rgba(93, 139, 247, 0.1);
+  background: rgba(78, 141, 255, 0.1);
 }
 
 .gp-panel .gp-new-group:disabled {
