@@ -7,13 +7,12 @@ interface UndoBannerProps {
   children: React.ReactNode;
   onUndo: () => void;
   onClose: () => void;
-  hidden?: boolean;
   durationMs?: number;
 }
 
 // Lasts 10 s, and the clock stops while the banner is hovered or holds focus. The panel gives each
 // operation its own `key`, so the next move or delete replaces this banner and restarts the clock.
-const UndoBanner: React.FC<UndoBannerProps> = ({ children, onUndo, onClose, hidden, durationMs = UNDO_WINDOW_MS }) => {
+const UndoBanner: React.FC<UndoBannerProps> = ({ children, onUndo, onClose, durationMs = UNDO_WINDOW_MS }) => {
   const remainingRef = useRef(durationMs);
   const startedAtRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -49,7 +48,6 @@ const UndoBanner: React.FC<UndoBannerProps> = ({ children, onUndo, onClose, hidd
     <div
       className="gp-banner gp-banner--info"
       role="status"
-      hidden={hidden}
       onMouseEnter={hold}
       onMouseLeave={release}
       onFocus={hold}

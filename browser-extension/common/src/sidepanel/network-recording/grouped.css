@@ -204,10 +204,6 @@
   line-height: 16px;
 }
 
-.gp-banner[hidden] {
-  display: none;
-}
-
 .gp-banner-icon {
   margin-top: 1px;
 }
@@ -251,27 +247,31 @@
   color: var(--gp-red);
 }
 
-/* --- Selection toolbar (takes the banner slot) ------------------------------------------------- */
+/* --- Selection toolbar (takes the chips' row) -------------------------------------------------- */
 
+/* 4 + 22 - 1 = the chips' 5 + 20, so the list does not move when selection starts. */
 .gp-selection {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 40px;
-  padding: 6px var(--gp-pad);
-  background: rgba(31, 77, 226, 0.16);
-  border-bottom: 1px solid var(--gp-line);
+  height: 22px;
+  margin: 4px 0 -1px;
+  font-size: 11px;
 }
 
 .gp-selection-count {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--gp-text-strong);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--gp-text);
+}
+
+.gp-selection-count strong {
+  font-weight: 600;
 }
 
 .gp-selection-hidden {
-  font-weight: 400;
   color: var(--gp-muted);
 }
 
@@ -280,39 +280,47 @@
 }
 
 .gp-panel .gp-toolbar-btn {
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  height: 26px;
-  padding: 0 8px;
+  height: 22px;
+  padding: 0 7px;
   border: 1px solid var(--gp-control-border);
   border-radius: 4px;
-  font-size: 11.5px;
+  background: var(--gp-surface);
+  font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
-  background: var(--gp-bg);
-}
-
-.gp-toolbar-btn > .gp-icon:first-child {
-  margin-left: -2px;
 }
 
 .gp-panel .gp-toolbar-btn:hover {
   background: var(--gp-surface-hover);
 }
 
-.gp-panel .gp-toolbar-btn--menu {
-  padding-right: 5px;
+.gp-panel .gp-ghost-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
-.gp-panel .gp-toolbar-btn--danger {
-  background: var(--gp-red-fill);
-  border-color: var(--gp-red-border);
+.gp-panel .gp-ghost-btn:hover {
+  background: var(--gp-surface);
+}
+
+.gp-panel .gp-ghost-btn--danger {
   color: var(--gp-red);
 }
 
-.gp-panel .gp-toolbar-btn--danger:hover {
-  background: #561512;
+.gp-panel .gp-ghost-btn--danger:hover {
+  background: rgba(248, 113, 113, 0.1);
 }
 
 /* --- Search and chips -------------------------------------------------------------------------- */

@@ -129,11 +129,12 @@ interface MoveToMenuProps {
 // Selection toolbar dropdown: the button says "Move to", the list is titled "Move N to".
 export const MoveToMenu: React.FC<MoveToMenuProps> = ({ groups, count, disabled, onPick }) => (
   <Menu
-    buttonClass="gp-toolbar-btn gp-toolbar-btn--menu"
+    buttonClass="gp-toolbar-btn"
     buttonLabel={
       <>
+        <Icon name="folderMove" size={14} />
         Move to
-        <Icon name="chevronDown" size={14} />
+        <Icon name="chevronDown" size={13} />
       </>
     }
     ariaLabel={`Move ${count} selected to a group`}

@@ -393,19 +393,8 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
             {PAUSED_BANNER}
           </StatusBanner>
         )}
-        {selecting && (
-          <SelectionToolbar
-            groups={groups}
-            selectedCount={selectedIds.length}
-            hiddenCount={hiddenSelectedCount}
-            onClear={() => setSelected(new Set())}
-            onMove={(groupId) => handleMove(selectedIds, groupId)}
-            onDelete={() => handleDelete(selectedIds)}
-          />
-        )}
-        {/* Kept mounted under the selection toolbar so its Undo window keeps running. */}
         {isRecording && undo && (
-          <UndoBanner key={undo.opId} hidden={selecting} onUndo={handleUndo} onClose={() => setUndo(null)}>
+          <UndoBanner key={undo.opId} onUndo={handleUndo} onClose={() => setUndo(null)}>
             {undo.kind === "move" ? (
               <>
                 {movedMessage(undo.count)} <strong>{undo.target}</strong>.
@@ -440,19 +429,30 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
               </button>
             )}
           </div>
-          <div className="gp-chips" role="group" aria-label="Filter requests">
-            {FILTER_CHIPS.map((chip) => (
-              <button
-                key={chip.id}
-                type="button"
-                className={`gp-chip ${filter.chip === chip.id ? "gp-chip--active" : ""}`}
-                aria-pressed={filter.chip === chip.id}
-                onClick={() => setFilter({ ...filter, chip: chip.id })}
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
+          {selecting ? (
+            <SelectionToolbar
+              groups={groups}
+              selectedCount={selectedIds.length}
+              hiddenCount={hiddenSelectedCount}
+              onClear={() => setSelected(new Set())}
+              onMove={(groupId) => handleMove(selectedIds, groupId)}
+              onDelete={() => handleDelete(selectedIds)}
+            />
+          ) : (
+            <div className="gp-chips" role="group" aria-label="Filter requests">
+              {FILTER_CHIPS.map((chip) => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  className={`gp-chip ${filter.chip === chip.id ? "gp-chip--active" : ""}`}
+                  aria-pressed={filter.chip === chip.id}
+                  onClick={() => setFilter({ ...filter, chip: chip.id })}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
