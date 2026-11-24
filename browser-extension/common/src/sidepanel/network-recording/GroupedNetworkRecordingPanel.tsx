@@ -92,8 +92,9 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editorKey, setEditorKey] = useState(0);
   const [undo, setUndo] = useState<UndoState | null>(null);
-  const [reuseNotice, setReuseNotice] = useState<string | null>(null);
+  const [reusedGroupId, setReusedGroupId] = useState<string | null>(null);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -158,10 +159,10 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   }, [isRecording, manifestOnly, initial.startTime, initial.endTime, view?.pausedAt, view?.pausedMsClosed]);
 
   useEffect(() => {
-    if (!reuseNotice) return undefined;
-    const timer = setTimeout(() => setReuseNotice(null), 8000);
+    if (!reusedGroupId) return undefined;
+    const timer = setTimeout(() => setReusedGroupId(null), 8000);
     return () => clearTimeout(timer);
-  }, [reuseNotice]);
+  }, [reusedGroupId]);
 
   useEffect(() => {
     if (flashIds.size === 0) return undefined;
@@ -175,7 +176,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
     setSelected(new Set());
     setEditingId(null);
     setUndo(null);
-    setReuseNotice(null);
+    setReusedGroupId(null);
   }, [isRecording]);
 
   // --- Derived data ---------------------------------------------------------------------------
@@ -252,9 +253,9 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
     if (!result?.ok) return;
     if (result.reused) {
       expand(result.groupId);
-      setReuseNotice(reusedGroupNotice(groupName(result.groupId)));
+      setReusedGroupId(result.groupId);
     } else {
-      setReuseNotice(null);
+      setReusedGroupId(null);
       setCollapsed(
         collapseAllBut(
           groups.map((g) => g.id),
@@ -263,6 +264,8 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
       );
     }
     setEditingId(result.groupId);
+    // The reopened group may already be in edit; a new key remounts the editor so it takes focus.
+    setEditorKey((key) => key + 1);
   };
 
   const handleRename = async (groupId: string, name: string): Promise<GroupNameRejection | null> => {
@@ -272,7 +275,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
     });
     if (result?.ok) {
       setEditingId(null);
-      setReuseNotice(null);
+      setReusedGroupId(null);
       return null;
     }
     if (result && result.ok === false && result.reason in GROUP_NAME_MESSAGES) {
@@ -344,6 +347,8 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
       ? "gp-status-pill--paused"
       : "gp-status-pill--recording";
   const statusLabel = !isRecording ? "Stopped" : paused ? "Paused" : "Recording";
+  // Looked up at render: the group can arrive in a later snapshot than the New group reply.
+  const reusedGroupName = reusedGroupId ? groupName(reusedGroupId) : "";
 
   return (
     <div className={`gp-panel ${selecting ? "gp-panel--selecting" : ""}`}>
@@ -473,6 +478,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
                 active={isActive}
                 paused={paused}
                 editing={editingId === group.id}
+                editorKey={editorKey}
                 readOnly={!isRecording}
                 otherNames={groups.filter((g) => g.id !== group.id).map((g) => g.name)}
                 checkbox={
@@ -539,9 +545,9 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
 
       {!manifestOnly && (
         <div className="gp-bottom">
-          {reuseNotice && (
-            <StatusBanner variant="info" icon="info" onClose={() => setReuseNotice(null)}>
-              {reuseNotice}
+          {reusedGroupName && (
+            <StatusBanner variant="info" icon="info" onClose={() => setReusedGroupId(null)}>
+              {reusedGroupNotice(reusedGroupName)}
             </StatusBanner>
           )}
           <div className="gp-new-group-wrap">

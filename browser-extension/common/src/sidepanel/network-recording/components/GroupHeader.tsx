@@ -11,6 +11,7 @@ interface GroupHeaderProps {
   active: boolean;
   paused: boolean;
   editing: boolean;
+  editorKey: number;
   readOnly: boolean;
   otherNames: string[];
   checkbox?: { state: CheckState; disabled: boolean; label: string; onChange: () => void };
@@ -27,6 +28,7 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
   active,
   paused,
   editing,
+  editorKey,
   readOnly,
   otherNames,
   checkbox,
@@ -73,7 +75,13 @@ const GroupHeader: React.FC<GroupHeaderProps> = ({
     </button>
     <Icon name="folder" size={16} className="gp-folder-icon" />
     {editing ? (
-      <GroupNameEditor initialName={group.name} otherNames={otherNames} onSave={onSaveName} onCancel={onCancelEdit} />
+      <GroupNameEditor
+        key={editorKey}
+        initialName={group.name}
+        otherNames={otherNames}
+        onSave={onSaveName}
+        onCancel={onCancelEdit}
+      />
     ) : (
       <>
         <button type="button" className="gp-group-title" title={group.name} onClick={onToggleCollapsed} tabIndex={-1}>
