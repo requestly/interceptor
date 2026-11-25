@@ -64,7 +64,16 @@ const GroupNameEditor: React.FC<GroupNameEditorProps> = ({
     <>
       <div className={rowClassName}>
         {leading}
-        <div className="gp-editor">
+        <div
+          className="gp-editor"
+          // Focus leaving the editor saves a valid name and drops an invalid one, so a half-typed name
+          // never sticks. Moving between the input and its buttons is not leaving.
+          onBlur={(e) => {
+            if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+            if (checked.ok) save();
+            else cancel();
+          }}
+        >
           <input
             ref={inputRef}
             className="gp-editor-input"
@@ -77,22 +86,19 @@ const GroupNameEditor: React.FC<GroupNameEditorProps> = ({
               setServerReason(null);
             }}
             onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing) return;
               if (e.key === "Enter") save();
               else if (e.key === "Escape") cancel();
             }}
-            // Blur saves a valid name and drops an invalid one, so a half-typed name never sticks.
-            onBlur={() => (checked.ok ? save() : cancel())}
           />
-          {/* mousedown (not click) so the input's blur does not fire first and swallow the press. */}
+          {/* mousedown is prevented so a click leaves focus in the input instead of blurring the editor first. */}
           <button
             type="button"
             className="gp-icon-btn gp-editor-save"
             aria-label="Save name"
             disabled={!checked.ok}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              save();
-            }}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={save}
           >
             <Icon name="check" size={16} />
           </button>
@@ -100,10 +106,8 @@ const GroupNameEditor: React.FC<GroupNameEditorProps> = ({
             type="button"
             className="gp-icon-btn gp-editor-cancel"
             aria-label="Cancel rename"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              cancel();
-            }}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={cancel}
           >
             <Icon name="close" size={16} />
           </button>
