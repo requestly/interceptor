@@ -11,7 +11,6 @@ import * as sharedListActions from "../../features/sharedListActions";
 import * as rulesActions from "../../features/rulesActions";
 import * as appModeSpecificActions from "../../features/appModeSpecificActions";
 import * as editorToastActions from "../../features/editorToastActions";
-import * as requestBotActions from "../../features/requestBotActions";
 import * as miscActions from "../../features/miscActions";
 
 // Refractored
@@ -31,7 +30,6 @@ const globalSlice = createSlice({
     ...rulesActions,
     ...appModeSpecificActions,
     ...editorToastActions,
-    ...requestBotActions,
     ...miscActions,
   },
 });
