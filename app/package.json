@@ -220,5 +220,23 @@
     "transformIgnorePatterns": [
       "/node_modules/(?!antd|@ant-design|rc-.+?|@babel/runtime).+(js|jsx)$"
     ]
+  },
+  "overrides": {
+    "@firebase/auth": {
+      "undici": "6.29.1"
+    },
+    "@firebase/auth-compat": {
+      "undici": "6.29.1"
+    },
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "1.13.7",
+      "undici": "6.29.1"
+    },
+    "@firebase/functions": {
+      "undici": "6.29.1"
+    },
+    "@firebase/storage": {
+      "undici": "6.29.1"
+    }
   }
 }
