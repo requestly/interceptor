@@ -458,7 +458,7 @@
   color-scheme: light;
   accent-color: var(--gp-blue);
   cursor: pointer;
-  visibility: hidden;
+  opacity: 0;
 }
 
 .gp-group-header:hover .gp-checkbox,
@@ -467,7 +467,7 @@
 .gp-checkbox:checked,
 .gp-checkbox:indeterminate,
 .gp-panel--selecting .gp-checkbox {
-  visibility: visible;
+  opacity: 1;
 }
 
 /* The open menu is inside the row, so hovering it would otherwise count as hovering the row. */
@@ -745,13 +745,13 @@
 }
 
 .gp-row .gp-menu-root {
-  visibility: hidden;
+  opacity: 0;
 }
 
 .gp-row:hover .gp-menu-root,
 .gp-row:focus-within .gp-menu-root,
 .gp-row .gp-menu-root--open {
-  visibility: visible;
+  opacity: 1;
 }
 
 .gp-row-menu-btn {
