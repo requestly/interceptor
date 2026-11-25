@@ -13,6 +13,7 @@ import {
   SdkNetworkPayload,
 } from "./harBuilder";
 import { GroupedRecordingSession } from "./groupedSession";
+import { returnFocusToSender as focusSender } from "./returnFocus";
 import { surfaceActionOnStop } from "./stopPolicy";
 import type { StopReason } from "./stopPolicy";
 import { acceptsGroupsOptIn, buildCompleteMessages, buildStartReply, buildSubscribeMessages } from "./groupsPort";
@@ -1039,42 +1040,12 @@ const buildSummary = (
   };
 };
 
-// Return the user to where they came from after a recording ends. Cascade:
-//   1. the originating LTS tab, if it still exists
-//   2. else its window (LTS tab closed but window alive), focusing it
-//   3. else open the LTS fallback URL in a new tab (tab + window both gone)
-// Each step is guarded; failures fall through to the next.
-const returnFocusToSender = (recording: NetworkRecordingState) => {
-  const { senderTabId, senderWindowId } = recording;
-
-  const openFallback = () => {
-    chrome.tabs.create({ url: recording.config.fallbackUrl || DEFAULT_FALLBACK_URL }).catch(() => {});
-  };
-
-  const tryWindowThenFallback = () => {
-    if (senderWindowId === undefined) {
-      openFallback();
-      return;
-    }
-    chrome.windows.update(senderWindowId, { focused: true }).then(
-      () => {},
-      () => openFallback()
-    );
-  };
-
-  if (senderTabId === undefined) {
-    tryWindowThenFallback();
-    return;
-  }
-
-  // tabs.get rejects if the tab is gone -> fall through to window, then fallback.
-  chrome.tabs
-    .get(senderTabId)
-    .then(
-      () => chrome.tabs.update(senderTabId, { active: true }).then(() => {}, tryWindowThenFallback),
-      tryWindowThenFallback
-    );
-};
+const returnFocusToSender = (recording: NetworkRecordingState) =>
+  focusSender({
+    senderTabId: recording.senderTabId,
+    senderWindowId: recording.senderWindowId,
+    fallbackUrl: recording.config.fallbackUrl || DEFAULT_FALLBACK_URL,
+  });
 
 // Close the recording surface on a user or time-limit stop with config.closeOnStop, THEN return focus
 // to the LTS context. ORDER MATTERS: removing a window makes Chrome shuffle OS focus to some other window (with
