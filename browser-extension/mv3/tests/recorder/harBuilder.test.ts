@@ -65,6 +65,13 @@ describe("resolveSdkStartAge", () => {
     assert.equal(resolveSdkStartAge(payload({ startedMsAgo: 900, postedAt: NOW - 250 }), NOW - 300, NOW), 1150);
   });
 
+  it("measures the relay on the monotonic stamp when the wall clock stepped back during it", () => {
+    const HR = 5_000_000;
+    // Posted 250 ms ago, but the wall clock stepped back 600 ms meanwhile, so postedAt reads as the future.
+    const late = payload({ startedMsAgo: 900, postedAt: NOW + 350, postedAtHr: HR - 250 });
+    assert.equal(resolveSdkStartAge(late, NOW - 300, NOW, HR), 1150);
+  });
+
   it("ignores a relay delay that is negative, missing or implausible", () => {
     assert.equal(resolveSdkStartAge(payload({ startedMsAgo: 900, postedAt: NOW + 40 }), NOW - 300, NOW), 900);
     assert.equal(resolveSdkStartAge(payload({ startedMsAgo: 900, postedAt: Number.NaN }), NOW - 300, NOW), 900);

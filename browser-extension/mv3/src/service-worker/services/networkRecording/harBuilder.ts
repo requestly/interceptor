@@ -31,7 +31,9 @@ export interface SdkNetworkPayload {
   startedAt?: number;
   // The same start as an age when the page posted the capture, on the page's monotonic clock.
   startedMsAgo?: number;
-  // Epoch ms when the page posted the capture, to measure the relay to the service worker.
+  // When the page posted the capture, to measure the relay to the service worker: on the shared
+  // monotonic clock (performance.timeOrigin + performance.now()), and as epoch ms.
+  postedAtHr?: number;
   postedAt?: number;
 }
 
@@ -51,12 +53,20 @@ export const resolveSdkStartedAt = (payload: SdkNetworkPayload, now: number = Da
   return stamp;
 };
 
-/** Time the capture spent between the page and the service worker; 0 when it can't be measured. */
-const relayDelay = (postedAt: unknown, now: number): number => {
-  if (typeof postedAt !== "number" || !Number.isFinite(postedAt)) return 0;
-  const delay = now - postedAt;
-  return delay > 0 && delay <= MAX_SDK_CAPTURE_DELAY_MS ? delay : 0;
+const delaySince = (stamp: unknown, now: number): number | undefined => {
+  if (typeof stamp !== "number" || !Number.isFinite(stamp)) return undefined;
+  const delay = now - stamp;
+  return delay >= 0 && delay <= MAX_SDK_CAPTURE_DELAY_MS ? delay : undefined;
 };
+
+/**
+ * Time the capture spent between the page and the service worker. The monotonic stamp is used first
+ * because a wall-clock step during the relay cannot move it; 0 when neither can be measured.
+ */
+const relayDelay = (payload: SdkNetworkPayload, now: number, hrNow: number): number =>
+  delaySince(payload.postedAtHr, hrNow) ?? delaySince(payload.postedAt, now) ?? 0;
+
+const sharedMonotonicNow = (): number => performance.timeOrigin + performance.now();
 
 /**
  * How long ago an SDK capture started, for filing it in a grouped recording. Prefers the page's
@@ -64,11 +74,16 @@ const relayDelay = (postedAt: unknown, now: number): number => {
  * move. Falls back to now - startedAt when the age is missing, negative or older than responseTime
  * plus 60 s.
  */
-export const resolveSdkStartAge = (payload: SdkNetworkPayload, startedAt: number, now: number = Date.now()): number => {
+export const resolveSdkStartAge = (
+  payload: SdkNetworkPayload,
+  startedAt: number,
+  now: number = Date.now(),
+  hrNow: number = sharedMonotonicNow()
+): number => {
   const responseTime = Math.max(0, Math.round(payload.responseTime ?? 0));
   const age = payload.startedMsAgo;
   if (typeof age === "number" && Number.isFinite(age) && age >= 0) {
-    const total = age + relayDelay(payload.postedAt, now);
+    const total = age + relayDelay(payload, now, hrNow);
     if (total <= responseTime + MAX_SDK_CAPTURE_DELAY_MS) return total;
   }
   return Math.max(0, now - startedAt);

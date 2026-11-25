@@ -39,6 +39,7 @@ const makeWithClocks = () => {
     stepBack: (ms: number) => {
       wall -= ms;
     },
+    monotonic: () => monotonic,
   };
 };
 
@@ -226,6 +227,29 @@ describe("when the wall clock steps back", () => {
       );
     assert.equal(groups.file("late", groups.msAgo(age(capture))), groups.buildView().groups[0].id);
     assert.equal(groups.file("late-no-relay", groups.msAgo(age({ startedMsAgo: 100 }))), null);
+  });
+
+  it("files a late SDK capture by its start when the wall clock steps back during the relay", () => {
+    const { groups, wall, pass, stepBack, monotonic } = makeWithClocks();
+    pass(1000); // the request starts at +1000
+    pass(100);
+    const capture = { startedMsAgo: 100, postedAt: wall(), postedAtHr: monotonic() }; // posted at +1100
+    pass(50);
+    groups.pause(); // +1150
+    stepBack(600); // during the relay
+    pass(250); // delivered at +1400, the wall clock reads +800
+    const age = (extra: Partial<SdkNetworkPayload>) =>
+      resolveSdkStartAge(
+        { method: "GET", url: "https://a.test/x", status: 200, responseTime: 50, ...extra },
+        wall() - 400,
+        wall(),
+        monotonic()
+      );
+    assert.equal(groups.file("late", groups.msAgo(age(capture))), groups.buildView().groups[0].id);
+    assert.equal(
+      groups.file("late-wall-only", groups.msAgo(age({ startedMsAgo: 100, postedAt: capture.postedAt }))),
+      null
+    );
   });
 
   it("files a late SDK capture into the group that was active when it started", () => {
