@@ -868,9 +868,9 @@
   position: relative;
 }
 
+/* Starts at the option's left edge: the row submenu opens toward the panel's left edge. */
 .gp-panel .gp-option-tooltip {
-  left: auto;
-  right: 0;
+  left: 0;
   bottom: calc(100% + 2px);
   white-space: nowrap;
 }
