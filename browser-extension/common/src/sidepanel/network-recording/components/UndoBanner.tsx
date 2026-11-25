@@ -17,11 +17,14 @@ const UndoBanner: React.FC<UndoBannerProps> = ({ children, onUndo, onClose, dura
   const startedAtRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const holdsRef = useRef(0);
+  // The parent passes a new onClose every render; reading it through a ref keeps the timer from restarting.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const start = useCallback(() => {
     startedAtRef.current = Date.now();
-    timerRef.current = setTimeout(onClose, remainingRef.current);
-  }, [onClose]);
+    timerRef.current = setTimeout(() => onCloseRef.current(), remainingRef.current);
+  }, []);
 
   const stop = useCallback(() => {
     if (timerRef.current === undefined) return;
