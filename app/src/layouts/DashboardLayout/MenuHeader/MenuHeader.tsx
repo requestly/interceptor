@@ -1,19 +1,17 @@
 import { useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { Header } from "antd/lib/layout/layout";
 import WorkspaceSelector from "./WorkspaceSelector/WorkspaceSelector";
 import DesktopAppProxyInfo from "components/sections/Navbars/NavbarRightContent/DesktopAppProxyInfo";
 import { trackHeaderClicked, trackTopbarClicked } from "modules/analytics/events/common/onboarding/header";
 import LINKS from "config/constants/sub/links";
 import { RQButton } from "lib/design-system-v2/components";
-import { globalActions } from "store/slices/global/slice";
-import BotIcon from "assets/icons/bot.svg?react";
 import Settings from "assets/icons/settings.svg?react";
 import HeaderUser from "./HeaderUser";
 import { redirectToSettings } from "utils/RedirectionUtils";
 import { useNavigate } from "react-router-dom";
 import { isSafariBrowser } from "actions/ExtensionActions";
-import { getAppMode, getRequestBot } from "store/selectors";
+import { getAppMode } from "store/selectors";
 import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import { Col } from "antd";
 import PremiumPlanBadge from "./PremiumPlanBadge/PremiumPlanBadge";
@@ -22,11 +20,9 @@ import GitHubButton from "react-github-btn";
 import "./menuHeader.scss";
 
 export const MenuHeader = () => {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
   const appMode = useSelector(getAppMode);
   const user = useSelector(getUserAuthDetails);
-  const requestBotDetails = useSelector(getRequestBot);
 
   const gitHubStarButton = useMemo(() => {
     return (
@@ -84,22 +80,6 @@ export const MenuHeader = () => {
         </div>
         <div className="app-primary-header__right-section">
           <div>{gitHubStarButton}</div>
-          <RQButton
-            type="transparent"
-            icon={<BotIcon />}
-            onClick={(e) => {
-              e.stopPropagation();
-              const isCurrentlyActive = requestBotDetails?.isActive;
-              dispatch(
-                globalActions.updateRequestBot({
-                  isActive: !isCurrentlyActive,
-                  modelType: "app",
-                })
-              );
-            }}
-          >
-            Ask AI
-          </RQButton>
         </div>
 
         <div className="app-primary-header__right-section">

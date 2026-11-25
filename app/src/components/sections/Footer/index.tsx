@@ -1,16 +1,13 @@
 import React, { useMemo } from "react";
 import { useLocation } from "react-router-dom";
-import { useDispatch } from "react-redux";
 import { Typography, Row, Col, Dropdown, MenuProps } from "antd";
 import { ReadOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { PiBookOpenTextBold } from "@react-icons/all-files/pi/PiBookOpenTextBold";
 import { RiVideoLine } from "@react-icons/all-files/ri/RiVideoLine";
 import { MdOutlineHistory } from "@react-icons/all-files/md/MdOutlineHistory";
-import { HiOutlineSparkles } from "@react-icons/all-files/hi2/HiOutlineSparkles";
 import { FiGithub } from "@react-icons/all-files/fi/FiGithub";
 import { FiMail } from "@react-icons/all-files/fi/FiMail";
 import { PiChatTextBold } from "@react-icons/all-files/pi/PiChatTextBold";
-import { globalActions } from "store/slices/global/slice";
 import { redirectToUrl } from "utils/RedirectionUtils";
 import APP_CONSTANTS from "config/constants";
 import { Footer } from "antd/lib/layout/layout";
@@ -23,7 +20,6 @@ enum FOOTER_LINKS {
   DOCUMENTATION = "Documentation",
   TUTORIALS = "Tutorials",
   CHANGELOG = "Changelog",
-  AI_ASSISTANT = "AI Assistant",
   BUGS_FEATURE_REQUEST = "Bugs & feature request",
   BILLING_ACCOUNT_QUERIES = "Billing & account queries",
   CONTACT_SALES = "Contact sales",
@@ -35,7 +31,6 @@ const PAGES_WITHOUT_FOOTER = [PATHS.SETTINGS.RELATIVE];
 
 const AppFooter: React.FC = () => {
   const { pathname } = useLocation();
-  const dispatch = useDispatch();
 
   const helpItems: MenuProps["items"] = useMemo(() => {
     return [
@@ -77,15 +72,6 @@ const AppFooter: React.FC = () => {
         label: "Support",
         children: [
           {
-            label: FOOTER_LINKS.AI_ASSISTANT,
-            key: FOOTER_LINKS.AI_ASSISTANT,
-            icon: <HiOutlineSparkles />,
-            onClick: () => {
-              dispatch(globalActions.updateRequestBot({ isActive: true, modelType: "app" }));
-              trackFooterClicked(FOOTER_LINKS.AI_ASSISTANT);
-            },
-          },
-          {
             label: FOOTER_LINKS.BUGS_FEATURE_REQUEST,
             key: FOOTER_LINKS.BUGS_FEATURE_REQUEST,
             icon: <FiGithub />,
@@ -121,7 +107,7 @@ const AppFooter: React.FC = () => {
         ],
       },
     ];
-  }, [dispatch]);
+  }, []);
 
   const handleFooterLinkClick = (link: string, key: string) => {
     redirectToUrl(link, true);

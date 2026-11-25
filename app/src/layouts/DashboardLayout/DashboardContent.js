@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useSearchParams, Outlet } from "react-router-dom";
 import SpinnerModal from "components/misc/SpinnerModal";
 import { globalActions } from "store/slices/global/slice";
 //UTILS
-import { getAppMode, getIsOnboardingCompleted, getRequestBot } from "store/selectors";
+import { getAppMode, getIsOnboardingCompleted } from "store/selectors";
 import { getActiveModals } from "store/slices/global/modals/selectors";
 import { getRouteFromCurrentPath } from "utils/URLUtils";
 import SyncConsentModal from "../../components/user/SyncConsentModal";
@@ -23,7 +23,6 @@ import { PricingModal } from "features/pricing";
 import MailLoginLinkPopup from "components/authentication/AuthForm/MagicAuthLinkModal";
 import { isPricingPage } from "utils/PathUtils";
 import { RequestBillingTeamAccessReminder } from "features/settings";
-import { RequestBot } from "features/requestBot";
 import { OnboardingModal, PersonaSurveyModal } from "features/onboarding";
 import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import { DesktopOnboardingModal } from "features/onboarding/componentsV2/DesktopOnboardingModal/DesktopOnboardingModal";
@@ -38,8 +37,6 @@ const DashboardContent = () => {
   const activeModals = useSelector(getActiveModals);
   const [isImportRulesModalActive, setIsImportRulesModalActive] = useState(false);
   const isInsideIframe = useMemo(isAppOpenedInIframe, []);
-  const requestBotDetails = useSelector(getRequestBot);
-  const isRequestBotVisible = requestBotDetails?.isActive;
   const isOnboardingCompleted = useSelector(getIsOnboardingCompleted);
   const appMode = useSelector(getAppMode);
 
@@ -60,10 +57,6 @@ const DashboardContent = () => {
   const toggleImportRulesModal = () => {
     setIsImportRulesModalActive(isImportRulesModalActive ? false : true);
   };
-
-  const closeRequestBot = useCallback(() => {
-    dispatch(globalActions.updateRequestBot({ isActive: false }));
-  }, [dispatch]);
 
   const previousLocation = usePrevious(location);
 
@@ -188,8 +181,6 @@ const DashboardContent = () => {
           <PersonaSurveyModal />
 
           <RequestBillingTeamAccessReminder />
-
-          <RequestBot isOpen={isRequestBotVisible} onClose={closeRequestBot} modelType={requestBotDetails?.modelType} />
         </>
       )}
     </>
