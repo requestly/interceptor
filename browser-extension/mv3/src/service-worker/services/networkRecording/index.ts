@@ -139,7 +139,7 @@ const correlationMap = new Map<string, CorrelationData>();
 
 // Grouped recordings only: webRequest requestId -> the time its FIRST hop started. correlationMap is
 // overwritten on every redirect hop and swept after 60 s, so a redirected or slow request would
-// otherwise be filed by a later time. Cleared on completion, error and stop.
+// otherwise be filed by a later time. Cleared on completion, error, a redirect to data: and stop.
 const firstSeenStarts = new Map<string, { tabId: number; startedAt: number }>();
 
 const clearFirstSeenStarts = (tabId: number) => {
@@ -278,14 +278,28 @@ const isAjaxRequest = (type: chrome.webRequest.ResourceType): boolean => type ==
 const isExcludedByScope = (recording: NetworkRecordingState, frameId: number): boolean =>
   recording.config.requestScope === RequestScope.TOP_LEVEL && frameId !== 0;
 
+// Grouped recordings only. onBeforeRequest comes before the headers stage (which can wait on a
+// connection), so a request that started during a pause is not dated by when its headers were ready.
+const onBeforeRequest = (details: chrome.webRequest.WebRequestBodyDetails) => {
+  const recording = activeRecordings.get(details.tabId);
+  if (!recording?.session) return;
+  if (isAjaxRequest(details.type)) return;
+  if (isExcludedByScope(recording, details.frameId)) return;
+  if (!firstSeenStarts.has(details.requestId)) {
+    firstSeenStarts.set(details.requestId, { tabId: details.tabId, startedAt: details.timeStamp });
+  }
+};
+
+// Chrome reports nothing after a redirect to a data: URL, so that request never completes or errors.
+const onBeforeRedirect = (details: chrome.webRequest.WebRedirectionResponseDetails) => {
+  if (details.redirectUrl.startsWith("data:")) firstSeenStarts.delete(details.requestId);
+};
+
 const onBeforeSendHeaders = (details: chrome.webRequest.WebRequestHeadersDetails) => {
   const recording = activeRecordings.get(details.tabId);
   if (!recording) return;
   if (isAjaxRequest(details.type)) return; // xhr/fetch never recorded via webRequest (SDK source, or recordAjax off)
   if (isExcludedByScope(recording, details.frameId)) return; // top-level scope: skip sub-frame requests
-  if (recording.session && !firstSeenStarts.has(details.requestId)) {
-    firstSeenStarts.set(details.requestId, { tabId: details.tabId, startedAt: details.timeStamp });
-  }
   correlationMap.set(details.requestId, {
     startTime: details.timeStamp,
     requestHeaders: details.requestHeaders,
@@ -454,6 +468,12 @@ const streamCompleteToPorts = (tabId: number, manifest?: GroupsManifest) => {
 };
 
 const addWebRequestListeners = () => {
+  if (!chrome.webRequest.onBeforeRequest.hasListener(onBeforeRequest)) {
+    chrome.webRequest.onBeforeRequest.addListener(onBeforeRequest, { urls: ["<all_urls>"] });
+  }
+  if (!chrome.webRequest.onBeforeRedirect.hasListener(onBeforeRedirect)) {
+    chrome.webRequest.onBeforeRedirect.addListener(onBeforeRedirect, { urls: ["<all_urls>"] });
+  }
   if (!chrome.webRequest.onBeforeSendHeaders.hasListener(onBeforeSendHeaders)) {
     chrome.webRequest.onBeforeSendHeaders.addListener(onBeforeSendHeaders, { urls: ["<all_urls>"] }, [
       "requestHeaders",
@@ -468,6 +488,8 @@ const addWebRequestListeners = () => {
 };
 
 const removeWebRequestListeners = () => {
+  chrome.webRequest.onBeforeRequest.removeListener(onBeforeRequest);
+  chrome.webRequest.onBeforeRedirect.removeListener(onBeforeRedirect);
   chrome.webRequest.onBeforeSendHeaders.removeListener(onBeforeSendHeaders);
   chrome.webRequest.onCompleted.removeListener(onRequestCompleted);
   chrome.webRequest.onErrorOccurred.removeListener(onRequestError);
