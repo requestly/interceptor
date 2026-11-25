@@ -42,7 +42,8 @@ export const AppMembersDrawer: React.FC<AppMembersDrawerProps> = ({ isOpen, onCl
     */
 
     const externalDomainMembers =
-      Object.values(billingTeamMembers)
+      // Members load after the team details, so this is undefined on first render.
+      Object.values(billingTeamMembers ?? {})
         .filter((member) => {
           return !billingTeamDetails?.ownerDomains?.includes(getDomainFromEmail(member.email));
         })

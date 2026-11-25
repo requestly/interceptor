@@ -8,7 +8,7 @@ This repository contains most of the modules that make up Requestly.
 
 ### Install
 
-Please make sure that Node version >= 18.18.0 is installed on your system.
+Please make sure that Node version >= 20.0.0 is installed on your system.
 
 #### Windows Users
 
