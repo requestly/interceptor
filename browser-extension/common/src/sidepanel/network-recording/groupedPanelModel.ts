@@ -54,7 +54,7 @@ export const movedMessage = (count: number): string => `Moved ${plural(count, "r
 export const deletedMessage = (count: number): string => `Deleted ${plural(count, "request")}.`;
 
 export const reusedGroupNotice = (groupName: string): string =>
-  `${groupName} has no requests yet, so New group reopened its name instead of adding an empty group.`;
+  `${groupName} has no requests yet, so “New group” reopened its name instead of adding an empty group.`;
 
 export const PAUSED_BANNER = "Recording paused. Requests you make now aren’t captured.";
 

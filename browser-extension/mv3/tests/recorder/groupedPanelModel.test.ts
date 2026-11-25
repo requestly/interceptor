@@ -68,7 +68,7 @@ describe("grouped panel copy", () => {
   it("explains an empty group being reopened by New group", () => {
     assert.equal(
       reusedGroupNotice("Group 2"),
-      "Group 2 has no requests yet, so New group reopened its name instead of adding an empty group."
+      "Group 2 has no requests yet, so “New group” reopened its name instead of adding an empty group."
     );
   });
 
