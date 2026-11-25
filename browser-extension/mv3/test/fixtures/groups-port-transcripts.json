@@ -1057,6 +1057,170 @@
       }
     },
     {
+      "name": "subscribe-after-stop",
+      "description": "The port drops, Stop lands, then the FE reconnects. The late subscribe gets no entries (the buffer is gone) but the retained manifest and complete, so the FE finishes the normal way.",
+      "optIn": true,
+      "sidePanel": true,
+      "startTime": 1000000,
+      "steps": [
+        {
+          "op": "subscribe",
+          "t": 1000000
+        },
+        {
+          "op": "file",
+          "t": 1000100,
+          "id": "r1"
+        },
+        {
+          "op": "newGroup",
+          "t": 1000200
+        },
+        {
+          "op": "file",
+          "t": 1000300,
+          "id": "r2"
+        },
+        {
+          "op": "disconnect",
+          "t": 1000350
+        },
+        {
+          "op": "stop",
+          "t": 1000400
+        },
+        {
+          "op": "subscribe",
+          "t": 1000450
+        }
+      ],
+      "expected": {
+        "startReply": {
+          "success": true,
+          "targetTabId": 7,
+          "openedMode": "window",
+          "groups": true
+        },
+        "messages": [
+          {
+            "type": "subscribed",
+            "targetTabId": 7
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 1,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-1",
+            "deletedCount": 0
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r1"
+            }
+          },
+          {
+            "type": "analytics",
+            "id": "id-3",
+            "event": "group_created",
+            "props": {},
+            "at": 1000200
+          },
+          {
+            "type": "state",
+            "targetTabId": 7,
+            "revision": 3,
+            "paused": false,
+            "pausedMs": 0,
+            "activeGroupId": "id-2",
+            "deletedCount": 0
+          },
+          {
+            "type": "entry",
+            "entry": {
+              "_request_id": "r2"
+            }
+          },
+          {
+            "type": "subscribed",
+            "targetTabId": 7
+          },
+          {
+            "type": "manifest",
+            "manifest": {
+              "version": 1,
+              "revision": 5,
+              "groups": [
+                {
+                  "id": "id-1",
+                  "name": "Default group",
+                  "isDefault": true,
+                  "requestIds": [
+                    "r1"
+                  ]
+                },
+                {
+                  "id": "id-2",
+                  "name": "Group 1",
+                  "isDefault": false,
+                  "requestIds": [
+                    "r2"
+                  ]
+                }
+              ],
+              "deletedRequestIds": [],
+              "stats": {
+                "groupsCreated": 1,
+                "renames": 0,
+                "moves": 0,
+                "deletes": 0,
+                "undos": 0,
+                "pauses": 0,
+                "pausedMs": 0
+              }
+            }
+          },
+          {
+            "type": "complete"
+          }
+        ],
+        "summaryManifest": {
+          "version": 1,
+          "revision": 5,
+          "groups": [
+            {
+              "id": "id-1",
+              "name": "Default group",
+              "isDefault": true,
+              "requestIds": [
+                "r1"
+              ]
+            },
+            {
+              "id": "id-2",
+              "name": "Group 1",
+              "isDefault": false,
+              "requestIds": [
+                "r2"
+              ]
+            }
+          ],
+          "deletedRequestIds": [],
+          "stats": {
+            "groupsCreated": 1,
+            "renames": 0,
+            "moves": 0,
+            "deletes": 0,
+            "undos": 0,
+            "pauses": 0,
+            "pausedMs": 0
+          }
+        }
+      }
+    },
+    {
       "name": "start-without-opt-in",
       "description": "The START config has no groups key: the reply has no groups field and the stream is exactly today's (subscribed, entries, complete).",
       "optIn": false,

@@ -592,15 +592,17 @@ export const initNetworkRecordingPort = () => {
 
       if (msg.action === "subscribe") {
         // Reject subscriptions to tabs that were never recorded, so LTS can tell a bad
-        // targetTabId from a genuinely-empty recording.
-        if (!activeRecordings.has(tabId) && !recordingEntries.has(tabId)) {
+        // targetTabId from a genuinely-empty recording. A grouped recording that already stopped
+        // still answers from its retained manifest (a flat summary has none, so it is rejected).
+        const retainedManifest = recentSummaries.get(tabId)?.manifest;
+        if (!activeRecordings.has(tabId) && !recordingEntries.has(tabId) && !retainedManifest) {
           port.postMessage({ type: "error", error: `No recording for tab ${tabId}` });
           return;
         }
 
         // Ack, backfill, then (grouped only) state and the analytics backlog, then register — all
-        // synchronous, no await in between. A recording that already ended but whose buffer is still
-        // around (e.g. very short) is followed by its manifest and `complete`.
+        // synchronous, no await in between. A recording that already ended is followed by its
+        // manifest and `complete`, and the port is not registered since nothing else will follow.
         const recording = activeRecordings.get(tabId);
         const entries = recordingEntries.get(tabId) || [];
         const messages = recording?.session
@@ -609,9 +611,10 @@ export const initNetworkRecordingPort = () => {
               targetTabId: tabId,
               entries,
               active: !!recording,
-              retainedManifest: recentSummaries.get(tabId)?.manifest,
+              retainedManifest,
             });
         messages.forEach((message) => port.postMessage(message));
+        if (!recording) return;
 
         if (!subscriptions.has(tabId)) subscriptions.set(tabId, new Set());
         subscriptions.get(tabId)!.add(port);

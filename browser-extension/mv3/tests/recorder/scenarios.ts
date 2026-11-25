@@ -110,6 +110,23 @@ export const scenarios: ScenarioInput[] = [
     ],
   },
   {
+    name: "subscribe-after-stop",
+    description:
+      "The port drops, Stop lands, then the FE reconnects. The late subscribe gets no entries (the buffer is gone) but the retained manifest and complete, so the FE finishes the normal way.",
+    optIn: true,
+    sidePanel: true,
+    startTime: S,
+    steps: [
+      { op: "subscribe", t: S },
+      { op: "file", t: S + 100, id: "r1" },
+      { op: "newGroup", t: S + 200 },
+      { op: "file", t: S + 300, id: "r2" },
+      { op: "disconnect", t: S + 350 },
+      { op: "stop", t: S + 400 },
+      { op: "subscribe", t: S + 450 },
+    ],
+  },
+  {
     name: "start-without-opt-in",
     description:
       "The START config has no groups key: the reply has no groups field and the stream is exactly today's (subscribed, entries, complete).",

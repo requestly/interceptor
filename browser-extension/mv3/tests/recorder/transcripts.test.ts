@@ -29,12 +29,12 @@ const messagesOf = (scenario: GoldenScenario, type: string) =>
   scenario.expected.messages.filter((m) => m.type === type);
 
 describe("golden port transcripts", () => {
-  it("covers the eight contract scenarios", () => {
+  it("covers the nine contract scenarios", () => {
     assert.deepEqual(
       golden.scenarios.map((s) => s.name),
       scenarios.map((s) => s.name)
     );
-    assert.equal(golden.scenarios.length, 8);
+    assert.equal(golden.scenarios.length, 9);
   });
 
   for (const scenario of scenarios) {
@@ -79,11 +79,13 @@ describe("contract invariants", () => {
     });
   });
 
-  it("sends state after the entry backfill and before analytics on every subscribe", () => {
+  it("sends state after the entry backfill and before analytics on every subscribe while recording", () => {
     grouped.forEach((s) => {
       const types = s.expected.messages.map((m) => m.type);
+      const stopAt = s.steps.findIndex((step) => step.op === "stop");
+      let live = s.steps.slice(0, stopAt === -1 ? undefined : stopAt).filter((step) => step.op === "subscribe").length;
       let from = 0;
-      while ((from = types.indexOf("subscribed", from)) !== -1) {
+      while (live-- > 0 && (from = types.indexOf("subscribed", from)) !== -1) {
         let end = types.indexOf("subscribed", from + 1);
         if (end === -1) end = types.length;
         const block = types.slice(from, end);
@@ -132,6 +134,35 @@ describe("contract invariants", () => {
     assert.equal(messagesOf(stopped, "complete").length, 0);
     assert.equal(messagesOf(stopped, "manifest").length, 0);
     assert.notEqual(stopped.expected.summaryManifest, null);
+  });
+
+  it("answers a subscribe after Stop with the retained manifest and complete only", () => {
+    const late = golden.scenarios.find((s) => s.name === "subscribe-after-stop")!;
+    const { messages, summaryManifest } = late.expected;
+    const tail = messages.slice(messages.map((m) => m.type).lastIndexOf("subscribed"));
+    assert.deepEqual(tail, [
+      { type: "subscribed", targetTabId: 7 },
+      { type: "manifest", manifest: summaryManifest },
+      { type: "complete" },
+    ]);
+  });
+
+  it("still rejects a subscribe after Stop on a flat recording", () => {
+    const output = runScenario({
+      name: "flat-subscribe-after-stop",
+      description: "",
+      optIn: false,
+      sidePanel: true,
+      startTime: 1000,
+      steps: [
+        { op: "subscribe", t: 1000 },
+        { op: "file", t: 1100, id: "r1" },
+        { op: "disconnect", t: 1200 },
+        { op: "stop", t: 1300 },
+        { op: "subscribe", t: 1400 },
+      ],
+    });
+    assert.deepEqual(output.messages.slice(-1), [{ type: "error", error: "No recording for tab 7" }]);
   });
 });
 

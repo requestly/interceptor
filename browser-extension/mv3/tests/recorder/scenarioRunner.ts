@@ -63,6 +63,7 @@ export const runScenario = (input: ScenarioInput): ScenarioOutput => {
   const messages: NetworkRecordingPortMessage[] = [];
   const buffer: { _request_id: string }[] = [];
   let subscribed = false;
+  let stopped = false;
   let clock = input.startTime;
   let counter = 0;
   let firstOpId = "";
@@ -124,6 +125,20 @@ export const runScenario = (input: ScenarioInput): ScenarioOutput => {
         session!.resume();
         break;
       case "subscribe": {
+        // After Stop the buffer is gone: only a retained manifest answers, without registering the port.
+        if (stopped) {
+          messages.push(
+            ...(summaryManifest
+              ? buildSubscribeMessages({
+                  targetTabId: TAB_ID,
+                  entries: [],
+                  active: false,
+                  retainedManifest: summaryManifest,
+                })
+              : [{ type: "error" as const, error: `No recording for tab ${TAB_ID}` }])
+          );
+          break;
+        }
         const batch = session
           ? session.subscribeMessages(buffer)
           : buildSubscribeMessages({ targetTabId: TAB_ID, entries: buffer, active: true });
@@ -137,6 +152,7 @@ export const runScenario = (input: ScenarioInput): ScenarioOutput => {
       case "stop": {
         summaryManifest = session ? session.finish({ timeLimitReached: step.reason === "max-duration" }) : null;
         post(buildCompleteMessages(summaryManifest ?? undefined));
+        stopped = true;
         break;
       }
     }
