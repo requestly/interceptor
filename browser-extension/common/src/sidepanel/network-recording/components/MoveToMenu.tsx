@@ -15,6 +15,8 @@ interface MenuProps {
 }
 
 const MENU_GAP = 4;
+// Leaving "Move to group" closes its submenu only after this delay, so the pointer can cross the gap to it.
+const SUBMENU_CLOSE_DELAY_MS = 150;
 
 // Fixed positioning so the popover is never clipped by the scrolling request list. Closes on Escape,
 // on an outside click, on scroll and after a pick.
@@ -229,14 +231,31 @@ const RowMenuItems: React.FC<{
   onDelete: () => void;
 }> = ({ groups, sourceIds, onMove, onDelete }) => {
   const [subOpen, setSubOpen] = useState(false);
+  const subRef = useRef<HTMLDivElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const canMove = groups.some((g) => !sourceIds.has(g.id));
+
+  useEffect(() => () => clearTimeout(closeTimerRef.current), []);
+
+  // The submenu opens to the left; in a narrow panel it is pulled back inside the viewport, over the menu.
+  useLayoutEffect(() => {
+    const sub = subRef.current;
+    if (!sub) return;
+    const overflow = 8 - sub.getBoundingClientRect().left;
+    if (overflow > 0) sub.style.transform = `translateX(${overflow}px)`;
+  }, [subOpen]);
 
   return (
     <>
       <div
         className="gp-menu-sub-anchor"
-        onMouseEnter={() => canMove && setSubOpen(true)}
-        onMouseLeave={() => setSubOpen(false)}
+        onMouseEnter={() => {
+          clearTimeout(closeTimerRef.current);
+          if (canMove) setSubOpen(true);
+        }}
+        onMouseLeave={() => {
+          closeTimerRef.current = setTimeout(() => setSubOpen(false), SUBMENU_CLOSE_DELAY_MS);
+        }}
       >
         <button
           type="button"
@@ -255,7 +274,7 @@ const RowMenuItems: React.FC<{
           <Icon name="chevronRight" size={14} className="gp-menu-item-chevron" />
         </button>
         {subOpen && (
-          <div className="gp-menu gp-menu--sub" role="menu">
+          <div ref={subRef} className="gp-menu gp-menu--sub" role="menu">
             <div className="gp-menu-heading">Move to</div>
             <GroupOptions groups={groups} sourceIds={sourceIds} onPick={onMove} />
           </div>
