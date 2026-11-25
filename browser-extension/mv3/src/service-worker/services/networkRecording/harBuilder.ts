@@ -29,6 +29,8 @@ export interface SdkNetworkPayload {
   errors?: number[];
   // Epoch ms stamped by the page script when the capture happened (see networkBodyRecorder.js).
   startedAt?: number;
+  // The same start as an age when the page posted the capture, on the page's monotonic clock.
+  startedMsAgo?: number;
 }
 
 const MAX_SDK_CAPTURE_DELAY_MS = 60_000;
@@ -45,6 +47,20 @@ export const resolveSdkStartedAt = (payload: SdkNetworkPayload, now: number = Da
   if (stamp > now) return now - responseTime;
   if (now - stamp > responseTime + MAX_SDK_CAPTURE_DELAY_MS) return now - responseTime;
   return stamp;
+};
+
+/**
+ * How long ago an SDK capture started, for filing it in a grouped recording. Prefers the page's
+ * monotonic age, which a wall-clock step between the start and now cannot move. Falls back to
+ * now - startedAt when the age is missing, negative or older than responseTime plus 60 s.
+ */
+export const resolveSdkStartAge = (payload: SdkNetworkPayload, startedAt: number, now: number = Date.now()): number => {
+  const responseTime = Math.max(0, Math.round(payload.responseTime ?? 0));
+  const age = payload.startedMsAgo;
+  if (typeof age === "number" && Number.isFinite(age) && age >= 0 && age <= responseTime + MAX_SDK_CAPTURE_DELAY_MS) {
+    return age;
+  }
+  return Math.max(0, now - startedAt);
 };
 
 /**
@@ -243,8 +259,7 @@ const byteLength = (text: string | undefined): number => (text === undefined ? -
 export const buildSdkEntry = (payload: SdkNetworkPayload, requestId: string, startedAtMs?: number): NetworkHarEntry => {
   const responseTime = Math.max(0, Math.round(payload.responseTime ?? 0));
   // The SDK doesn't give a start timestamp; derive it so startedDateTime + time are consistent.
-  // Grouped recordings pass the resolved capture-time stamp so the entry is dated by the same
-  // moment it was filed by.
+  // Grouped recordings pass the page's resolved start stamp, the same start they file the entry by.
   const startTime = startedAtMs ?? Date.now() - responseTime;
 
   const requestText = bodyToText(payload.requestData);

@@ -96,7 +96,13 @@ const applyCaps = (data, cfg) => {
     window.postMessage({ source: "requestly:client", action, payload }, window.location.href);
   };
 
-  const emit = (data) => postToExtension(CLIENT_MESSAGES.NETWORK_BODY_CAPTURED, applyCaps(data, cfg));
+  // startedMsAgo is the start's age on this page's monotonic clock, taken as it is posted, so a
+  // grouped recording can file the request even if the wall clock steps in the meantime.
+  const emit = ({ startedAtMonotonic, ...data }) =>
+    postToExtension(
+      CLIENT_MESSAGES.NETWORK_BODY_CAPTURED,
+      applyCaps({ ...data, startedMsAgo: performance.now() - startedAtMonotonic }, cfg)
+    );
 
   // Arm the interceptor IMMEDIATELY at injection — do NOT wait for the START signal.
   //
@@ -125,7 +131,12 @@ const applyCaps = (data, cfg) => {
         // Stamp the start now, on the RAW capture: the pre-START buffer holds raw data, so a stamp
         // taken at flush time would date every buffered request by the flush. Carried through
         // applyCaps' spread; the service worker validates it and falls back when it looks wrong.
-        const data = { ...rawData, startedAt: Date.now() - (Number(rawData.responseTime) || 0) };
+        const responseTime = Number(rawData.responseTime) || 0;
+        const data = {
+          ...rawData,
+          startedAt: Date.now() - responseTime,
+          startedAtMonotonic: performance.now() - responseTime,
+        };
         if (state === "buffering") {
           // Hold until START resolves the caps, then flush in order. Hard-cap the buffer so a tab
           // that is slow to START — or never will (a non-recorded tab the broad registration landed

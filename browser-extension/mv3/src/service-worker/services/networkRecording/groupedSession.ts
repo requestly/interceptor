@@ -30,14 +30,23 @@ export class GroupedRecordingSession {
     private readonly targetTabId: number,
     startTime: number,
     private readonly sinks: GroupedSessionSinks,
-    clock: { now?: () => number; newId?: () => string } = {}
+    clock: { now?: () => number; monotonicNow?: () => number; newId?: () => string } = {}
   ) {
     this.groups = new RecordingGroups({
       startTime,
       now: clock.now,
+      monotonicNow: clock.monotonicNow,
       newId: clock.newId,
       onEvent: (event) => sinks.post([toPortAnalytics(event)]),
     });
+  }
+
+  fromWallClock(wallTime: number): number {
+    return this.groups.fromWallClock(wallTime);
+  }
+
+  msAgo(ageMs: number): number {
+    return this.groups.msAgo(ageMs);
   }
 
   file(requestId: string, startedAt: number): string | null {

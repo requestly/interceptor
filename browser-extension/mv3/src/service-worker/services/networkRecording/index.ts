@@ -9,6 +9,7 @@ import {
   buildSdkEntry,
   CorrelationData,
   NetworkHarEntry,
+  resolveSdkStartAge,
   resolveSdkStartedAt,
   SdkNetworkPayload,
 } from "./harBuilder";
@@ -138,7 +139,8 @@ const DISCONNECT_GRACE_MS = 3_000;
 // webRequest requestId -> request-start correlation data (internal only, never surfaced).
 const correlationMap = new Map<string, CorrelationData>();
 
-// Grouped recordings only: webRequest requestId -> the time its FIRST hop started. correlationMap is
+// Grouped recordings only: webRequest requestId -> the time its FIRST hop started, on the recording's
+// clock (converted as the hop starts, so a later wall-clock step cannot move it). correlationMap is
 // overwritten on every redirect hop and swept after 60 s, so a redirected or slow request would
 // otherwise be filed by a later time. Cleared on completion, error, a redirect to data: and stop.
 const firstSeenStarts = new Map<string, { tabId: number; startedAt: number }>();
@@ -287,7 +289,10 @@ const onBeforeRequest = (details: chrome.webRequest.WebRequestBodyDetails) => {
   if (isAjaxRequest(details.type)) return;
   if (isExcludedByScope(recording, details.frameId)) return;
   if (!firstSeenStarts.has(details.requestId)) {
-    firstSeenStarts.set(details.requestId, { tabId: details.tabId, startedAt: details.timeStamp });
+    firstSeenStarts.set(details.requestId, {
+      tabId: details.tabId,
+      startedAt: recording.session.fromWallClock(details.timeStamp),
+    });
   }
 };
 
@@ -330,7 +335,7 @@ const onRequestCompleted = (details: chrome.webRequest.WebResponseCacheDetails) 
 
   const correlation = correlationMap.get(details.requestId);
   correlationMap.delete(details.requestId);
-  const startedAt = takeStartedAt(details.requestId, correlation?.startTime ?? details.timeStamp);
+  const startedAt = takeStartedAt(recording, details.requestId, correlation?.startTime ?? details.timeStamp);
 
   const entry = buildCompletedEntry(details, correlation, nextRequestId());
   recordEntry(details.tabId, recording, entry, startedAt);
@@ -350,7 +355,7 @@ const onRequestError = (details: chrome.webRequest.WebResponseErrorDetails) => {
 
   const correlation = correlationMap.get(details.requestId);
   correlationMap.delete(details.requestId);
-  const startedAt = takeStartedAt(details.requestId, correlation?.startTime ?? details.timeStamp);
+  const startedAt = takeStartedAt(recording, details.requestId, correlation?.startTime ?? details.timeStamp);
 
   if (IGNORED_ERRORS.has(details.error)) return;
 
@@ -358,11 +363,13 @@ const onRequestError = (details: chrome.webRequest.WebResponseErrorDetails) => {
   recordEntry(details.tabId, recording, entry, startedAt);
 };
 
-// Time a webRequest request started, for filing it into a group. Consumes the first-hop stamp.
-const takeStartedAt = (requestId: string, fallback: number): number => {
+// Time a webRequest request started, for filing it into a group. Consumes the first-hop stamp; a
+// wall-clock fallback is put on the recording's clock here.
+const takeStartedAt = (recording: NetworkRecordingState, requestId: string, fallback: number): number => {
   const first = firstSeenStarts.get(requestId);
   firstSeenStarts.delete(requestId);
-  return first?.startedAt ?? fallback;
+  if (first) return first.startedAt;
+  return recording.session ? recording.session.fromWallClock(fallback) : fallback;
 };
 
 /**
@@ -429,7 +436,8 @@ export const onNetworkBodyCaptured = (
 
   if (recording.session) {
     const startedAt = resolveSdkStartedAt(payload);
-    recordEntry(tabId, recording, buildSdkEntry(payload, nextRequestId(), startedAt), startedAt);
+    const filedAt = recording.session.msAgo(resolveSdkStartAge(payload, startedAt));
+    recordEntry(tabId, recording, buildSdkEntry(payload, nextRequestId(), startedAt), filedAt);
     return;
   }
 

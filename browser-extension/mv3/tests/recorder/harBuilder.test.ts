@@ -2,6 +2,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildSdkEntry,
+  resolveSdkStartAge,
   resolveSdkStartedAt,
   SdkNetworkPayload,
 } from "../../src/service-worker/services/networkRecording/harBuilder";
@@ -37,6 +38,27 @@ describe("resolveSdkStartedAt", () => {
 
   it("treats a missing responseTime as zero", () => {
     assert.equal(resolveSdkStartedAt(payload({ responseTime: undefined }), NOW), NOW);
+  });
+});
+
+describe("resolveSdkStartAge", () => {
+  it("prefers the page's monotonic age, even when the wall-clock stamp disagrees", () => {
+    assert.equal(resolveSdkStartAge(payload({ startedMsAgo: 900 }), NOW - 300, NOW), 900);
+  });
+
+  it("falls back to now - startedAt when the age is missing, not a number or negative", () => {
+    assert.equal(resolveSdkStartAge(payload(), NOW - 700, NOW), 700);
+    assert.equal(resolveSdkStartAge(payload({ startedMsAgo: Number.NaN }), NOW - 700, NOW), 700);
+    assert.equal(resolveSdkStartAge(payload({ startedMsAgo: -1 }), NOW - 700, NOW), 700);
+  });
+
+  it("falls back when the age is older than responseTime plus 60 s", () => {
+    assert.equal(resolveSdkStartAge(payload({ startedMsAgo: 400 + 60_000 }), NOW - 700, NOW), 400 + 60_000);
+    assert.equal(resolveSdkStartAge(payload({ startedMsAgo: 400 + 60_001 }), NOW - 700, NOW), 700);
+  });
+
+  it("never returns a negative age", () => {
+    assert.equal(resolveSdkStartAge(payload(), NOW + 50, NOW), 0);
   });
 });
 

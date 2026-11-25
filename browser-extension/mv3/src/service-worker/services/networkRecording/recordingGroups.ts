@@ -46,12 +46,15 @@ interface PauseInterval {
 export interface RecordingGroupsOptions {
   startTime: number;
   now?: () => number;
+  /** A clock that never steps back (performance.now). Defaults to `now` when that is injected. */
+  monotonicNow?: () => number;
   newId?: () => string;
   onEvent?: (event: RecorderAnalyticsEvent) => void;
 }
 
 export class RecordingGroups {
   private readonly now: () => number;
+  private readonly monotonicNow: () => number;
   private readonly newId: () => string;
   private readonly onEvent?: (event: RecorderAnalyticsEvent) => void;
 
@@ -68,13 +71,16 @@ export class RecordingGroups {
   private undoRecord: UndoRecord | null = null;
   private nextArrival = 0;
   private lastTick: number;
+  private lastMonotonic: number;
   private currentRevision = 1;
 
   constructor(options: RecordingGroupsOptions) {
     this.now = options.now ?? Date.now;
+    this.monotonicNow = options.monotonicNow ?? options.now ?? (() => performance.now());
     this.newId = options.newId ?? (() => crypto.randomUUID());
     this.onEvent = options.onEvent;
     this.lastTick = options.startTime;
+    this.lastMonotonic = this.monotonicNow();
 
     const first: Group = { id: this.newId(), name: DEFAULT_GROUP_NAME };
     this.groups = [first];
@@ -100,6 +106,19 @@ export class RecordingGroups {
   }
 
   // --- Filing ---------------------------------------------------------------------------------
+  // Group and pause boundaries are on the recording's clock (see tick), so request starts are
+  // converted onto it when the service worker learns of them: a wall-clock stamp taken just now
+  // with fromWallClock, an age measured on a monotonic clock with msAgo.
+
+  /** A wall-clock time stamped just now, such as a webRequest timeStamp, on the recording's clock. */
+  fromWallClock(wallTime: number): number {
+    return this.msAgo(this.now() - wallTime);
+  }
+
+  /** The time on the recording's clock `ageMs` ago. */
+  msAgo(ageMs: number): number {
+    return this.tick() - Math.max(0, ageMs);
+  }
 
   /** Group active at `t`. Times before the recording started land in the first group. */
   groupIdAt(t: number): string {
@@ -123,8 +142,9 @@ export class RecordingGroups {
   }
 
   /**
-   * Files a request by the time it STARTED. Returns its group id, or null when it started during a
-   * pause (the caller then drops it, so it is never stored, delivered or counted).
+   * Files a request by the time it STARTED, on the recording's clock. Returns its group id, or null
+   * when it started during a pause (the caller then drops it, so it is never stored, delivered or
+   * counted).
    */
   file(requestId: string, startedAt: number): string | null {
     const existing = this.groupOf.get(requestId);
@@ -164,7 +184,7 @@ export class RecordingGroups {
   }
 
   /** Time spent paused so far, including a pause that is still open. */
-  pausedMs(at: number = this.now()): number {
+  pausedMs(at: number = this.tick()): number {
     return this.pauses.reduce((sum, p) => sum + Math.max(0, (p.to ?? at) - p.from), 0);
   }
 
@@ -344,9 +364,14 @@ export class RecordingGroups {
     this.currentRevision += 1;
   }
 
-  /** Wall clock that never steps backwards, so boundaries stay sorted if the system clock does. */
+  /**
+   * The recording's clock: the wall clock, except that it never steps backwards. When the wall clock
+   * steps back, it keeps advancing by the time that really passed on the monotonic clock instead.
+   */
   private tick(): number {
-    this.lastTick = Math.max(this.lastTick, this.now());
+    const monotonic = this.monotonicNow();
+    this.lastTick = Math.max(this.now(), this.lastTick + Math.max(0, monotonic - this.lastMonotonic));
+    this.lastMonotonic = monotonic;
     return this.lastTick;
   }
 

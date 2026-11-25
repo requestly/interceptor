@@ -17,6 +17,30 @@ const make = () => {
   };
 };
 
+// A wall clock that can step back, and a monotonic clock that only moves when time really passes.
+const makeWithClocks = () => {
+  let wall = T0;
+  let monotonic = 0;
+  let counter = 0;
+  const groups = new RecordingGroups({
+    startTime: T0,
+    now: () => wall,
+    monotonicNow: () => monotonic,
+    newId: () => `id-${++counter}`,
+  });
+  return {
+    groups,
+    wall: () => wall,
+    pass: (ms: number) => {
+      wall += ms;
+      monotonic += ms;
+    },
+    stepBack: (ms: number) => {
+      wall -= ms;
+    },
+  };
+};
+
 const manifestIds = (groups: RecordingGroups) => groups.buildManifest().groups.map((g) => g.requestIds);
 
 describe("validateGroupName", () => {
@@ -160,6 +184,95 @@ describe("pause", () => {
     assert.equal(groups.resume(), false);
     assert.equal(groups.pause(), true);
     assert.equal(groups.pause(), false);
+  });
+});
+
+describe("when the wall clock steps back", () => {
+  it("files by real order after a New group, for webRequest stamps and SDK ages alike", () => {
+    const { groups, wall, pass, stepBack } = makeWithClocks();
+    pass(900);
+    const slow = groups.fromWallClock(wall()); // starts before the New group, finishes after the step
+    pass(100);
+    groups.newGroup(); // +1000
+    stepBack(600);
+    pass(100); // really +1100, the wall clock reads +500
+    const fresh = groups.fromWallClock(wall());
+    pass(200);
+    const [first, second] = groups.buildView().groups.map((g) => g.id);
+    assert.equal(groups.file("fresh", fresh), second);
+    assert.equal(groups.file("slow", slow), first);
+    assert.equal(groups.file("sdk-after", groups.msAgo(250)), second); // started at +1050
+    assert.equal(groups.file("sdk-before", groups.msAgo(400)), first); // started at +900
+    assert.deepEqual(manifestIds(groups), [
+      ["slow", "sdk-before"],
+      ["fresh", "sdk-after"],
+    ]);
+  });
+
+  it("drops a request that starts during a pause taken after the step, and keeps the rest", () => {
+    const { groups, wall, pass, stepBack } = makeWithClocks();
+    pass(1000);
+    groups.newGroup(); // +1000
+    pass(200);
+    const beforePause = groups.fromWallClock(wall()); // +1200
+    stepBack(600);
+    pass(100);
+    groups.pause(); // really +1300, the wall clock reads +700
+    pass(100);
+    const duringPause = groups.fromWallClock(wall()); // really +1400, stamped +800
+    const spansPause = groups.msAgo(250); // started at +1150, finishes during the pause
+    pass(100);
+    groups.resume(); // +1500
+    pass(50);
+    const afterResume = groups.fromWallClock(wall());
+    const second = groups.buildView().groups[1].id;
+    assert.equal(groups.file("during", duringPause), null);
+    assert.equal(groups.file("before", beforePause), second);
+    assert.equal(groups.file("spans", spansPause), second);
+    assert.equal(groups.file("after", afterResume), second);
+    assert.equal(groups.pausedMs(), 200);
+  });
+
+  it("does not drop a request that starts after Resume when the clock steps back behind the pause", () => {
+    const { groups, wall, pass, stepBack } = makeWithClocks();
+    pass(100);
+    groups.pause();
+    pass(400);
+    groups.resume(); // +500
+    stepBack(300);
+    pass(50); // really +550, the wall clock reads +250, inside the pause
+    assert.notEqual(groups.file("after-resume", groups.fromWallClock(wall())), null);
+    assert.equal(groups.buildView().pausedMsClosed, 400);
+  });
+
+  it("counts the time that really passed in a pause the step happened during", () => {
+    const { groups, pass, stepBack } = makeWithClocks();
+    pass(1000);
+    groups.pause();
+    pass(100);
+    stepBack(600);
+    pass(300);
+    groups.resume();
+    assert.equal(groups.buildView().pausedMsClosed, 400);
+  });
+
+  it("stays on the wall clock while the wall clock runs forward", () => {
+    const { groups, wall, pass } = makeWithClocks();
+    pass(100);
+    groups.pause();
+    pass(400);
+    groups.resume();
+    pass(500);
+    groups.newGroup();
+    pass(100);
+    assert.equal(groups.fromWallClock(wall() - 30), wall() - 30);
+    assert.equal(groups.msAgo(30), wall() - 30);
+    const [first, second] = groups.buildView().groups.map((g) => g.id);
+    assert.equal(groups.file("before-pause", T0 + 50), first);
+    assert.equal(groups.file("in-pause", T0 + 300), null);
+    assert.equal(groups.file("after-resume", T0 + 600), first);
+    assert.equal(groups.file("new-group", T0 + 1000), second);
+    assert.equal(groups.buildView().pausedMsClosed, 400);
   });
 });
 
