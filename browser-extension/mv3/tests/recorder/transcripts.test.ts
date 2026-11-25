@@ -37,9 +37,13 @@ describe("golden port transcripts", () => {
     assert.equal(golden.scenarios.length, 8);
   });
 
-  for (const scenario of golden.scenarios) {
+  for (const scenario of scenarios) {
     it(`replays ${scenario.name}`, () => {
-      assert.deepEqual(runScenario(scenario), scenario.expected);
+      const fixture = golden.scenarios.find((s) => s.name === scenario.name);
+      assert.ok(fixture, `${scenario.name} is missing from the golden file`);
+      const { expected, ...inputs } = fixture;
+      assert.deepEqual(inputs, scenario, `${scenario.name}: golden inputs are stale`);
+      assert.deepEqual(runScenario(scenario), expected);
     });
   }
 });
