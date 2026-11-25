@@ -1,4 +1,5 @@
 import { CLIENT_MESSAGES, EXTENSION_MESSAGES } from "common/constants";
+import { fetchCallKey, fetchStartKey, FetchStarts } from "./fetchStarts";
 
 /**
  * MAIN-world page script for Network Interceptor v2 — body + header capture for XHR/Fetch.
@@ -104,6 +105,28 @@ const applyCaps = (data, cfg) => {
       applyCaps({ ...data, startedMsAgo: performance.now() - startedAtMonotonic }, cfg)
     );
 
+  const fetchStarts = new FetchStarts(() => performance.now());
+
+  // Wraps the SDK's fetch to time each call when it is made. The page gets the same response or
+  // error; nothing is recorded once capture has stopped.
+  const timeFetchCalls = () => {
+    const sdkFetch = window.fetch;
+    window.fetch = function (...args) {
+      let ended = () => {};
+      if (state !== "stopped") {
+        try {
+          ended = fetchStarts.begin(fetchCallKey(args[0], args[1], document.baseURI));
+        } catch {
+          // An unparseable URL: fetch rejects it below.
+        }
+      }
+      return sdkFetch.apply(this, args).then(undefined, (error) => {
+        ended();
+        throw error;
+      });
+    };
+  };
+
   // Arm the interceptor IMMEDIATELY at injection — do NOT wait for the START signal.
   //
   // Injection-timing race fix: the web-sdk fetch/XHR override is installed at module-eval, but it
@@ -131,12 +154,16 @@ const applyCaps = (data, cfg) => {
         // Stamp the start now, on the RAW capture: the pre-START buffer holds raw data, so a stamp
         // taken at flush time would date every buffered request by the flush. Carried through
         // applyCaps' spread; the service worker validates it and falls back when it looks wrong.
-        const responseTime = Number(rawData.responseTime) || 0;
-        const data = {
-          ...rawData,
-          startedAt: Date.now() - responseTime,
-          startedAtMonotonic: performance.now() - responseTime,
-        };
+        // XHR's responseTime spans the whole request; fetch's ends at the headers and the body is
+        // read before this runs, so a fetch takes the start timed when it was called if it can.
+        const now = performance.now();
+        const latestStart = now - (Number(rawData.responseTime) || 0);
+        const fetchStart =
+          rawData.api === "fetch"
+            ? fetchStarts.take(fetchStartKey(rawData.method, rawData.url), latestStart)
+            : undefined;
+        const startedAtMonotonic = fetchStart ?? latestStart;
+        const data = { ...rawData, startedAt: Date.now() - (now - startedAtMonotonic), startedAtMonotonic };
         if (state === "buffering") {
           // Hold until START resolves the caps, then flush in order. Hard-cap the buffer so a tab
           // that is slow to START — or never will (a non-recorded tab the broad registration landed
@@ -151,6 +178,7 @@ const applyCaps = (data, cfg) => {
       },
       false
     );
+    timeFetchCalls();
     // Pull-based handshake: announce readiness so the SW sends START (with resolved caps) now that
     // we're armed and listening. We do NOT rely on the SW push-sending START — that can race the
     // content-script relay's listener and be dropped.
@@ -194,6 +222,7 @@ const applyCaps = (data, cfg) => {
         stopReadyHandshake();
         state = "stopped";
         buffer = [];
+        fetchStarts.clear();
         return;
       }
       readyAttempts += 1;
@@ -235,6 +264,7 @@ const applyCaps = (data, cfg) => {
       stopReadyHandshake();
       state = "stopped";
       buffer = [];
+      fetchStarts.clear();
     }
   });
 })();
