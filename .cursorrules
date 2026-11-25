@@ -14,7 +14,6 @@ This is the Requestly project - a browser extension and web application for requ
 ## Dead Code Areas
 - `dist/` - Build output directory (contains generated files, avoid editing)
 - `node_modules/` - Dependencies (never edit directly)
-- `browser-extension/sessionbear`
 
 ## Coding Guidelines
 - Follow existing code style and patterns

@@ -1,4 +1,4 @@
-# Prerequisites - Node v18.18.0
+# Prerequisites - Node v20.0.0
 
 #!/usr/bin/env bash
 
