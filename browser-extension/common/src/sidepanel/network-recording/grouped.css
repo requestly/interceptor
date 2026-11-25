@@ -471,8 +471,8 @@
 }
 
 /* The open menu is inside the row, so hovering it would otherwise count as hovering the row. */
-.gp-panel:not(.gp-panel--selecting) .gp-row--menu-open .gp-checkbox:not(:checked) {
-  visibility: hidden;
+.gp-panel:not(.gp-panel--selecting) .gp-row--menu-open .gp-checkbox:not(:checked):not(:focus-visible) {
+  opacity: 0;
 }
 
 .gp-action-slot {
