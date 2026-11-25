@@ -55,6 +55,12 @@
   cursor: not-allowed;
 }
 
+/* Without this, text selection takes the OS highlight colour, which can be red. */
+.gp-panel ::selection {
+  background: var(--gp-blue);
+  color: #fff;
+}
+
 :where(.gp-panel) :focus-visible {
   outline: 2px solid var(--gp-blue-text);
   outline-offset: 1px;
@@ -98,20 +104,18 @@
   flex: none;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   height: 46px;
   padding: 0 var(--gp-pad);
   background: var(--gp-surface);
   border-bottom: 1px solid var(--gp-line);
 }
 
-.gp-title {
-  flex: 1;
-  min-width: 0;
-  font-size: 12.25px;
-  font-weight: 600;
-  color: var(--gp-text);
-  white-space: nowrap;
+.gp-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .gp-status-pill {
@@ -842,7 +846,7 @@
   text-align: left;
 }
 
-.gp-panel .gp-menu-item:hover:not(:disabled),
+.gp-panel .gp-menu-item:hover:not(:disabled):not([aria-disabled="true"]),
 .gp-panel .gp-menu-item--active {
   background: #363639;
 }
@@ -851,8 +855,31 @@
   color: var(--gp-muted);
 }
 
-.gp-panel .gp-menu-item:disabled {
+.gp-panel .gp-menu-item:disabled,
+.gp-panel .gp-menu-item[aria-disabled="true"] {
   color: var(--gp-faint);
+}
+
+.gp-panel .gp-menu-item[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+.gp-menu-option {
+  position: relative;
+}
+
+.gp-panel .gp-option-tooltip {
+  left: auto;
+  right: 0;
+  bottom: calc(100% + 2px);
+  white-space: nowrap;
+}
+
+.gp-menu-option:hover .gp-option-tooltip,
+.gp-menu-item:focus-visible + .gp-option-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0.15s;
 }
 
 .gp-menu-item-label {
@@ -872,21 +899,6 @@
 }
 
 /* --- New group and footer ---------------------------------------------------------------------- */
-
-.gp-notice {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0 var(--gp-pad);
-  padding: 7px 10px 7px 9px;
-  background: var(--gp-blue-wash);
-  border: 1px solid var(--gp-blue-line);
-  border-radius: 6px;
-  color: var(--gp-text);
-  font-size: 10.25px;
-  line-height: 14.5px;
-}
 
 .gp-bottom {
   flex: none;

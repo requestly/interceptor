@@ -136,9 +136,7 @@ export interface PanelGroupsView {
 
 export type GroupCommandFailure = "not-recording" | "not-grouped" | "unknown-group" | "nothing-to-do" | "stale";
 
-export type NewGroupResult =
-  | { ok: true; groupId: string; reused: boolean }
-  | { ok: false; reason: GroupCommandFailure };
+export type NewGroupResult = { ok: true; groupId: string } | { ok: false; reason: GroupCommandFailure };
 export type RenameGroupResult = { ok: true } | { ok: false; reason: GroupNameRejection | GroupCommandFailure };
 export type OperationResult = { ok: true; opId: string; count: number } | { ok: false; reason: GroupCommandFailure };
 export type SimpleResult = { ok: true } | { ok: false; reason: GroupCommandFailure };

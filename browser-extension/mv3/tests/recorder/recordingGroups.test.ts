@@ -191,26 +191,36 @@ describe("new group and rename", () => {
     assert.equal(groups.buildView().groups[2].name, "Group 3");
   });
 
-  it("reuses an empty newest group instead of stacking another", () => {
+  it("adds another group even when the newest one is empty", () => {
     const { groups, at } = make();
     groups.file("r0", T0 + 1);
     at(T0 + 10);
-    const created = groups.newGroup();
-    assert.deepEqual(created.ok && created.reused, false);
+    const first = groups.newGroup();
     const revision = groups.revision;
     at(T0 + 20);
-    const again = groups.newGroup();
-    assert.equal(again.ok && again.reused, true);
-    assert.equal(again.ok && again.groupId, created.ok && created.groupId);
-    assert.equal(groups.buildView().groups.length, 2);
-    assert.equal(groups.revision, revision, "a reuse changes nothing");
+    const second = groups.newGroup();
+    assert.notEqual(second.ok && second.groupId, first.ok && first.groupId);
+    assert.equal(groups.buildView().groups.length, 3);
+    assert.ok(groups.revision > revision);
+    assert.equal(groups.buildView().activeGroupId, second.ok && second.groupId);
   });
 
-  it("reuses the Default group while it is empty", () => {
+  it("adds a group while the Default group is still empty", () => {
     const { groups } = make();
     const result = groups.newGroup();
-    assert.equal(result.ok && result.reused, true);
-    assert.equal(groups.buildView().groups.length, 1);
+    assert.equal(result.ok, true);
+    assert.equal(groups.buildView().groups.length, 2);
+  });
+
+  it("leaves empty groups out of the manifest", () => {
+    const { groups, at } = make();
+    at(T0 + 10);
+    groups.newGroup();
+    at(T0 + 20);
+    groups.newGroup();
+    groups.file("r1", T0 + 21);
+    assert.equal(groups.buildView().groups.length, 3);
+    assert.deepEqual(manifestIds(groups), [["r1"]]);
   });
 
   it("keeps the previous name when a rename is rejected", () => {

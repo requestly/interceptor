@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { PanelGroup } from "../../../networkRecordingProtocol";
+import { SOURCE_GROUP_TOOLTIP } from "../groupedPanelModel";
 import { Icon } from "./icons";
 
 interface MenuProps {
@@ -103,33 +104,50 @@ const Menu: React.FC<MenuProps> = ({
   );
 };
 
-const GroupOptions: React.FC<{ groups: PanelGroup[]; onPick: (groupId: string) => void }> = ({ groups, onPick }) => (
+const GroupOptions: React.FC<{
+  groups: PanelGroup[];
+  sourceIds: ReadonlySet<string>;
+  onPick: (groupId: string) => void;
+}> = ({ groups, sourceIds, onPick }) => (
   <>
-    {groups.map((g) => (
-      <button
-        key={g.id}
-        type="button"
-        role="menuitem"
-        className="gp-menu-item"
-        title={g.name}
-        onClick={() => onPick(g.id)}
-      >
-        <Icon name="folder" size={13} className="gp-menu-item-icon gp-folder-icon" />
-        <span className="gp-menu-item-label">{g.name}</span>
-      </button>
-    ))}
+    {groups.map((g) => {
+      const isSource = sourceIds.has(g.id);
+      const tipId = `gp-source-tip-${g.id}`;
+      return (
+        <div key={g.id} className="gp-menu-option">
+          <button
+            type="button"
+            role="menuitem"
+            className="gp-menu-item"
+            title={isSource ? undefined : g.name}
+            aria-disabled={isSource || undefined}
+            aria-describedby={isSource ? tipId : undefined}
+            onClick={() => !isSource && onPick(g.id)}
+          >
+            <Icon name="folder" size={13} className="gp-menu-item-icon gp-folder-icon" />
+            <span className="gp-menu-item-label">{g.name}</span>
+          </button>
+          {isSource && (
+            <span role="tooltip" id={tipId} className="gp-tooltip gp-option-tooltip">
+              {SOURCE_GROUP_TOOLTIP}
+            </span>
+          )}
+        </div>
+      );
+    })}
   </>
 );
 
 interface MoveToMenuProps {
   groups: PanelGroup[];
+  sourceIds: ReadonlySet<string>;
   count: number;
   disabled?: boolean;
   onPick: (groupId: string) => void;
 }
 
 // Selection toolbar dropdown: the button says "Move to", the list is titled "Move N to".
-export const MoveToMenu: React.FC<MoveToMenuProps> = ({ groups, count, disabled, onPick }) => (
+export const MoveToMenu: React.FC<MoveToMenuProps> = ({ groups, sourceIds, count, disabled, onPick }) => (
   <Menu
     buttonClass="gp-toolbar-btn"
     menuClass="gp-menu--toolbar"
@@ -148,6 +166,7 @@ export const MoveToMenu: React.FC<MoveToMenuProps> = ({ groups, count, disabled,
         <div className="gp-menu-heading">Move {count} to</div>
         <GroupOptions
           groups={groups}
+          sourceIds={sourceIds}
           onPick={(groupId) => {
             close();
             onPick(groupId);
@@ -167,7 +186,7 @@ interface RowMenuProps {
   onDelete: () => void;
 }
 
-// Per-row ⋮ menu: "Move to group ›" (every group except the row's own) and "Delete".
+// Per-row ⋮ menu: "Move to group ›" (the row's own group listed but disabled) and "Delete".
 export const RowMenu: React.FC<RowMenuProps> = ({
   groups,
   ownGroupId,
@@ -176,7 +195,7 @@ export const RowMenu: React.FC<RowMenuProps> = ({
   onMove,
   onDelete,
 }) => {
-  const targets = groups.filter((g) => g.id !== ownGroupId);
+  const sourceIds = new Set([ownGroupId]);
   return (
     <Menu
       buttonClass="gp-row-menu-btn"
@@ -187,7 +206,8 @@ export const RowMenu: React.FC<RowMenuProps> = ({
     >
       {(close) => (
         <RowMenuItems
-          targets={targets}
+          groups={groups}
+          sourceIds={sourceIds}
           onMove={(groupId) => {
             close();
             onMove(groupId);
@@ -203,12 +223,13 @@ export const RowMenu: React.FC<RowMenuProps> = ({
 };
 
 const RowMenuItems: React.FC<{
-  targets: PanelGroup[];
+  groups: PanelGroup[];
+  sourceIds: ReadonlySet<string>;
   onMove: (groupId: string) => void;
   onDelete: () => void;
-}> = ({ targets, onMove, onDelete }) => {
+}> = ({ groups, sourceIds, onMove, onDelete }) => {
   const [subOpen, setSubOpen] = useState(false);
-  const canMove = targets.length > 0;
+  const canMove = groups.some((g) => !sourceIds.has(g.id));
 
   return (
     <>
@@ -236,7 +257,7 @@ const RowMenuItems: React.FC<{
         {subOpen && (
           <div className="gp-menu gp-menu--sub" role="menu">
             <div className="gp-menu-heading">Move to</div>
-            <GroupOptions groups={targets} onPick={onMove} />
+            <GroupOptions groups={groups} sourceIds={sourceIds} onPick={onMove} />
           </div>
         )}
       </div>

@@ -58,7 +58,7 @@ export class GroupedRecordingSession {
 
   newGroup(): NewGroupResult {
     const result = this.groups.newGroup();
-    if (result.ok && !result.reused) this.publish(true);
+    if (result.ok) this.publish(true);
     return result;
   }
 

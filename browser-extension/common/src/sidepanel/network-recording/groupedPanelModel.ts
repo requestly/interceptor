@@ -53,12 +53,12 @@ export const movedMessage = (count: number): string => `Moved ${plural(count, "r
 
 export const deletedMessage = (count: number): string => `Deleted ${plural(count, "request")}.`;
 
-export const reusedGroupNotice = (groupName: string): string =>
-  `${groupName} has no requests yet, so “New group” reopened its name instead of adding an empty group.`;
-
 export const PAUSED_BANNER = "Recording paused. Requests you make now aren’t captured.";
 
-export const NEW_GROUP_TOOLTIP = "Start a new step, e.g. Login. Requests from here on go into this group.";
+export const NEW_GROUP_TOOLTIP =
+  "Organise specific steps in your session into groups. Once created, any further requests will be captured under it.";
+
+export const SOURCE_GROUP_TOOLTIP = "Can’t move to a source group";
 
 export const emptyGroupText = ({
   hasRequests,
@@ -71,7 +71,9 @@ export const emptyGroupText = ({
 }): string => {
   if (hasRequests) return "No requests match the current filter.";
   if (!active) return "No requests yet.";
-  return paused ? "No requests yet. Resume, then use the site." : "No requests yet. Use the site and they land here.";
+  return paused
+    ? "No requests yet. Resume, then use the site."
+    : "No requests yet. Use the site to capture under this group.";
 };
 
 export type CheckState = "checked" | "partial" | "unchecked";
@@ -94,6 +96,15 @@ export const toggleGroupSelection = (visibleIds: string[], selected: ReadonlySet
 /** Selected ids that still exist after a groups snapshot; new rows are never added. */
 export const pruneSelection = (selected: ReadonlySet<string>, placed: ReadonlySet<string>): Set<string> =>
   new Set(Array.from(selected).filter((id) => placed.has(id)));
+
+/** Groups holding any of the selected requests; a move into them is disabled. */
+export const sourceGroupIds = (
+  groups: { id: string; requestIds: string[] }[],
+  selected: Iterable<string>
+): Set<string> => {
+  const ids = new Set(selected);
+  return new Set(groups.filter((g) => g.requestIds.some((id) => ids.has(id))).map((g) => g.id));
+};
 
 /** After a new group is created the other groups fold away, so the list leads with the step being named. */
 export const collapseAllBut = (groupIds: string[], keepId: string): Set<string> =>

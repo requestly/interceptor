@@ -9,8 +9,8 @@ import {
   matchesFilter,
   movedMessage,
   pruneSelection,
-  reusedGroupNotice,
   rowLabel,
+  sourceGroupIds,
   toggleGroupSelection,
 } from "../../../common/src/sidepanel/network-recording/groupedPanelModel";
 
@@ -65,17 +65,10 @@ describe("grouped panel copy", () => {
     assert.equal(deletedMessage(1), "Deleted 1 request.");
   });
 
-  it("explains an empty group being reopened by New group", () => {
-    assert.equal(
-      reusedGroupNotice("Group 2"),
-      "Group 2 has no requests yet, so “New group” reopened its name instead of adding an empty group."
-    );
-  });
-
   it("tells the user how an empty group fills, and what to do while paused", () => {
     assert.equal(
       emptyGroupText({ hasRequests: false, active: true, paused: false }),
-      "No requests yet. Use the site and they land here."
+      "No requests yet. Use the site to capture under this group."
     );
     assert.equal(
       emptyGroupText({ hasRequests: false, active: true, paused: true }),
@@ -111,6 +104,17 @@ describe("grouped panel selection", () => {
   it("drops deleted rows and never adds new ones", () => {
     const next = pruneSelection(new Set(["a", "b"]), new Set(["a", "c", "d"]));
     assert.deepEqual([...next], ["a"]);
+  });
+
+  it("marks every group holding a selected request as a move source", () => {
+    const groups = [
+      { id: "g1", requestIds: ["a", "b"] },
+      { id: "g2", requestIds: ["c"] },
+      { id: "g3", requestIds: [] },
+    ];
+    assert.deepEqual([...sourceGroupIds(groups, ["a"])], ["g1"]);
+    assert.deepEqual([...sourceGroupIds(groups, ["b", "c"])].sort(), ["g1", "g2"]);
+    assert.deepEqual([...sourceGroupIds(groups, [])], []);
   });
 
   it("collapses every other group when a new one is created", () => {

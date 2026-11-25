@@ -31,8 +31,8 @@ import {
   PAUSED_BANNER,
   pruneSelection,
   RequestFilter,
-  reusedGroupNotice,
   rowLabel,
+  sourceGroupIds,
   toggleGroupSelection,
 } from "./groupedPanelModel";
 import "./grouped.css";
@@ -94,7 +94,6 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editorKey, setEditorKey] = useState(0);
   const [undo, setUndo] = useState<UndoState | null>(null);
-  const [reusedGroupId, setReusedGroupId] = useState<string | null>(null);
   const [flashIds, setFlashIds] = useState<Set<string>>(new Set());
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -159,24 +158,17 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   }, [isRecording, manifestOnly, initial.startTime, initial.endTime, view?.pausedAt, view?.pausedMsClosed]);
 
   useEffect(() => {
-    if (!reusedGroupId) return undefined;
-    const timer = setTimeout(() => setReusedGroupId(null), 8000);
-    return () => clearTimeout(timer);
-  }, [reusedGroupId]);
-
-  useEffect(() => {
     if (flashIds.size === 0) return undefined;
     const timer = setTimeout(() => setFlashIds(new Set()), 1200);
     return () => clearTimeout(timer);
   }, [flashIds]);
 
-  // After Stop nothing can change, so a pending selection, editor, undo or notice is dropped.
+  // After Stop nothing can change, so a pending selection, editor or undo is dropped.
   useEffect(() => {
     if (isRecording) return;
     setSelected(new Set());
     setEditingId(null);
     setUndo(null);
-    setReusedGroupId(null);
   }, [isRecording]);
 
   // --- Derived data ---------------------------------------------------------------------------
@@ -251,20 +243,14 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
   const handleNewGroup = async () => {
     const result = await sendCommand<NewGroupResult>(EXTENSION_MESSAGES.NEW_NETWORK_RECORDING_GROUP, tabId);
     if (!result?.ok) return;
-    if (result.reused) {
-      expand(result.groupId);
-      setReusedGroupId(result.groupId);
-    } else {
-      setReusedGroupId(null);
-      setCollapsed(
-        collapseAllBut(
-          groups.map((g) => g.id),
-          result.groupId
-        )
-      );
-    }
+    setCollapsed(
+      collapseAllBut(
+        groups.map((g) => g.id),
+        result.groupId
+      )
+    );
     setEditingId(result.groupId);
-    // The reopened group may already be in edit; a new key remounts the editor so it takes focus.
+    // A new key remounts the editor so it takes focus.
     setEditorKey((key) => key + 1);
   };
 
@@ -275,7 +261,6 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
     });
     if (result?.ok) {
       setEditingId(null);
-      setReusedGroupId(null);
       return null;
     }
     if (result && result.ok === false && result.reason in GROUP_NAME_MESSAGES) {
@@ -347,13 +332,10 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
       ? "gp-status-pill--paused"
       : "gp-status-pill--recording";
   const statusLabel = !isRecording ? "Stopped" : paused ? "Paused" : "Recording";
-  // Looked up at render: the group can arrive in a later snapshot than the New group reply.
-  const reusedGroupName = reusedGroupId ? groupName(reusedGroupId) : "";
 
   return (
     <div className={`gp-panel ${selecting ? "gp-panel--selecting" : ""}`}>
       <header className="gp-header">
-        <span className="gp-title">Requestly</span>
         <span className={`gp-status-pill ${statusClass}`} aria-live="polite">
           {isRecording && paused ? (
             <Icon name="pauseCircle" size={14} className="gp-status-icon" />
@@ -364,7 +346,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
           <span className="gp-status-time">{formatTime(elapsed)}</span>
         </span>
         {isRecording && (
-          <>
+          <div className="gp-header-actions">
             {paused ? (
               <button type="button" className="gp-header-btn gp-header-btn--resume" onClick={handleResume}>
                 <Icon name="play" size={15} />
@@ -379,7 +361,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
             <button type="button" className="gp-header-btn gp-header-btn--stop" onClick={handleStop}>
               Stop
             </button>
-          </>
+          </div>
         )}
       </header>
 
@@ -441,6 +423,7 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
           {selecting ? (
             <SelectionToolbar
               groups={groups}
+              sourceIds={sourceGroupIds(groups, selectedIds)}
               selectedCount={selectedIds.length}
               hiddenCount={hiddenSelectedCount}
               onClear={() => setSelected(new Set())}
@@ -546,13 +529,6 @@ const GroupedNetworkRecordingPanel: React.FC<{ initial: GroupedPanelInitialState
           );
         })}
       </div>
-
-      {!manifestOnly && reusedGroupName && (
-        <div className="gp-notice" role="status">
-          <Icon name="info" size={13} />
-          <span>{reusedGroupNotice(reusedGroupName)}</span>
-        </div>
-      )}
 
       {!manifestOnly && (
         <div className="gp-bottom">

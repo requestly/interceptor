@@ -5,6 +5,7 @@ import { MoveToMenu } from "./MoveToMenu";
 
 interface SelectionToolbarProps {
   groups: PanelGroup[];
+  sourceIds: ReadonlySet<string>;
   selectedCount: number;
   hiddenCount: number;
   onClear: () => void;
@@ -16,6 +17,7 @@ interface SelectionToolbarProps {
 // hidden ones included, because Move and Delete act on all of them.
 const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
   groups,
+  sourceIds,
   selectedCount,
   hiddenCount,
   onClear,
@@ -35,7 +37,7 @@ const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
     <button type="button" className="gp-ghost-btn" onClick={onClear}>
       Clear
     </button>
-    <MoveToMenu groups={groups} count={selectedCount} onPick={onMove} />
+    <MoveToMenu groups={groups} sourceIds={sourceIds} count={selectedCount} onPick={onMove} />
     <button type="button" className="gp-ghost-btn gp-ghost-btn--danger" onClick={onDelete}>
       <Icon name="trash" size={13} />
       Delete

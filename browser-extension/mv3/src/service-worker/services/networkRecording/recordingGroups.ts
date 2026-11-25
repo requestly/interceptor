@@ -170,13 +170,8 @@ export class RecordingGroups {
 
   // --- Groups ---------------------------------------------------------------------------------
 
-  /** An empty newest group is reused instead of stacking another empty one. */
+  /** Empty groups are allowed; buildManifest leaves them out. */
   newGroup(): NewGroupResult {
-    const newest = this.groups[this.groups.length - 1];
-    if (this.requestIds.get(newest.id)!.length === 0) {
-      return { ok: true, groupId: newest.id, reused: true };
-    }
-
     const group: Group = { id: this.newId(), name: this.nextNewGroupName() };
     this.groups.push(group);
     this.requestIds.set(group.id, []);
@@ -184,7 +179,7 @@ export class RecordingGroups {
     this.counters.groupsCreated += 1;
     this.emit("group_created", {});
     this.bump();
-    return { ok: true, groupId: group.id, reused: false };
+    return { ok: true, groupId: group.id };
   }
 
   rename(groupId: string, raw: string): RenameGroupResult {
