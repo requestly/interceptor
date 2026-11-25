@@ -351,10 +351,6 @@ export const getIsSupportChatOpened = (state) => {
 };
 
 // request bot
-export const getRequestBot = (state) => {
-  return getGlobalState(state).misc.nonPersist?.requestBot;
-};
-
 export const getBillingTeamNudgeLastSeenTs = (state) => {
   return getGlobalState(state).misc.persist?.billingTeamNudgeLastSeenTs;
 };
