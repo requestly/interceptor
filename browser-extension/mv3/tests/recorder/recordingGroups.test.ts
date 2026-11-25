@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { RecordingGroups } from "../../src/service-worker/services/networkRecording/recordingGroups";
+import { resolveSdkStartAge, SdkNetworkPayload } from "../../src/service-worker/services/networkRecording/harBuilder";
 import { validateGroupName } from "common/networkRecordingProtocol";
 
 const T0 = 1_000_000;
@@ -207,6 +208,44 @@ describe("when the wall clock steps back", () => {
       ["slow", "sdk-before"],
       ["fresh", "sdk-after"],
     ]);
+  });
+
+  it("files an SDK capture by its start even when it reaches the worker late, across a pause", () => {
+    const { groups, wall, pass } = makeWithClocks();
+    pass(1000); // the request starts at +1000
+    pass(100);
+    const capture = { startedMsAgo: 100, postedAt: wall() }; // posted at +1100
+    pass(50);
+    groups.pause(); // +1150
+    pass(250); // delivered at +1400, during the pause
+    const age = (extra: Partial<SdkNetworkPayload>) =>
+      resolveSdkStartAge(
+        { method: "GET", url: "https://a.test/x", status: 200, responseTime: 50, ...extra },
+        wall() - 400,
+        wall()
+      );
+    assert.equal(groups.file("late", groups.msAgo(age(capture))), groups.buildView().groups[0].id);
+    assert.equal(groups.file("late-no-relay", groups.msAgo(age({ startedMsAgo: 100 }))), null);
+  });
+
+  it("files a late SDK capture into the group that was active when it started", () => {
+    const { groups, wall, pass } = makeWithClocks();
+    groups.file("r0", groups.fromWallClock(wall()));
+    pass(1000); // the request starts at +1000, in Default group
+    pass(100);
+    const capture = { startedMsAgo: 100, postedAt: wall() }; // posted at +1100
+    pass(50);
+    groups.newGroup(); // +1150
+    pass(250); // delivered at +1400
+    const [first, second] = groups.buildView().groups.map((g) => g.id);
+    const age = (extra: Partial<SdkNetworkPayload>) =>
+      resolveSdkStartAge(
+        { method: "GET", url: "https://a.test/x", status: 200, responseTime: 50, ...extra },
+        wall() - 400,
+        wall()
+      );
+    assert.equal(groups.file("late", groups.msAgo(age(capture))), first);
+    assert.equal(groups.file("late-no-relay", groups.msAgo(age({ startedMsAgo: 100 }))), second);
   });
 
   it("drops a request that starts during a pause taken after the step, and keeps the rest", () => {

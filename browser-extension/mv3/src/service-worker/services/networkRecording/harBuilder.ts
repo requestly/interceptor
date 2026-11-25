@@ -31,6 +31,8 @@ export interface SdkNetworkPayload {
   startedAt?: number;
   // The same start as an age when the page posted the capture, on the page's monotonic clock.
   startedMsAgo?: number;
+  // Epoch ms when the page posted the capture, to measure the relay to the service worker.
+  postedAt?: number;
 }
 
 const MAX_SDK_CAPTURE_DELAY_MS = 60_000;
@@ -49,16 +51,25 @@ export const resolveSdkStartedAt = (payload: SdkNetworkPayload, now: number = Da
   return stamp;
 };
 
+/** Time the capture spent between the page and the service worker; 0 when it can't be measured. */
+const relayDelay = (postedAt: unknown, now: number): number => {
+  if (typeof postedAt !== "number" || !Number.isFinite(postedAt)) return 0;
+  const delay = now - postedAt;
+  return delay > 0 && delay <= MAX_SDK_CAPTURE_DELAY_MS ? delay : 0;
+};
+
 /**
  * How long ago an SDK capture started, for filing it in a grouped recording. Prefers the page's
- * monotonic age, which a wall-clock step between the start and now cannot move. Falls back to
- * now - startedAt when the age is missing, negative or older than responseTime plus 60 s.
+ * monotonic age plus the relay delay, which a wall-clock step between the start and the post cannot
+ * move. Falls back to now - startedAt when the age is missing, negative or older than responseTime
+ * plus 60 s.
  */
 export const resolveSdkStartAge = (payload: SdkNetworkPayload, startedAt: number, now: number = Date.now()): number => {
   const responseTime = Math.max(0, Math.round(payload.responseTime ?? 0));
   const age = payload.startedMsAgo;
-  if (typeof age === "number" && Number.isFinite(age) && age >= 0 && age <= responseTime + MAX_SDK_CAPTURE_DELAY_MS) {
-    return age;
+  if (typeof age === "number" && Number.isFinite(age) && age >= 0) {
+    const total = age + relayDelay(payload.postedAt, now);
+    if (total <= responseTime + MAX_SDK_CAPTURE_DELAY_MS) return total;
   }
   return Math.max(0, now - startedAt);
 };

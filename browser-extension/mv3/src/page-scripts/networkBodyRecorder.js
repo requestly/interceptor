@@ -98,11 +98,12 @@ const applyCaps = (data, cfg) => {
   };
 
   // startedMsAgo is the start's age on this page's monotonic clock, taken as it is posted, so a
-  // grouped recording can file the request even if the wall clock steps in the meantime.
+  // grouped recording can file the request even if the wall clock steps in the meantime. postedAt
+  // lets the service worker add the time the message spent in the relay.
   const emit = ({ startedAtMonotonic, ...data }) =>
     postToExtension(
       CLIENT_MESSAGES.NETWORK_BODY_CAPTURED,
-      applyCaps({ ...data, startedMsAgo: performance.now() - startedAtMonotonic }, cfg)
+      applyCaps({ ...data, startedMsAgo: performance.now() - startedAtMonotonic, postedAt: Date.now() }, cfg)
     );
 
   const fetchStarts = new FetchStarts(() => performance.now());

@@ -60,6 +60,16 @@ describe("resolveSdkStartAge", () => {
   it("never returns a negative age", () => {
     assert.equal(resolveSdkStartAge(payload(), NOW + 50, NOW), 0);
   });
+
+  it("adds the time the capture spent in the relay to the page's age", () => {
+    assert.equal(resolveSdkStartAge(payload({ startedMsAgo: 900, postedAt: NOW - 250 }), NOW - 300, NOW), 1150);
+  });
+
+  it("ignores a relay delay that is negative, missing or implausible", () => {
+    assert.equal(resolveSdkStartAge(payload({ startedMsAgo: 900, postedAt: NOW + 40 }), NOW - 300, NOW), 900);
+    assert.equal(resolveSdkStartAge(payload({ startedMsAgo: 900, postedAt: Number.NaN }), NOW - 300, NOW), 900);
+    assert.equal(resolveSdkStartAge(payload({ startedMsAgo: 900, postedAt: NOW - 60_001 }), NOW - 300, NOW), 900);
+  });
 });
 
 describe("buildSdkEntry", () => {
