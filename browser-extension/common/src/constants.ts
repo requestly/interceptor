@@ -50,6 +50,14 @@ export const EXTENSION_MESSAGES = {
   STOP_NETWORK_BODY_CAPTURE: "stopNetworkBodyCapture",
   // Floating widget: content script → SW request to reopen the closed side panel.
   REOPEN_NETWORK_RECORDING_PANEL: "reopenNetworkRecordingPanel",
+  // Side panel → SW commands for grouped recordings (opt-in via config.groups).
+  PAUSE_NETWORK_RECORDING: "pauseNetworkRecording",
+  RESUME_NETWORK_RECORDING: "resumeNetworkRecording",
+  NEW_NETWORK_RECORDING_GROUP: "newNetworkRecordingGroup",
+  RENAME_NETWORK_RECORDING_GROUP: "renameNetworkRecordingGroup",
+  MOVE_NETWORK_RECORDING_REQUESTS: "moveNetworkRecordingRequests",
+  DELETE_NETWORK_RECORDING_REQUESTS: "deleteNetworkRecordingRequests",
+  UNDO_NETWORK_RECORDING_OPERATION: "undoNetworkRecordingOperation",
 };
 
 export const EXTENSION_EXTERNAL_MESSAGES = {
@@ -84,6 +92,8 @@ export const CLIENT_MESSAGES = {
   OPEN_CURL_IMPORT_MODAL: "openCurlImportModal",
   NETWORK_EVENT_CAPTURED: "networkEventCaptured",
   NETWORK_RECORDING_ENDED: "networkRecordingEnded",
+  // SW → side panel: full groups snapshot after pause, resume, new group, rename, move, delete, undo.
+  NETWORK_RECORDING_GROUPS_CHANGED: "networkRecordingGroupsChanged",
   NETWORK_BODY_CAPTURED: "networkBodyCaptured",
   // Page body-recorder → SW: "I'm armed and buffering, send me START (with caps) now." Pull-based
   // handshake so START isn't sent before the page (and the content-script relay) is listening.

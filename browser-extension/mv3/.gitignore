@@ -3,3 +3,4 @@ dist
 *.log
 test-results/
 scripts/alias.sh
+.test-build
