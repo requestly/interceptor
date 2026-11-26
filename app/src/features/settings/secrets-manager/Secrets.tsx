@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { unstable_useBlocker } from "react-router-dom";
+import { useBlocker } from "react-router-dom";
 import NoProvidersEmptyState from "./ProviderEmptyScreen";
 import ProviderDetails from "./ProviderDetails";
 import SecretKeysModal from "./modals/SecretKeysModal/Index";
@@ -49,7 +49,7 @@ const Secrets = () => {
     setKeyValuesModal({ open: false, secretId: null });
   }, []);
 
-  const blocker = unstable_useBlocker(useCallback(() => isDirty, [isDirty]));
+  const blocker = useBlocker(useCallback(() => isDirty, [isDirty]));
 
   useEffect(() => {
     if (blocker.state === "blocked") {
