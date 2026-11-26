@@ -242,7 +242,6 @@ const INITIAL_GLOBAL_SLICE_STATE: GlobalSliceState = {
       timeToResendEmailLogin: 0,
       isCommandBarOpen: false,
       isAppBannerVisible: false,
-      requestBot: { isActive: false, modelType: "app" },
     },
   },
 };

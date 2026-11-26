@@ -18,7 +18,7 @@
     "url": "https://requestly.com/"
   },
   "engines": {
-    "node": ">=18.18.0",
+    "node": ">=20.0.0",
     "npm": ">=8.0.0"
   },
   "scripts": {
@@ -154,7 +154,7 @@
     "react-redux": "^8.0.2",
     "react-resizable": "^3.0.4",
     "react-responsive": "^9.0.0-beta.6",
-    "react-router-dom": "6.14.1",
+    "react-router-dom": "7.18.5",
     "react-select": "^5.2.2",
     "react-split": "^2.0.14",
     "react-youtube": "^10.1.0",
@@ -208,17 +208,35 @@
     "sass": "^1.58.3",
     "source-map-loader": "^3.0.1",
     "typescript": "^5.7.3",
-    "vite": "^5.1.4",
+    "vite": "^6.4.6",
     "vite-plugin-commonjs": "^0.10.1",
-    "vite-plugin-node-polyfills": "^0.21.0",
-    "vite-plugin-static-copy": "^1.0.6",
+    "vite-plugin-node-polyfills": "^0.23.0",
+    "vite-plugin-static-copy": "^2.3.2",
     "vite-plugin-svgr": "^4.2.0",
     "vite-tsconfig-paths": "^4.3.1",
-    "vitest": "^1.3.1"
+    "vitest": "^4.1.12"
   },
   "jest": {
     "transformIgnorePatterns": [
       "/node_modules/(?!antd|@ant-design|rc-.+?|@babel/runtime).+(js|jsx)$"
     ]
+  },
+  "overrides": {
+    "@firebase/auth": {
+      "undici": "6.29.1"
+    },
+    "@firebase/auth-compat": {
+      "undici": "6.29.1"
+    },
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "1.13.7",
+      "undici": "6.29.1"
+    },
+    "@firebase/functions": {
+      "undici": "6.29.1"
+    },
+    "@firebase/storage": {
+      "undici": "6.29.1"
+    }
   }
 }

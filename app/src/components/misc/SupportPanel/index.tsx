@@ -3,7 +3,6 @@ import { Badge, Button, Dropdown } from "antd";
 import { useEffect, useMemo, useState } from "react";
 import { PiChatTeardropTextFill } from "@react-icons/all-files/pi/PiChatTeardropTextFill";
 import { BsFillChatLeftTextFill } from "@react-icons/all-files/bs/BsFillChatLeftTextFill";
-import BotIcon from "assets/icons/bot.svg?react";
 import { TbMailForward } from "@react-icons/all-files/tb/TbMailForward";
 import "./supportPanel.scss";
 //@ts-ignore
@@ -12,7 +11,6 @@ import { getIsSupportChatOpened } from "store/selectors";
 import { getUserAuthDetails } from "store/slices/global/user/selectors";
 import { useDispatch, useSelector } from "react-redux";
 import { globalActions } from "store/slices/global/slice";
-import { RequestBot } from "features/requestBot";
 import { useFeatureIsOn } from "@growthbook/growthbook-react";
 import useFetchSlackInviteVisibility from "./useSlackInviteVisibility";
 import sendSlackInvite from "./sendSlackInvite";
@@ -28,7 +26,6 @@ const SupportPanel = () => {
   const user = useSelector(getUserAuthDetails);
   const dispatch = useDispatch();
   const [isPanelVisible, setIsPanelVisible] = useState(false);
-  const [isRequestBotVisible, setIsRequestBotVisible] = useState(false);
   const paidUser = user.loggedIn && user.details?.isPremium;
   const isSlackConnectOn = useFeatureIsOn("slack_connect");
   const isSlackInviteVisible = useFetchSlackInviteVisibility();
@@ -76,24 +73,6 @@ const SupportPanel = () => {
             </a>
           ),
           icon: <GithubOutlined className="support-panel-icon-style" />,
-        },
-        {
-          key: "3",
-          label: (
-            <div
-              className="support-panel-item-style"
-              onClick={() => {
-                setIsPanelVisible(false);
-                setIsRequestBotVisible(true);
-                trackSupportOptionClicked("ask_ai");
-              }}
-            >
-              <span className="support-panel-label-style">
-                Ask AI<i className="grey-text"> 24x7 Support</i>
-              </span>
-            </div>
-          ),
-          icon: <BotIcon className="support-panel-icon-style" />,
         },
         {
           key: "4",
@@ -149,28 +128,15 @@ const SupportPanel = () => {
             type="primary"
             size="large"
             shape="circle"
-            icon={
-              isPanelVisible || isRequestBotVisible ? (
-                <CloseOutlined />
-              ) : (
-                <PiChatTeardropTextFill className="support-panel-icon-style " />
-              )
-            }
+            icon={isPanelVisible ? <CloseOutlined /> : <PiChatTeardropTextFill className="support-panel-icon-style " />}
             onClick={() => {
               if (isPanelVisible) window?.$crisp?.push(["do", "chat:close"]);
-              if (isRequestBotVisible) setIsRequestBotVisible(false);
               trackSupportOptionOpened();
               dispatch(globalActions.updateIsSupportChatOpened(true));
             }}
           />
         </Badge>
       </Dropdown>
-      <RequestBot
-        isOpen={isRequestBotVisible}
-        onClose={() => {
-          setIsRequestBotVisible(false);
-        }}
-      />
     </div>
   );
 };
