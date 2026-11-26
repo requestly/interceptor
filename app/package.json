@@ -127,7 +127,7 @@
     "lodash": "^4.17.21",
     "lottie-web": "^5.10.0",
     "md5": "^2.3.0",
-    "moment": "^2.29.1",
+    "moment": "^2.31.0",
     "pako": "^2.1.0",
     "papaparse": "^5.5.3",
     "parse-multipart-data": "^1.5.0",
