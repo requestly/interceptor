@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Tabs, TabsProps, Typography, Popover } from "antd";
 import { TabItem } from "./TabItem";
-import { Outlet, unstable_useBlocker } from "react-router-dom";
+import { Outlet, useBlocker } from "react-router-dom";
 import { RQButton } from "lib/design-system-v2/components";
 import { MdClose } from "@react-icons/all-files/md/MdClose";
 import { IoIosArrowDown } from "@react-icons/all-files/io/IoIosArrowDown";
@@ -192,7 +192,7 @@ export const TabsContainer: React.FC = () => {
     return () => window.removeEventListener("beforeunload", unloadListener);
   }, []);
 
-  unstable_useBlocker(({ nextLocation }) => {
+  useBlocker(({ nextLocation }) => {
     const isNextLocationApiClientView = nextLocation.pathname.startsWith("/api-client");
 
     if (isNextLocationApiClientView) {
