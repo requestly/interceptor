@@ -127,11 +127,45 @@ const matchRequestWithRuleSourceFilters = function (
       case SourceFilterTypes.RESOURCE_TYPE:
         return values.includes(requestDetails.type);
       case SourceFilterTypes.REQUEST_PAYLOAD:
-        return matchRequestPayload(values, requestDetails.requestData);
+        return matchRequestPayload(values, getRequestPayloadForMatching(requestDetails));
       default:
         return true;
     }
   });
+};
+
+// Picks the object that request payload filters (e.g. GraphQL operationName) should match against.
+// POST style requests keep their JSON body. GET/HEAD requests carry no body, so their payload
+// (like the GraphQL operationName) lives in the URL query params instead. This mirrors how
+// getGraphQLDetails in harLogs/utils.ts reads GQL details from the query string on GET requests.
+const getRequestPayloadForMatching = (requestDetails: AJAXRequestDetails) => {
+  const { requestData, url, method } = requestDetails;
+
+  if (requestData && typeof requestData === "object" && Object.keys(requestData).length > 0) {
+    return requestData;
+  }
+
+  const normalizedMethod = (method || "").toUpperCase();
+  if (normalizedMethod === "GET" || normalizedMethod === "HEAD") {
+    return parseQueryParams(url);
+  }
+
+  return requestData;
+};
+
+const parseQueryParams = (url: string): Record<string, string> => {
+  if (!url) return {};
+
+  try {
+    const searchParams = new URL(url).searchParams;
+    const queryParams: Record<string, string> = {};
+    searchParams.forEach((value, key) => {
+      queryParams[key] = value;
+    });
+    return queryParams;
+  } catch (e) {
+    return {};
+  }
 };
 
 const matchRequestPayload = (requestPayloadFilter: RequestPayloadFilter, requestData: any) => {

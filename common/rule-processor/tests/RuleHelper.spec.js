@@ -345,6 +345,50 @@ describe("RuleHelper: ", function () {
         expect(RuleHelper.matchRequestWithRuleSourceFilters(sourceFilters, requestDetails)).toBeFalsy();
       });
     });
+
+    describe("#matchRequestWithRuleSourceFilters (request payload from query params)", function () {
+      // GraphQL operationName targeting is a request payload filter with key "operationName".
+      const gqlSourceFilters = {
+        [CONSTANTS.RULE_SOURCE_FILTER_TYPES.REQUEST_DATA]: {
+          key: "operationName",
+          value: "GetUser",
+        },
+      };
+
+      it("should match a GET GraphQL request whose operationName is in the query params", function () {
+        const requestDetails = {
+          method: "GET",
+          type: "xmlhttprequest",
+          pageUrl: URL_SOURCES.EXAMPLE,
+        };
+        const url = "https://example.com/graphql?operationName=GetUser&variables=%7B%7D";
+
+        expect(RuleHelper.matchRequestWithRuleSourceFilters(gqlSourceFilters, requestDetails, url)).toBeTruthy();
+      });
+
+      it("should not match when the query param operationName is different", function () {
+        const requestDetails = {
+          method: "GET",
+          type: "xmlhttprequest",
+          pageUrl: URL_SOURCES.EXAMPLE,
+        };
+        const url = "https://example.com/graphql?operationName=GetTeams";
+
+        expect(RuleHelper.matchRequestWithRuleSourceFilters(gqlSourceFilters, requestDetails, url)).toBeFalsy();
+      });
+
+      it("should still match a POST GraphQL request using the request body", function () {
+        const requestDetails = {
+          method: "POST",
+          type: "xmlhttprequest",
+          pageUrl: URL_SOURCES.EXAMPLE,
+          requestData: { operationName: "GetUser", variables: {} },
+        };
+        const url = "https://example.com/graphql";
+
+        expect(RuleHelper.matchRequestWithRuleSourceFilters(gqlSourceFilters, requestDetails, url)).toBeTruthy();
+      });
+    });
   });
 
   describe("#headerModificationTypes", function () {
