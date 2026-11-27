@@ -19,7 +19,6 @@ import { SOURCE } from "modules/analytics/events/common/constants";
 import { getUserAvatarUrl } from "utils/ImageUtils";
 import { trackHeaderClicked } from "modules/analytics/events/common/onboarding/header";
 import { trackUpgradeClicked } from "modules/analytics/events/misc/monetizationExperiment";
-import { getAppFlavour } from "utils/AppUtils";
 import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import { isSafariBrowser } from "actions/ExtensionActions";
 import { isActiveWorkspaceShared } from "store/slices/workspaces/selectors";
@@ -53,7 +52,6 @@ export default function HeaderUser() {
   const [loading, setLoading] = useState(false);
   const [hideUserDropDown, setHideUserDropdown] = useState(false);
   const [isSignupButtonLoading, setIsSignupButtonLoading] = useState(false);
-  const appFlavour = useMemo(() => getAppFlavour(), []);
 
   useEffect(() => {
     setHideUserDropdown(
@@ -75,7 +73,6 @@ export default function HeaderUser() {
       },
       { type: "divider" },
       {
-        disabled: appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR,
         label: "Profile",
         onClick: () => redirectToProfileSettings(navigate, window.location.pathname, "header"),
       },
@@ -84,7 +81,6 @@ export default function HeaderUser() {
         onClick: () => redirectToWorkspaceSettings(navigate, window.location.pathname, "header"),
       },
       {
-        disabled: appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR,
         label: "Plans and Billing",
         onClick: () => redirectToMyPlan(navigate, window.location.pathname, "header"),
       },
@@ -109,7 +105,7 @@ export default function HeaderUser() {
         },
       },
     ],
-    [appMode, dispatch, isSharedWorkspaceMode, navigate, userEmail, userPhoto, userName, appFlavour]
+    [appMode, dispatch, isSharedWorkspaceMode, navigate, userEmail, userPhoto, userName]
   );
 
   const handleAuthButtonClick = (authMode) => {
@@ -176,9 +172,7 @@ export default function HeaderUser() {
             </Dropdown>
           </Col>
           <Col>
-            {!isSafariBrowser() &&
-            (!planDetails?.planId || !["active", "past_due"].includes(planDetails?.status)) &&
-            appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.REQUESTLY ? (
+            {!isSafariBrowser() && (!planDetails?.planId || !["active", "past_due"].includes(planDetails?.status)) ? (
               <RQButton
                 type="primary"
                 className="header-upgrade-btn"

@@ -24,14 +24,9 @@ export const getAppDetails = () => {
 export const isDesktopMode = () => {
   return getAppDetails().app_mode === GLOBAL_CONSTANTS.APP_MODES.DESKTOP;
 };
-// Requestly/SessionBear-owned production & beta hosts. Single source of truth for
+// Requestly-owned production & beta hosts. Single source of truth for
 // "is this one of our origins" checks (production UI detection, safe redirect targets, etc.).
-export const PRODUCTION_UI_HOSTS = [
-  "app.requestly.io",
-  "beta.requestly.io",
-  "app.sessionbear.com",
-  "beta.sessionbear.com",
-];
+export const PRODUCTION_UI_HOSTS = ["app.requestly.io", "beta.requestly.io"];
 
 export const isProductionUI =
   PRODUCTION_UI_HOSTS.some((host) => window.location.host.includes(host)) && !window.testMode;
@@ -47,20 +42,6 @@ export const isAppOpenedInIframe = () => {
     // Browsers can block access to window.top due to same origin policy.
     return true;
   }
-};
-
-export const getAppFlavour = () => {
-  // TEMP: ADDED PARAMS FOR SESSIONBEAR, FOR TESTING ON LOCAL ENV. TO BE REMOVED BEFORE RELEASE
-  const queryParams = new URLSearchParams(window.location.search);
-  if (
-    window.location.host.includes("app.sessionbear.com") ||
-    window.location.host.includes("beta.sessionbear.com") ||
-    queryParams.get("flavour") === GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR
-  ) {
-    return GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR;
-  }
-
-  return GLOBAL_CONSTANTS.APP_FLAVOURS.REQUESTLY;
 };
 
 export const isSetappBuild = () => {

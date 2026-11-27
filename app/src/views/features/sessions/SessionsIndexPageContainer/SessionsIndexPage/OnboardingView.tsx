@@ -18,8 +18,6 @@ import {
   trackTriedRecordingForInvalidURL,
 } from "modules/analytics/events/features/sessionRecording";
 // import { ImportHarModalButton } from "../NetworkSessions/ImportHarModalButton";
-import { getAppFlavour } from "utils/AppUtils";
-import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 // import "./index.scss";
 import { useNavigate } from "react-router-dom";
 import { redirectToNetworkSession } from "utils/RedirectionUtils";
@@ -117,7 +115,6 @@ export const SessionOnboardingView: React.FC<SessionOnboardProps> = ({
 }) => {
   const inputRef = useRef<InputRef>();
   const dispatch = useDispatch();
-  const appFlavour = getAppFlavour();
 
   useEffect(() => {
     trackOnboardingPageViewed();
@@ -172,10 +169,7 @@ export const SessionOnboardingView: React.FC<SessionOnboardProps> = ({
       <Row justify="space-between" className="onboarding-banner">
         <Col span={isModalView ? 24 : 12} className="banner-text-container">
           <Row className="banner-header">
-            <Title className="banner-title">
-              Debug issues faster with{" "}
-              {appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR ? "SessionBear" : "SessionBook"}
-            </Title>
+            <Title className="banner-title">Debug issues faster with SessionBook</Title>
           </Row>
           <Row className="banner-description">
             <Text type="secondary" className="banner-text w-full">
@@ -222,11 +216,7 @@ export const SessionOnboardingView: React.FC<SessionOnboardProps> = ({
           <Col span={12} className="banner-demo-video">
             <Row justify="end">
               <img
-                src={
-                  appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR
-                    ? "/assets/media/common/SessionBear.gif"
-                    : "/assets/media/common/sessions-banner.gif"
-                }
+                src="/assets/media/common/sessions-banner.gif"
                 alt="How to start session recording"
                 className="demo-video"
               />

@@ -30,13 +30,12 @@ import { redirectToSessionRecordingHome } from "utils/RedirectionUtils";
 import PATHS from "config/constants/sub/paths";
 import SaveRecordingConfigPopup from "./SaveRecordingConfigPopup";
 import { trackSavedSessionViewed } from "modules/analytics/events/features/sessionRecording";
-import { getAppFlavour, isAppOpenedInIframe } from "utils/AppUtils";
+import { isAppOpenedInIframe } from "utils/AppUtils";
 import "./sessionViewer.scss";
 import BadSessionError from "../errors/BadSessionError";
 import { useFeatureIsOn } from "@growthbook/growthbook-react";
 import FEATURES from "config/constants/sub/features";
 import { isFeatureCompatible } from "utils/CompatibilityUtils";
-import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import { getActiveWorkspaceId } from "store/slices/workspaces/selectors";
 
 interface NavigationState {
@@ -48,7 +47,6 @@ interface SessionCreatedOnboardingPromptProps {
 }
 
 const SessionCreatedOnboardingPrompt: React.FC<SessionCreatedOnboardingPromptProps> = ({ onClose }) => {
-  const appFlavour = getAppFlavour();
   return (
     <div className="session-onboarding-prompt">
       <div className="display-flex">
@@ -63,14 +61,7 @@ const SessionCreatedOnboardingPrompt: React.FC<SessionCreatedOnboardingPromptPro
         </div>
       </div>
       <div className="session-onboarding-prompt-actions">
-        <Link
-          to={
-            appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR
-              ? PATHS.SETTINGS.SESSIONS_SETTINGS.RELATIVE
-              : PATHS.SESSIONS.SETTINGS.RELATIVE
-          }
-          className="session-onboarding-prompt-settings-link"
-        >
+        <Link to={PATHS.SESSIONS.SETTINGS.RELATIVE} className="session-onboarding-prompt-settings-link">
           <SettingOutlined />
           <span>Open settings</span>
         </Link>
@@ -106,7 +97,6 @@ const SavedSessionViewer: React.FC = () => {
   const isInsideIframe = useMemo(isAppOpenedInIframe, []);
 
   const navigateToList = useCallback(() => navigate(PATHS.SESSIONS.ABSOLUTE), [navigate]);
-  const appFlavour = getAppFlavour();
 
   const confirmDeleteAction = useCallback(() => {
     Modal.confirm({
@@ -217,9 +207,7 @@ const SavedSessionViewer: React.FC = () => {
   ) : (
     <>
       <div className={`session-viewer-page ${isInsideIframe ? "inside-iframe" : ""}`}>
-        {showOnboardingPrompt && appFlavour !== GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR && (
-          <SessionCreatedOnboardingPrompt onClose={hideOnboardingPrompt} />
-        )}
+        {showOnboardingPrompt && <SessionCreatedOnboardingPrompt onClose={hideOnboardingPrompt} />}
         <div className="session-viewer-header">
           <div className="display-row-center w-full">
             {!isMobileScreen && (
