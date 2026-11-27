@@ -19,7 +19,6 @@ import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 //UTILS
 import { redirectToForgotPassword } from "utils/RedirectionUtils";
 import { getAuthErrorMessage, AuthTypes } from "components/authentication/utils";
-import posthog from "posthog-js";
 import { isLocalStoragePresent } from "utils/AppUtils";
 import { clientStorageService } from "services/clientStorageService";
 
@@ -178,13 +177,6 @@ export const handleResetPasswordOnClick = (
 
 export const handleLogoutButtonOnClick = async (appMode: string, isWorkspaceMode: boolean, dispatch: any) => {
   try {
-    if (window.location.host.includes("app.requestly.io")) {
-      try {
-        posthog.reset();
-      } catch (error) {
-        console.log("Error while resetting posthog", error);
-      }
-    }
     if (!window.uid || !isLocalStoragePresent(appMode)) {
       return signOut();
     }

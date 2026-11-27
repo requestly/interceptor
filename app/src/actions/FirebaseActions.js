@@ -335,59 +335,6 @@ export const handleCustomGoogleSignIn = async (credential, successfulLoginCallba
   }
 };
 
-export const handleOnetapSignIn = async ({ credential }) => {
-  try {
-    const auth = getAuth(firebaseApp);
-    const OAuthCredential = GoogleAuthProvider.credential(credential);
-
-    const result = await signInWithCredential(auth, OAuthCredential);
-    const uid = result?.user?.uid || null;
-    const email = result?.user?.email || null;
-
-    const additionalUserInfo = getAdditionalUserInfo(result); // get this info
-    const is_new_user = additionalUserInfo?.isNewUser || false;
-
-    const emailType = await getEmailType(email);
-
-    if (is_new_user) {
-      trackSignUpAttemptedEvent({
-        auth_provider: AUTH_PROVIDERS.GMAIL,
-        source: SOURCE.ONE_TAP_PROMPT,
-      });
-      trackSignupSuccessEvent({
-        auth_provider: AUTH_PROVIDERS.GMAIL,
-        email,
-        uid,
-        email_type: emailType,
-        domain: email.split("@")[1],
-        source: SOURCE.ONE_TAP_PROMPT,
-      });
-    } else {
-      trackLoginAttemptedEvent({
-        auth_provider: AUTH_PROVIDERS.GMAIL,
-        source: SOURCE.ONE_TAP_PROMPT,
-      });
-      trackLoginSuccessEvent({
-        auth_provider: AUTH_PROVIDERS.GMAIL,
-        uid,
-        email,
-        email_type: emailType,
-        domain: email.split("@")[1],
-        source: SOURCE.ONE_TAP_PROMPT,
-      });
-    }
-
-    return { is_new_user };
-  } catch (err) {
-    trackLoginFailedEvent({
-      auth_provider: AUTH_PROVIDERS.GMAIL,
-      error_message: err.message,
-      source: SOURCE.ONE_TAP_PROMPT,
-    });
-    throw err;
-  }
-};
-
 export async function googleSignIn(callback, MODE, source) {
   const provider = new GoogleAuthProvider();
   provider.addScope("profile");
