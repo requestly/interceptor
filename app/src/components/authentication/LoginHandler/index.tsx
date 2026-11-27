@@ -73,7 +73,7 @@ const LoginHandler: React.FC = () => {
           const navigateParams = urlObj.pathname + urlObj.search;
           navigate(navigateParams);
         } else if (PRODUCTION_UI_HOSTS.includes(urlObj.hostname)) {
-          // Cross-origin, but a trusted Requestly/SessionBear host — honor the original target.
+          // Cross-origin, but a trusted Requestly host — honor the original target.
           window.open(url, "_self");
         } else {
           // Untrusted origin — do not follow (open-redirect / CWE-601).

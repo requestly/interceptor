@@ -26,8 +26,6 @@ import { isFeatureCompatible } from "utils/CompatibilityUtils";
 import { ImportWebSessionModalButton } from "../SessionsList/components/ImportWebSessionModalButton/ImportWebSessionModalButton";
 import { RQButton } from "lib/design-system-v2/components";
 import { ImportSessionModal } from "features/sessionBook/modals/ImportSessionModal/ImportSessionModal";
-import { getAppFlavour } from "utils/AppUtils";
-import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import { useRBAC } from "features/rbac";
 import { Conditional } from "components/common/Conditional";
 import "./sessionsOnboardingView.scss";
@@ -43,7 +41,6 @@ export const SessionsOnboardingView: React.FC<SessionOnboardingViewProps> = ({ i
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [isImportSessionModalOpen, setIsImportSessionModalOpen] = useState(false);
-  const appFlavour = getAppFlavour();
   const { validatePermission } = useRBAC();
   const { isValidPermission } = validatePermission("session_recording", "create");
 
@@ -105,11 +102,9 @@ export const SessionsOnboardingView: React.FC<SessionOnboardingViewProps> = ({ i
             <Row justify="end" align="middle" className="settings-row">
               <Space size={20}>
                 {openDownloadedSessionModalBtn}
-                {appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.REQUESTLY && (
-                  <span onClick={handleSettingsNavigation} className="settings-btn">
-                    <MdOutlineSettings /> &nbsp; <Text underline>Settings</Text>
-                  </span>
-                )}
+                <span onClick={handleSettingsNavigation} className="settings-btn">
+                  <MdOutlineSettings /> &nbsp; <Text underline>Settings</Text>
+                </span>
               </Space>
             </Row>
           </Conditional>
@@ -118,10 +113,7 @@ export const SessionsOnboardingView: React.FC<SessionOnboardingViewProps> = ({ i
         <Row justify="space-between" className="onboarding-banner">
           <Col span={isModalView ? 24 : 12} className="banner-text-container">
             <Row className="banner-header">
-              <Title className="banner-title">
-                Debug issues faster with{" "}
-                {appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR ? "SessionBear" : "SessionBook"}
-              </Title>
+              <Title className="banner-title">Debug issues faster with SessionBook</Title>
             </Row>
             <Row className="banner-description">
               <Text type="secondary" className="banner-text w-full">

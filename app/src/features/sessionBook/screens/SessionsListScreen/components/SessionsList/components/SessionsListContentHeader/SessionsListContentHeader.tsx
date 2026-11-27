@@ -1,8 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ContentListHeader } from "componentsV2/ContentList";
-import { getAppFlavour } from "utils/AppUtils";
-import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import { redirectToSessionSettings } from "utils/RedirectionUtils";
 import { RQButton } from "lib/design-system/components";
 import { NewSessionModal } from "features/sessionBook/modals/NewSessionModal/NewSessionModal";
@@ -33,7 +31,6 @@ export const SessionsListContentHeader: React.FC<SessionsListContentHeaderProps>
   const [isImportSessionModalOpen, setIsImportSessionModalOpen] = useState(false);
   const isDesktopSessionsCompatible =
     useFeatureIsOn("desktop-sessions") && isFeatureCompatible(FEATURES.DESKTOP_SESSIONS);
-  const appFlavour = getAppFlavour();
   const { validatePermission } = useRBAC();
   const { isValidPermission } = validatePermission("session_recording", "update");
 
@@ -50,9 +47,7 @@ export const SessionsListContentHeader: React.FC<SessionsListContentHeaderProps>
   return (
     <>
       <div className="sessions-table-header">
-        <div className="sessions-table-title">
-          {appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR ? "Sessions" : "SessionBook"}
-        </div>
+        <div className="sessions-table-title">SessionBook</div>
 
         <ContentListHeader
           searchValue={searchValue}

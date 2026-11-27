@@ -2,11 +2,9 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { unstable_usePrompt, useLocation, useNavigate } from "react-router-dom";
 import { Col, Modal, Row } from "antd";
-import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import PATHS from "config/constants/sub/paths";
 import { RQButton } from "lib/design-system/components";
 import { SaveSessionButton } from "features/sessionBook/components/SaveSessionButton/SaveSessionButton";
-import { getAppFlavour } from "utils/AppUtils";
 import { SessionPlayer } from "features/sessionBook/components/SessionPlayer/SessionPlayer";
 import DraftSessionDetailsPanel from "../DraftSessionDetailsPanel/DraftSessionDetailsPanel";
 import { trackDraftSessionDiscarded, trackDraftSessionViewed } from "features/sessionBook/analytics";
@@ -27,7 +25,6 @@ export const DraftSessionViewer: React.FC<DraftSessionViewerProps> = ({ isDeskto
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const appFlavour = getAppFlavour();
   const [sessionPlayerOffset, setSessionPlayerOffset] = useState(0);
   const [isDiscardClicked, setIsDiscardClicked] = useState(false);
   const [isSaveSessionClicked, setIsSaveSessionClicked] = useState(false);
@@ -77,19 +74,11 @@ export const DraftSessionViewer: React.FC<DraftSessionViewerProps> = ({ isDeskto
       <div className="draft-session-viewer-container">
         <div className="draft-session-viewer-header-container">
           {isOpenedInIframe ? (
-            <>
-              {appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR ? (
-                <img src={"/assets/media/common/sessionBearLogoFull.svg"} alt="SessionBear Logo" width={150} />
-              ) : (
-                <img
-                  src={`/assets/media/common/${
-                    isBrowserStackIntegrationOn ? "RQ-BStack Logo.svg" : "rq_logo_full.svg"
-                  }`}
-                  alt="Requestly Logo"
-                  width={120}
-                />
-              )}
-            </>
+            <img
+              src={`/assets/media/common/${isBrowserStackIntegrationOn ? "RQ-BStack Logo.svg" : "rq_logo_full.svg"}`}
+              alt="Requestly Logo"
+              width={120}
+            />
           ) : (
             <>
               <div className="draft-session-header-breadcrumb">

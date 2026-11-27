@@ -13,15 +13,11 @@ import "./assets/less/index.less";
 import "./styles/custom/custom.scss";
 
 import PageError from "components/misc/PageError";
-import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
-import { getAppFlavour } from "utils/AppUtils";
 import App from "./App";
-import SessionBearApp from "src-SessionBear/App";
 
 const persistor = persistStore(reduxStore);
 const container = document.getElementById("root");
 const root = createRoot(container);
-const appFlavour = getAppFlavour();
 
 /* Google translate replaces textNodes from the DOM  with <font> tag
   Beacuse of this, React throws error when re-rednering the component
@@ -64,7 +60,7 @@ root.render(
         }}
       >
         <HotkeysProvider>
-          {appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR ? <SessionBearApp /> : <App />}
+          <App />
         </HotkeysProvider>
       </Sentry.ErrorBoundary>
     </PersistGate>

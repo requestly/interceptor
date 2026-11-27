@@ -11,10 +11,8 @@ import { BiArrowBack } from "@react-icons/all-files/bi/BiArrowBack";
 import { trackAppOnboardingStepCompleted, trackAppOnboardingViewed } from "features/onboarding/analytics";
 import { m } from "framer-motion";
 import APP_CONSTANTS from "config/constants";
-import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import { useFeatureValue } from "@growthbook/growthbook-react";
 import { CompaniesLogoBanner } from "./components/CompaniesLogoBanner";
-import { getAppFlavour } from "utils/AppUtils";
 import "./index.scss";
 
 interface Props {
@@ -42,7 +40,6 @@ export const AuthScreen: React.FC<Props> = ({
   const [email, setEmail] = useState("");
   const [isVerifyEmailPopupVisible, setIsVerifyEmailPopupVisible] = useState(false);
   const onboardingVariation = useFeatureValue("onboarding_activation_v2", "variant1");
-  const appFlavour = getAppFlavour();
 
   useEffect(() => {
     if (isOpen && isOnboarding) {
@@ -99,7 +96,7 @@ export const AuthScreen: React.FC<Props> = ({
                 warningMessage={warningMessage}
               />
             </m.div>
-            {authMode === AUTH.ACTION_LABELS.SIGN_UP && appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.REQUESTLY && (
+            {authMode === AUTH.ACTION_LABELS.SIGN_UP && (
               <m.div transition={{ type: "linear" }} layout className="companies-logo-banner">
                 <CompaniesLogoBanner />
               </m.div>
