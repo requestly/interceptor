@@ -17,9 +17,10 @@ export const useGoogleAuthButton = ({
 }) => {
   const config = useMemo(() => {
     return {
-      client_id: window.location.host.includes("app.requestly.io")
-        ? "911299702852-u365fa2rdf8g64q144gtccna87rmd8ji.apps.googleusercontent.com"
-        : "553216647714-b34rhgl06o7vokpebigjttrgebmm495h.apps.googleusercontent.com",
+      client_id:
+        window.location.hostname === "app.requestly.io"
+          ? "911299702852-u365fa2rdf8g64q144gtccna87rmd8ji.apps.googleusercontent.com"
+          : "553216647714-b34rhgl06o7vokpebigjttrgebmm495h.apps.googleusercontent.com",
       callback: callback,
     };
   }, [callback]);

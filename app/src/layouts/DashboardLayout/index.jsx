@@ -12,7 +12,6 @@ import {
 import Footer from "../../components/sections/Footer";
 import DashboardContent from "./DashboardContent";
 import { Sidebar } from "./Sidebar";
-// import { useGoogleOneTapLogin } from "hooks/useGoogleOneTapLogin";
 import { removeElement } from "utils/domUtils";
 import { isAppOpenedInIframe, isDesktopMode } from "utils/AppUtils";
 import { AppNotificationBanner } from "../../componentsV2/AppNotificationBanner";
@@ -39,7 +38,6 @@ const DashboardLayout = () => {
   const dispatch = useDispatch();
   const location = useLocation();
   const { pathname } = location;
-  // const { initializeOneTap, promptOneTap, shouldShowOneTapPrompt } = useGoogleOneTapLogin();
   const user = useSelector(getUserAuthDetails);
   const { isDesktopAppConnected } = useDesktopAppConnection();
   const { role } = useCurrentWorkspaceUserRole();
@@ -48,11 +46,6 @@ const DashboardLayout = () => {
   useRootPathRedirector();
   useInitPopupConfig();
   useWorkspaceFetcher();
-  // initializeOneTap();
-
-  // if (shouldShowOneTapPrompt()) {
-  //   promptOneTap();
-  // }
 
   const isSidebarVisible = useMemo(
     () =>
