@@ -3,8 +3,6 @@ import { MODES } from "components/misc/VerifyEmail/modes";
 import APP_CONSTANTS from "../config/constants";
 import { isFeatureCompatible } from "./CompatibilityUtils";
 import FEATURES from "config/constants/sub/features";
-import { getAppFlavour } from "./AppUtils";
-import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 
 //CONSTANTS
 const { PATHS, LINKS } = APP_CONSTANTS;
@@ -130,12 +128,7 @@ export const redirectToSavedSession = (navigate, id) => {
 };
 
 export const redirectToSessionSettings = (navigate, redirectUrl, source) => {
-  const appFlavour = getAppFlavour();
-  if (appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.SESSIONBEAR) {
-    navigate(PATHS.SETTINGS.SESSIONS_SETTINGS.ABSOLUTE, { state: { redirectUrl, source } });
-  } else {
-    navigate(PATHS.SETTINGS.SESSION_BOOK.ABSOLUTE, { state: { redirectUrl, source } });
-  }
+  navigate(PATHS.SETTINGS.SESSION_BOOK.ABSOLUTE, { state: { redirectUrl, source } });
 };
 
 export const redirectToNetworkSessionHome = (navigate, isDesktopSessionsCompatible = false) => {

@@ -27,7 +27,67 @@ export interface SdkNetworkPayload {
   responseTime?: number;
   responseURL?: string;
   errors?: number[];
+  // Epoch ms stamped by the page script when the capture happened (see networkBodyRecorder.js).
+  startedAt?: number;
+  // The same start as an age when the page posted the capture, on the page's monotonic clock.
+  startedMsAgo?: number;
+  // When the page posted the capture, to measure the relay to the service worker: on the shared
+  // monotonic clock (performance.timeOrigin + performance.now()), and as epoch ms.
+  postedAtHr?: number;
+  postedAt?: number;
 }
+
+const MAX_SDK_CAPTURE_DELAY_MS = 60_000;
+
+/**
+ * Start time (epoch ms) of an SDK capture. Prefers the page script's stamp, which is taken when the
+ * capture happened and so is not skewed by the pre-START buffer. Falls back to now - responseTime
+ * when the stamp is missing, in the future, or older than responseTime plus 60 s.
+ */
+export const resolveSdkStartedAt = (payload: SdkNetworkPayload, now: number = Date.now()): number => {
+  const responseTime = Math.max(0, Math.round(payload.responseTime ?? 0));
+  const stamp = payload.startedAt;
+  if (typeof stamp !== "number" || !Number.isFinite(stamp)) return now - responseTime;
+  if (stamp > now) return now - responseTime;
+  if (now - stamp > responseTime + MAX_SDK_CAPTURE_DELAY_MS) return now - responseTime;
+  return stamp;
+};
+
+const delaySince = (stamp: unknown, now: number): number | undefined => {
+  if (typeof stamp !== "number" || !Number.isFinite(stamp)) return undefined;
+  const delay = now - stamp;
+  return delay >= 0 && delay <= MAX_SDK_CAPTURE_DELAY_MS ? delay : undefined;
+};
+
+/**
+ * Time the capture spent between the page and the service worker. The monotonic stamp is used first
+ * because a wall-clock step during the relay cannot move it; 0 when neither can be measured.
+ */
+const relayDelay = (payload: SdkNetworkPayload, now: number, hrNow: number): number =>
+  delaySince(payload.postedAtHr, hrNow) ?? delaySince(payload.postedAt, now) ?? 0;
+
+const sharedMonotonicNow = (): number => performance.timeOrigin + performance.now();
+
+/**
+ * How long ago an SDK capture started, for filing it in a grouped recording. Prefers the page's
+ * monotonic age plus the relay delay, which a wall-clock step between the start and the post cannot
+ * move. Falls back to now - startedAt when the age is missing, negative or older than responseTime
+ * plus 60 s.
+ */
+export const resolveSdkStartAge = (
+  payload: SdkNetworkPayload,
+  startedAt: number,
+  now: number = Date.now(),
+  hrNow: number = sharedMonotonicNow()
+): number => {
+  const responseTime = Math.max(0, Math.round(payload.responseTime ?? 0));
+  const age = payload.startedMsAgo;
+  if (typeof age === "number" && Number.isFinite(age) && age >= 0) {
+    const total = age + relayDelay(payload, now, hrNow);
+    if (total <= responseTime + MAX_SDK_CAPTURE_DELAY_MS) return total;
+  }
+  return Math.max(0, now - startedAt);
+};
 
 /**
  * The HAR _resourceType enum (Chrome DevTools convention) differs from
@@ -222,10 +282,11 @@ const byteLength = (text: string | undefined): number => (text === undefined ? -
  * XHR/Fetch. Unlike the webRequest path this carries request + response BODIES and headers, with
  * no correlation needed (the payload is self-complete). `requestId` is extension-assigned.
  */
-export const buildSdkEntry = (payload: SdkNetworkPayload, requestId: string): NetworkHarEntry => {
+export const buildSdkEntry = (payload: SdkNetworkPayload, requestId: string, startedAtMs?: number): NetworkHarEntry => {
   const responseTime = Math.max(0, Math.round(payload.responseTime ?? 0));
   // The SDK doesn't give a start timestamp; derive it so startedDateTime + time are consistent.
-  const startTime = Date.now() - responseTime;
+  // Grouped recordings pass the page's resolved start stamp, the same start they file the entry by.
+  const startTime = startedAtMs ?? Date.now() - responseTime;
 
   const requestText = bodyToText(payload.requestData);
   const responseText = bodyToText(payload.response);

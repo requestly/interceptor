@@ -18,7 +18,6 @@ import { trackDraftSessionSaved, trackDraftSessionSaveFailed } from "features/se
 import { toast } from "utils/Toast";
 import { DebugInfo, SessionSaveMode } from "features/sessionBook/types";
 import PATHS from "config/constants/sub/paths";
-import { getAppFlavour } from "utils/AppUtils";
 import { getActiveWorkspaceId } from "store/slices/workspaces/selectors";
 
 export const useSaveDraftSession = () => {
@@ -43,11 +42,7 @@ export const useSaveDraftSession = () => {
       const sessionMetadata = { ...sessionRecordingMetadata, sessionAttributes: attributes };
 
       const recordingOptionsToSave = getRecordingOptionsToSave(recordingOptions);
-      const appFlavour = getAppFlavour();
-      const clientSource =
-        appFlavour === GLOBAL_CONSTANTS.APP_FLAVOURS.REQUESTLY
-          ? GLOBAL_CONSTANTS.CLIENT_SOURCE.REQUESTLY
-          : GLOBAL_CONSTANTS.CLIENT_SOURCE.SESSIONBEAR;
+      const clientSource = GLOBAL_CONSTANTS.CLIENT_SOURCE.REQUESTLY;
 
       if (isOpenedInIframe) {
         window.parent.postMessage(

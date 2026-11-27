@@ -6,7 +6,7 @@ import { COLLECTION_NAME } from "./constants";
 import { createFile } from "services/firebaseStorageService";
 import { RecordingOptions, SessionRecordingMetadata, Visibility } from "views/features/sessions/SessionViewer/types";
 import { getOwnerId } from "backend/utils";
-import { getAppFlavour } from "utils/AppUtils";
+import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import { RuleType } from "@requestly/shared/types/entities/rules";
 
 export const saveRecording = async (
@@ -53,7 +53,8 @@ export const saveRecording = async (
     createdTs: Date.now(),
     source,
     testThisRuleMetadata,
-    appFlavour: getAppFlavour(),
+    // Kept after SessionBear's retirement: requestly-cloud's postSaveSession trigger reports it.
+    appFlavour: GLOBAL_CONSTANTS.APP_FLAVOURS.REQUESTLY,
   };
 
   const docId = await addDoc(collection(db, COLLECTION_NAME), data)

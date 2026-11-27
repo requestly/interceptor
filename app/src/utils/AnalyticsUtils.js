@@ -1,10 +1,9 @@
 import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import DataStoreUtils from "./DataStoreUtils";
 import { getDateString } from "./DateTimeUtils";
-import { getAppDetails, getAppFlavour } from "./AppUtils";
+import { getAppDetails } from "./AppUtils";
 import { trackAttr } from "modules/analytics";
 import { isDesktopMode } from "./Misc";
-import { isSessionBearExtensionInstalled } from "actions/ExtensionActions";
 import APP_CONSTANTS from "config/constants";
 
 export const submitAttrUtil = (attr, value) => {
@@ -19,8 +18,7 @@ export const submitAppDetailAttributes = () => {
   if (app_mode === GLOBAL_CONSTANTS.APP_MODES.EXTENSION) {
     trackAttr("extension_version", app_version);
     trackAttr("extension_id", ext_id);
-    trackAttr(APP_CONSTANTS.GA_EVENTS.ATTR.SESSIONBEAR_INSTALLED, isSessionBearExtensionInstalled());
-    trackAttr(APP_CONSTANTS.GA_EVENTS.ATTR.APP_FLAVOUR, getAppFlavour());
+    trackAttr(APP_CONSTANTS.GA_EVENTS.ATTR.APP_FLAVOUR, GLOBAL_CONSTANTS.APP_FLAVOURS.REQUESTLY);
   } else if (app_mode === GLOBAL_CONSTANTS.APP_MODES.DESKTOP) {
     trackAttr("desktop_app_version", app_version);
   }
