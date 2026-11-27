@@ -114,4 +114,9 @@ FEATURES.DESKTOP_BETA_PREVIEW_URL_CONFIGURATION = "desktop_beta_preview_url_conf
 FEATURES.SECRETS_MANAGER = "secrets_manager";
 FEATURES.ALLOW_INSECURE_SSL = "allow_insecure_ssl";
 
+// RQ-2426: desktop-only "Developer script mode" toggle (safe sandbox vs full-access
+// for programmatic code rules). Gated so it only shows on desktop versions that ship
+// the devScriptMode preference handlers + sandboxing proxy.
+FEATURES.DEVELOPER_SCRIPT_MODE = "developer_script_mode";
+
 export default FEATURES;

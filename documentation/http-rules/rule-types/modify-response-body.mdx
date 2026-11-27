@@ -109,6 +109,13 @@ Modify API Response Rules are useful in several scenarios:
       →<a target="_blank" href="/http-rules/advanced-usage/shared-state">Learn more about shared state here.</a>
     </Card>
 
+    <Note>
+      On the **desktop app**, this JavaScript runs inside a secure sandbox by default — it has no
+      filesystem or system access. If your script needs Node.js APIs such as `require`, `fs`, or
+      `process`, enable <a target="_blank" href="/interceptor/desktop-app/developer-script-mode">**Developer Script Mode**</a>
+      (off by default for safety).
+    </Note>
+
     *     <img src="/images/modify-response-body/def6fdf1-d07c-4b50-98e6-cd5359c6e259.png" align="center" fullwidth="false" />
 
           <Tip>

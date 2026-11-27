@@ -15,6 +15,7 @@ import { getAppMode } from "store/selectors";
 import { CONSTANTS as GLOBAL_CONSTANTS } from "@requestly/requestly-core";
 import { Col } from "antd";
 import PremiumPlanBadge from "./PremiumPlanBadge/PremiumPlanBadge";
+import DevScriptModeBadge from "./DevScriptModeBadge";
 import { getUserAuthDetails } from "store/slices/global/user/selectors";
 import GitHubButton from "react-github-btn";
 import "./menuHeader.scss";
@@ -57,6 +58,7 @@ export const MenuHeader = () => {
       </div>
       <div className="app-primary-header-section app-primary-header__right no-drag">
         <div className="header-gap-wide">
+          <DevScriptModeBadge />
           {!isSafariBrowser() &&
             (appMode === GLOBAL_CONSTANTS.APP_MODES.DESKTOP ||
               (appMode !== GLOBAL_CONSTANTS.APP_MODES.DESKTOP &&
